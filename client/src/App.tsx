@@ -6,14 +6,15 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
+import CognitiveMonitor from "./pages/CognitiveMonitor";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path="/chat" component={Chat} />
-      <Route path="/chat/:conversationId" component={Chat} />
+      <Route path={"/chat"} component={Chat} />
+      <Route path={"/monitor"} component={CognitiveMonitor} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -15,6 +15,13 @@
       "when": 1762075066608,
       "tag": "0001_unique_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1762075597307,
+      "tag": "0002_gigantic_living_tribunal",
+      "breakpoints": true
     }
   ]
 }

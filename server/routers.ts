@@ -6,6 +6,12 @@ import { z } from "zod";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
+import {
+  processMessageCognitively,
+  generateNewQuestions,
+  performPeriodicReflection,
+  getCognitiveState,
+} from "./cognitiveService";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -63,6 +69,9 @@ export const appRouter = router({
         // Save user message
         await createMessage(input.conversationId, "user", input.content);
 
+        // Process user message cognitively (extract concepts, build knowledge)
+        await processMessageCognitively(input.conversationId, input.content, "user");
+
         // Get conversation history
         const history = await getConversationMessages(input.conversationId);
         const messages = [
@@ -81,7 +90,49 @@ export const appRouter = router({
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);
 
+        // Process assistant message cognitively
+        await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
+
+        // Periodically perform reflection (every 5 messages)
+        if (history.length % 5 === 0) {
+          await performPeriodicReflection(input.conversationId);
+        }
+
+        // Periodically generate new questions (every 10 messages)
+        if (history.length % 10 === 0) {
+          await generateNewQuestions(input.conversationId);
+        }
+
         return { content: assistantMessage };
+      }),
+
+    // Get cognitive state (for monitoring Nova's growth)
+    getCognitiveState: protectedProcedure.query(async () => {
+      return getCognitiveState();
+    }),
+
+    // Trigger reflection manually
+    triggerReflection: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const conversation = await getConversation(input.conversationId);
+        if (!conversation || conversation.userId !== ctx.user.id) {
+          throw new Error("Conversation not found or unauthorized");
+        }
+        const reflection = await performPeriodicReflection(input.conversationId);
+        return { reflection };
+      }),
+
+    // Generate curiosity questions manually
+    generateQuestions: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const conversation = await getConversation(input.conversationId);
+        if (!conversation || conversation.userId !== ctx.user.id) {
+          throw new Error("Conversation not found or unauthorized");
+        }
+        const questions = await generateNewQuestions(input.conversationId);
+        return { questions };
       }),
   }),
 });

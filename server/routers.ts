@@ -3,6 +3,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { getCurrentState, updateState } from "./autonomousEngine";
+import { getBackgroundCognitionStatus } from "./backgroundCognition";
+import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
@@ -134,6 +137,37 @@ export const appRouter = router({
         const questions = await generateNewQuestions(input.conversationId);
         return { questions };
       }),
+  }),
+
+  // Autonomous system API
+  autonomous: router({
+    getState: protectedProcedure.query(async () => {
+      const state = await getCurrentState();
+      return state;
+    }),
+    getStatus: protectedProcedure.query(async () => {
+      return getBackgroundCognitionStatus();
+    }),
+    updateAutonomyLevel: protectedProcedure
+      .input(z.object({ level: z.number().min(1).max(10) }))
+      .mutation(async ({ input }) => {
+        await updateState({ autonomyLevel: input.level });
+        return { success: true };
+      }),
+  }),
+
+  // Privacy and sharing API
+  privacy: router({
+    getSharedThoughts: protectedProcedure.query(async () => {
+      return getSharedThoughts(20);
+    }),
+    getThoughtStats: protectedProcedure.query(async () => {
+      return getPrivateThoughtStats();
+    }),
+    getTrustLevel: protectedProcedure.query(async ({ ctx }) => {
+      const level = await getTrustLevel(ctx.user.id);
+      return { trustLevel: level };
+    }),
   }),
 });
 

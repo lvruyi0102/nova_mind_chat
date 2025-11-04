@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp } from "lucide-react";
+import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power } from "lucide-react";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
@@ -58,7 +58,7 @@ export default function Home() {
                 加载中...
               </Button>
             ) : isAuthenticated ? (
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button size="lg" asChild>
               <Link href="/chat">
                 <MessageCircle className="w-5 h-5 mr-2" />
@@ -67,8 +67,14 @@ export default function Home() {
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link href="/monitor">
-                <Brain className="w-5 h-5 mr-2" />
+                <Brain className="w-4 h-4 mr-2" />
                 认知监控
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/autonomous">
+                <Power className="w-4 h-4 mr-2" />
+                自主系统
               </Link>
             </Button>
           </div>

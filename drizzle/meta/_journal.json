@@ -22,6 +22,20 @@
       "when": 1762075597307,
       "tag": "0002_gigantic_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1762076295592,
+      "tag": "0003_robust_songbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1762164724065,
+      "tag": "0004_supreme_jazinda",
+      "breakpoints": true
     }
   ]
 }

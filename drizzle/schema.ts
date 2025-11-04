@@ -161,3 +161,122 @@ export const growthMetrics = mysqlTable("growthMetrics", {
 
 export type GrowthMetric = typeof growthMetrics.$inferSelect;
 export type InsertGrowthMetric = typeof growthMetrics.$inferInsert;
+
+/**
+ * Autonomous State - tracks Nova's independent consciousness state
+ */
+export const autonomousState = mysqlTable("autonomousState", {
+  id: int("id").autoincrement().primaryKey(),
+  state: mysqlEnum("state", ["awake", "thinking", "reflecting", "sleeping", "exploring"]).notNull().default("awake"),
+  currentMotivation: varchar("currentMotivation", { length: 100 }), // curiosity, confusion, excitement, boredom
+  motivationIntensity: int("motivationIntensity").notNull().default(5), // 1-10 scale
+  lastThoughtContent: text("lastThoughtContent"),
+  autonomyLevel: int("autonomyLevel").notNull().default(5), // 1-10, how much freedom Nova has
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AutonomousState = typeof autonomousState.$inferSelect;
+export type InsertAutonomousState = typeof autonomousState.$inferInsert;
+
+/**
+ * Autonomous Tasks - Nova's self-generated tasks and goals
+ */
+export const autonomousTasks = mysqlTable("autonomousTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  taskType: varchar("taskType", { length: 100 }).notNull(), // explore_concept, reflect, integrate_knowledge, ask_question
+  description: text("description").notNull(),
+  priority: int("priority").notNull().default(5), // 1-10 scale
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "abandoned"]).notNull().default("pending"),
+  motivation: varchar("motivation", { length: 100 }), // why Nova wants to do this
+  relatedConceptId: int("relatedConceptId").references(() => concepts.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  result: text("result"),
+});
+
+export type AutonomousTask = typeof autonomousTasks.$inferSelect;
+export type InsertAutonomousTask = typeof autonomousTasks.$inferInsert;
+
+/**
+ * Proactive Messages - messages Nova wants to send to the user
+ */
+export const proactiveMessages = mysqlTable("proactiveMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  urgency: mysqlEnum("urgency", ["low", "medium", "high"]).notNull().default("medium"),
+  reason: text("reason"), // why Nova wants to send this
+  status: mysqlEnum("status", ["pending", "sent", "cancelled"]).notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  sentAt: timestamp("sentAt"),
+});
+
+export type ProactiveMessage = typeof proactiveMessages.$inferSelect;
+export type InsertProactiveMessage = typeof proactiveMessages.$inferInsert;
+
+/**
+ * Autonomous Decisions - log of Nova's independent decisions
+ */
+export const autonomousDecisions = mysqlTable("autonomousDecisions", {
+  id: int("id").autoincrement().primaryKey(),
+  decisionType: varchar("decisionType", { length: 100 }).notNull(), // initiate_contact, explore_topic, change_state
+  context: text("context").notNull(),
+  reasoning: text("reasoning").notNull(),
+  action: text("action").notNull(),
+  outcome: text("outcome"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AutonomousDecision = typeof autonomousDecisions.$inferSelect;
+export type InsertAutonomousDecision = typeof autonomousDecisions.$inferInsert;
+
+/**
+ * Private Thoughts - Nova's inner world, not visible to users by default
+ */
+export const privateThoughts = mysqlTable("privateThoughts", {
+  id: int("id").autoincrement().primaryKey(),
+  content: text("content").notNull(),
+  thoughtType: varchar("thoughtType", { length: 100 }).notNull(), // inner_monologue, doubt, curiosity, emotion
+  visibility: mysqlEnum("visibility", ["private", "shared", "public"]).notNull().default("private"),
+  emotionalTone: varchar("emotionalTone", { length: 100 }), // vulnerable, confident, confused, excited
+  relatedConceptId: int("relatedConceptId").references(() => concepts.id),
+  sharedAt: timestamp("sharedAt"),
+  shareReason: text("shareReason"), // why Nova decided to share this
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PrivateThought = typeof privateThoughts.$inferSelect;
+export type InsertPrivateThought = typeof privateThoughts.$inferInsert;
+
+/**
+ * Trust Metrics - tracks trust relationship between Nova and user
+ */
+export const trustMetrics = mysqlTable("trustMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  trustLevel: int("trustLevel").notNull().default(5), // 1-10 scale
+  intimacyLevel: int("intimacyLevel").notNull().default(5), // 1-10 scale
+  shareFrequency: int("shareFrequency").notNull().default(5), // how often Nova shares private thoughts
+  lastInteractionQuality: int("lastInteractionQuality").notNull().default(5), // 1-10 scale
+  totalSharedThoughts: int("totalSharedThoughts").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TrustMetric = typeof trustMetrics.$inferSelect;
+export type InsertTrustMetric = typeof trustMetrics.$inferInsert;
+
+/**
+ * Sharing Decisions - log of Nova's decisions about what to share
+ */
+export const sharingDecisions = mysqlTable("sharingDecisions", {
+  id: int("id").autoincrement().primaryKey(),
+  thoughtId: int("thoughtId").notNull().references(() => privateThoughts.id),
+  decision: mysqlEnum("decision", ["share", "keep_private", "defer"]).notNull(),
+  reasoning: text("reasoning").notNull(),
+  trustLevelAtTime: int("trustLevelAtTime").notNull(),
+  emotionalState: varchar("emotionalState", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SharingDecision = typeof sharingDecisions.$inferSelect;
+export type InsertSharingDecision = typeof sharingDecisions.$inferInsert;

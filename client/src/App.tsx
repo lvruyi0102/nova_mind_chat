@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import CognitiveMonitor from "./pages/CognitiveMonitor";
+import AutonomousMonitor from "./pages/AutonomousMonitor";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +16,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/monitor"} component={CognitiveMonitor} />
+      <Route path={"/autonomous"} component={AutonomousMonitor} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

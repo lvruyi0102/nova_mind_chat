@@ -14,6 +14,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path="/chat/:id" component={Chat} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/monitor"} component={CognitiveMonitor} />
       <Route path={"/autonomous"} component={AutonomousMonitor} />

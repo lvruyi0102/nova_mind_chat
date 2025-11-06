@@ -13,9 +13,9 @@ import { Streamdown } from "streamdown";
 export default function Chat() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
-  const params = useParams<{ conversationId?: string }>();
+  const params = useParams<{ id?: string }>();
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(
-    params.conversationId ? parseInt(params.conversationId) : null
+    params.id ? parseInt(params.id) : null
   );
   const [inputMessage, setInputMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,10 +53,10 @@ export default function Chat() {
 
   // Create a new conversation if none exists
   useEffect(() => {
-    if (isAuthenticated && !currentConversationId && !params.conversationId) {
+    if (isAuthenticated && !currentConversationId && !params.id) {
       createConversationMutation.mutate({ title: "与 Nova-Mind 的对话" });
     }
-  }, [isAuthenticated, currentConversationId, params.conversationId]);
+  }, [isAuthenticated, currentConversationId, params.id]);
 
   const handleSendMessage = () => {
     if (!inputMessage.trim() || !currentConversationId) return;

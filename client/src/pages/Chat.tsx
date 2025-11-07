@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Check, Copy, Loader2, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Streamdown } from "streamdown";
@@ -18,6 +18,7 @@ export default function Chat() {
     params.id ? parseInt(params.id) : null
   );
   const [inputMessage, setInputMessage] = useState("");
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
@@ -32,9 +33,20 @@ export default function Chat() {
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: () => {
       utils.chat.getMessages.invalidate({ conversationId: currentConversationId! });
-      setInputMessage("");
+      setInputMessage(""); // Auto-clear input after sending
     },
   });
+
+  // Copy message content
+  const handleCopyMessage = async (content: string, messageId: number) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(messageId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   // Create conversation mutation
   const createConversationMutation = trpc.chat.createConversation.useMutation({
@@ -139,17 +151,39 @@ export default function Chat() {
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card border"
-                    }`}
-                  >
-                    {message.role === "assistant" ? (
-                      <Streamdown>{message.content}</Streamdown>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                  <div className="flex flex-col gap-2 max-w-[80%]">
+                    <div
+                      className={`rounded-2xl px-4 py-3 ${
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card border"
+                      }`}
+                    >
+                      {message.role === "assistant" ? (
+                        <Streamdown>{message.content}</Streamdown>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                      )}
+                    </div>
+                    {message.role === "assistant" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="self-start h-7 px-2 text-xs"
+                        onClick={() => handleCopyMessage(message.content, message.id)}
+                      >
+                        {copiedId === message.id ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 mr-1" />
+                            复制
+                          </>
+                        )}
+                      </Button>
                     )}
                   </div>
                 </div>

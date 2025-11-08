@@ -151,7 +151,7 @@ export default function Chat() {
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div className="flex flex-col gap-2 max-w-[80%]">
+                  <div className="max-w-[80%]">
                     <div
                       className={`rounded-2xl px-4 py-3 ${
                         message.role === "user"
@@ -159,32 +159,36 @@ export default function Chat() {
                           : "bg-card border"
                       }`}
                     >
-                      {message.role === "assistant" ? (
-                        <Streamdown>{message.content}</Streamdown>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                      )}
-                    </div>
-                    {message.role === "assistant" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="self-start h-7 px-2 text-xs"
-                        onClick={() => handleCopyMessage(message.content, message.id)}
-                      >
-                        {copiedId === message.id ? (
-                          <>
-                            <Check className="w-3 h-3 mr-1" />
-                            已复制
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3 mr-1" />
-                            复制
-                          </>
+                      <div className="flex flex-col gap-2">
+                        <div>
+                          {message.role === "assistant" ? (
+                            <Streamdown>{message.content}</Streamdown>
+                          ) : (
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          )}
+                        </div>
+                        {message.role === "assistant" && (
+                          <div className="flex justify-end pt-1 border-t border-border/50">
+                            <button
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-accent/50"
+                              onClick={() => handleCopyMessage(message.content, message.id)}
+                            >
+                              {copiedId === message.id ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  已复制
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  复制
+                                </>
+                              )}
+                            </button>
+                          </div>
                         )}
-                      </Button>
-                    )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

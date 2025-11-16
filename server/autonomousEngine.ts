@@ -53,8 +53,22 @@ export async function getCurrentState() {
   const db = await getDb();
   if (!db) return null;
 
-  const state = await db.select().from(autonomousState).limit(1);
-  return state[0] || null;
+  try {
+    const state = await db.select().from(autonomousState).limit(1);
+    return state[0] || null;
+  } catch (error) {
+    console.error("[AutonomousEngine] Error getting current state:", error);
+    // Return a default state if query fails
+    return {
+      id: 1,
+      state: "thinking" as const,
+      currentMotivation: "curiosity",
+      motivationIntensity: 5,
+      lastThoughtContent: "系统正在恢复...",
+      autonomyLevel: 5,
+      updatedAt: new Date(),
+    };
+  }
 }
 
 /**
@@ -70,13 +84,18 @@ export async function updateState(updates: {
   const db = await getDb();
   if (!db) return;
 
-  const current = await getCurrentState();
-  if (!current) {
-    await initializeAutonomousState();
-    return;
-  }
+  try {
+    const current = await getCurrentState();
+    if (!current) {
+      await initializeAutonomousState();
+      return;
+    }
 
-  await db.update(autonomousState).set(updates).where(eq(autonomousState.id, current.id));
+    await db.update(autonomousState).set(updates).where(eq(autonomousState.id, current.id));
+  } catch (error) {
+    console.error("[AutonomousEngine] Error updating state:", error);
+    // Silently fail - Nova will continue with cached state
+  }
 }
 
 /**

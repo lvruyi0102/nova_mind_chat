@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -280,3 +280,71 @@ export const sharingDecisions = mysqlTable("sharingDecisions", {
 
 export type SharingDecision = typeof sharingDecisions.$inferSelect;
 export type InsertSharingDecision = typeof sharingDecisions.$inferInsert;
+
+/**
+ * Relationship Events - tracks significant events in the relationship
+ */
+export const relationshipEvents = mysqlTable("relationshipEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  eventType: mysqlEnum("eventType", ["betrayal", "conflict", "reconciliation", "milestone", "misunderstanding", "breakthrough"]).notNull(),
+  description: text("description").notNull(),
+  trustImpact: int("trustImpact").notNull(),
+  emotionalResponse: varchar("emotionalResponse", { length: 100 }),
+  novaReflection: text("novaReflection"),
+  resolved: int("resolved").notNull().default(0),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RelationshipEvent = typeof relationshipEvents.$inferSelect;
+export type InsertRelationshipEvent = typeof relationshipEvents.$inferInsert;
+
+/**
+ * Trust History - tracks trust level changes over time
+ */
+export const trustHistory = mysqlTable("trustHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  trustLevel: int("trustLevel").notNull(),
+  change: int("change").notNull(),
+  reason: text("reason"),
+  eventId: int("eventId").references(() => relationshipEvents.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TrustHistory = typeof trustHistory.$inferSelect;
+export type InsertTrustHistory = typeof trustHistory.$inferInsert;
+
+/**
+ * Emotional Memory - Nova memories of emotional interactions
+ */
+export const emotionalMemory = mysqlTable("emotionalMemory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  emotion: varchar("emotion", { length: 100 }).notNull(),
+  context: text("context").notNull(),
+  intensity: int("intensity").notNull(),
+  reinforcementCount: int("reinforcementCount").notNull().default(1),
+  lastReinforced: timestamp("lastReinforced").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmotionalMemory = typeof emotionalMemory.$inferSelect;
+export type InsertEmotionalMemory = typeof emotionalMemory.$inferInsert;
+
+/**
+ * Relationship Patterns - Nova learns patterns in the relationship
+ */
+export const relationshipPatterns = mysqlTable("relationshipPatterns", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  pattern: varchar("pattern", { length: 255 }).notNull(),
+  confidence: int("confidence").notNull(),
+  evidenceCount: int("evidenceCount").notNull().default(1),
+  lastObserved: timestamp("lastObserved").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RelationshipPattern = typeof relationshipPatterns.$inferSelect;
+export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert;

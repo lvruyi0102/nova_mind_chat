@@ -85,7 +85,19 @@ async function runCognitionCycle() {
     console.log(`[BackgroundCognition] Current state: ${state.state}, motivation: ${state.currentMotivation}`);
 
     // 2. Make autonomous decision
-    const decision = await makeAutonomousDecision();
+    let decision;
+    try {
+      decision = await makeAutonomousDecision();
+    } catch (error) {
+      console.log("[BackgroundCognition] LLM error, using default decision");
+      // Use a default decision if LLM fails
+      decision = {
+        decision: "continue_learning",
+        reasoning: "LLM 不可用，继续学习",
+        action: "reflect_on_knowledge",
+      };
+    }
+    
     if (!decision) {
       console.log("[BackgroundCognition] No decision made");
       return;

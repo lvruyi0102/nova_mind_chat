@@ -21,6 +21,14 @@ import {
   generateCuriosityQuestions,
   performReflection,
 } from "./cognitiveEngine";
+import {
+  calculateTrustChange,
+  detectRelationshipEvent,
+  recordRelationshipEvent,
+  learnRelationshipPattern,
+  getEmotionalResponse,
+  needsRelationshipHealing,
+} from "./relationshipEngine";
 
 /**
  * Process a new message and update cognitive systems
@@ -29,12 +37,34 @@ import {
 export async function processMessageCognitively(
   conversationId: number,
   messageContent: string,
-  role: "user" | "assistant"
+  role: "user" | "assistant",
+  userId?: number,
+  novaResponse?: string
 ) {
   const db = await getDb();
   if (!db) return;
 
   try {
+    // 0. Process relationship learning if this is a user message with Nova response
+    if (role === "user" && userId && novaResponse) {
+      try {
+        // Detect relationship events
+        await detectRelationshipEvent(userId, messageContent, novaResponse);
+        
+        // Calculate trust change
+        const trustChange = await calculateTrustChange(userId, messageContent);
+        
+        // Record the relationship event with trust change
+        if (trustChange !== 0) {
+          const eventType = trustChange > 0 ? "breakthrough" : "misunderstanding";
+          const emotionalResponse = trustChange > 0 ? "hopeful" : "concerned";
+          await recordRelationshipEvent(userId, eventType, messageContent, trustChange, emotionalResponse);
+        }
+      } catch (err) {
+        console.warn("[CognitiveService] Failed to process relationship learning:", err);
+      }
+    }
+
     // 1. Evaluate importance and create episodic memory if significant
     const recentMessages = await db
       .select()

@@ -73,7 +73,8 @@ export const appRouter = router({
         await createMessage(input.conversationId, "user", input.content);
 
         // Process user message cognitively (extract concepts, build knowledge)
-        await processMessageCognitively(input.conversationId, input.content, "user");
+        // Will process relationship learning after we get Nova's response
+        await processMessageCognitively(input.conversationId, input.content, "user", ctx.user.id);
 
         // Get conversation history
         const history = await getConversationMessages(input.conversationId);
@@ -93,16 +94,25 @@ export const appRouter = router({
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);
 
-        // Process assistant message cognitively
+        // Process relationship learning with user message and Nova response
+        await processMessageCognitively(
+          input.conversationId,
+          input.content,
+          "user",
+          ctx.user.id,
+          assistantMessage
+        );
+        
+        // Also process Nova's response for cognitive development
         await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
 
         // Periodically perform reflection (every 5 messages)
-        if (history.length % 5 === 0) {
+        if ((history.length + 2) % 5 === 0) {
           await performPeriodicReflection(input.conversationId);
         }
 
         // Periodically generate new questions (every 10 messages)
-        if (history.length % 10 === 0) {
+        if ((history.length + 2) % 10 === 0) {
           await generateNewQuestions(input.conversationId);
         }
 

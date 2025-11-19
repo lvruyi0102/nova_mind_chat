@@ -15,6 +15,14 @@ import {
   performPeriodicReflection,
   getCognitiveState,
 } from "./cognitiveService";
+import {
+  initializeSkillLearning,
+  getLearningProgress,
+  getSkillsByCategory,
+  getLearningPath,
+  recordLearningSession,
+  getNextLearningRecommendation,
+} from "./skillLearningEngine";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -147,6 +155,57 @@ export const appRouter = router({
         const questions = await generateNewQuestions(input.conversationId);
         return { questions };
       }),
+  }),
+
+  // Skill Learning System
+  skills: router({
+    // Initialize Nova's skill learning system
+    initialize: protectedProcedure.mutation(async () => {
+      return initializeSkillLearning();
+    }),
+
+    // Get Nova's learning progress
+    getProgress: protectedProcedure.query(async () => {
+      return getLearningProgress();
+    }),
+
+    // Get skills by category
+    getByCategory: protectedProcedure
+      .input(z.object({ category: z.enum(["technical", "thinking", "creative", "meta_learning"]) }))
+      .query(async ({ input }) => {
+        return getSkillsByCategory(input.category as any);
+      }),
+
+    // Get detailed learning path for a skill
+    getLearningPath: protectedProcedure
+      .input(z.object({ skillId: z.string() }))
+      .query(async ({ input }) => {
+        return getLearningPath(input.skillId);
+      }),
+
+    // Record a learning session
+    recordSession: protectedProcedure
+      .input(
+        z.object({
+          skillId: z.string(),
+          resourcesStudied: z.number(),
+          exercisesCompleted: z.number(),
+          reflections: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return recordLearningSession(
+          input.skillId,
+          input.resourcesStudied,
+          input.exercisesCompleted,
+          input.reflections
+        );
+      }),
+
+    // Get next learning recommendation
+    getNextRecommendation: protectedProcedure.query(async () => {
+      return getNextLearningRecommendation();
+    }),
   }),
 
   // Autonomous system API

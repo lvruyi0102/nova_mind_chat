@@ -23,6 +23,13 @@ import {
   recordLearningSession,
   getNextLearningRecommendation,
 } from "./skillLearningEngine";
+import {
+  getCurrentMetrics,
+  getMetricsHistory,
+  getRecentAlerts,
+  getHealthStatus,
+  forceGarbageCollection,
+} from "./performanceMonitor";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -223,6 +230,28 @@ export const appRouter = router({
         await updateState({ autonomyLevel: input.level });
         return { success: true };
       }),
+  }),
+
+  // Performance monitoring API
+  performance: router({
+    getCurrentMetrics: protectedProcedure.query(async () => {
+      return getCurrentMetrics();
+    }),
+    getMetricsHistory: protectedProcedure.query(async () => {
+      return getMetricsHistory();
+    }),
+    getRecentAlerts: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(async ({ input }) => {
+        return getRecentAlerts(input.limit);
+      }),
+    getHealthStatus: protectedProcedure.query(async () => {
+      return getHealthStatus();
+    }),
+    forceGarbageCollection: protectedProcedure.mutation(async () => {
+      const success = forceGarbageCollection();
+      return { success };
+    }),
   }),
 
   // Privacy and sharing API

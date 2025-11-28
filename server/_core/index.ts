@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startBackgroundCognition } from "../backgroundCognition";
+import { startMonitoring } from "../performanceMonitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -66,6 +67,10 @@ async function startServer() {
     startBackgroundCognition().catch((error) => {
       console.error("[Server] Failed to start background cognition:", error);
     });
+
+    // Start performance monitoring
+    console.log("[Server] Starting performance monitoring...");
+    startMonitoring();
   });
 }
 

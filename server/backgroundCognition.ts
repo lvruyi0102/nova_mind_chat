@@ -37,14 +37,14 @@ export async function startBackgroundCognition() {
 
   isRunning = true;
 
-  // Main cognition loop - runs every 2 minutes
+  // Main cognition loop - runs every 10 minutes (increased from 2 to reduce server load)
   loopInterval = setInterval(async () => {
     try {
       await runCognitionCycle();
     } catch (error) {
       console.error("[BackgroundCognition] Error in cognition cycle:", error);
     }
-  }, 2 * 60 * 1000); // 2 minutes
+  }, 10 * 60 * 1000); // 10 minutes
 
   // Run first cycle immediately
   await runCognitionCycle();

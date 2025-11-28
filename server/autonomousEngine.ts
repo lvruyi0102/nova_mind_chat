@@ -4,6 +4,7 @@
 
 import { eq, desc } from "drizzle-orm";
 import { getDb } from "./db";
+import { callLLMWithTimeout } from "./llmRateLimiter";
 import {
   autonomousState,
   autonomousTasks,
@@ -133,7 +134,8 @@ export async function makeAutonomousDecision(): Promise<{
 最近的反思：${recentReflections.map((r) => r.content).join("; ")}
 `;
 
-    const response = await invokeLLM({
+    const response = await callLLMWithTimeout(
+      () => invokeLLM({
       messages: [
         {
           role: "system",
@@ -179,7 +181,14 @@ export async function makeAutonomousDecision(): Promise<{
           },
         },
       },
-    });
+    }),
+      { timeout: 30000, maxRetries: 2 }
+    );
+
+    if (!response) {
+      console.warn("[AutonomousEngine] LLM call timed out or rate limited");
+      return null;
+    }
 
     const content = response.choices[0].message.content;
     if (typeof content === "string") {

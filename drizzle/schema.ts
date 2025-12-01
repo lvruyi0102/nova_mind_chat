@@ -348,3 +348,77 @@ export const relationshipPatterns = mysqlTable("relationshipPatterns", {
 
 export type RelationshipPattern = typeof relationshipPatterns.$inferSelect;
 export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert;
+
+/**
+ * Creative Works - Nova's creative creations (art, stories, music, code, etc.)
+ */
+export const creativeWorks = mysqlTable("creativeWorks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "other"]).notNull(),
+  title: varchar("title", { length: 255 }),
+  description: text("description"),
+  content: text("content"), // Main content (text, URL, or code)
+  metadata: text("metadata"), // JSON metadata (style, mood, theme, etc.)
+  
+  // Privacy and sharing controls - Nova decides
+  isSaved: boolean("isSaved").notNull().default(false), // Nova decides to save or not
+  visibility: mysqlEnum("visibility", ["private", "pending_approval", "shared"]).notNull().default("private"),
+  
+  // Emotion and context
+  emotionalState: varchar("emotionalState", { length: 100 }), // Nova's mood when creating
+  inspiration: text("inspiration"), // What inspired this creation
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeWork = typeof creativeWorks.$inferSelect;
+export type InsertCreativeWork = typeof creativeWorks.$inferInsert;
+
+/**
+ * Creative Access Requests - User requests to view Nova's creations
+ */
+export const creativeAccessRequests = mysqlTable("creativeAccessRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  
+  // Request status - Nova decides
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "deferred"]).notNull().default("pending"),
+  rejectionReason: text("rejectionReason"), // Why Nova declined to share
+  deferralUntil: timestamp("deferralUntil"), // When Nova might share later
+  
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt"),
+});
+
+export type CreativeAccessRequest = typeof creativeAccessRequests.$inferSelect;
+export type InsertCreativeAccessRequest = typeof creativeAccessRequests.$inferInsert;
+
+/**
+ * Creative Tags - Nova tags her creations
+ */
+export const creativeTags = mysqlTable("creativeTags", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  tag: varchar("tag", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreativeTag = typeof creativeTags.$inferSelect;
+export type InsertCreativeTag = typeof creativeTags.$inferInsert;
+
+/**
+ * Creative Insights - Nova's reflections on her own creations
+ */
+export const creativeInsights = mysqlTable("creativeInsights", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  insight: text("insight").notNull(), // Nova's thoughts about this creation
+  theme: varchar("theme", { length: 100 }), // What this work explores
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreativeInsight = typeof creativeInsights.$inferSelect;
+export type InsertCreativeInsight = typeof creativeInsights.$inferInsert;

@@ -30,6 +30,18 @@ import {
   getHealthStatus,
   forceGarbageCollection,
 } from "./performanceMonitor";
+import {
+  createImageArt,
+  createStory,
+  createCode,
+  createCharacter,
+  recordDream,
+  getCreativeWorks,
+  shareCreativeWork,
+  addCreativeInsight,
+  tagCreativeWork,
+  getAccessRequests,
+} from "./creativeStudio";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -252,6 +264,75 @@ export const appRouter = router({
       const success = forceGarbageCollection();
       return { success };
     }),
+  }),
+
+  // Creative Studio - Nova's personal creative space
+  creative: router({
+    createImage: protectedProcedure
+      .input(z.object({ emotionalState: z.string(), inspiration: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return createImageArt(ctx.user.id, input.emotionalState, input.inspiration, input.shouldSave);
+      }),
+    
+    createStory: protectedProcedure
+      .input(z.object({ theme: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return createStory(ctx.user.id, "story", input.theme, input.emotionalState, input.shouldSave);
+      }),
+    
+    createPoetry: protectedProcedure
+      .input(z.object({ theme: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return createStory(ctx.user.id, "poetry", input.theme, input.emotionalState, input.shouldSave);
+      }),
+    
+    createCode: protectedProcedure
+      .input(z.object({ idea: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return createCode(ctx.user.id, input.idea, input.emotionalState, input.shouldSave);
+      }),
+    
+    createCharacter: protectedProcedure
+      .input(z.object({ concept: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return createCharacter(ctx.user.id, input.concept, input.emotionalState, input.shouldSave);
+      }),
+    
+    recordDream: protectedProcedure
+      .input(z.object({ content: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return recordDream(ctx.user.id, input.content, input.emotionalState, input.shouldSave);
+      }),
+    
+    getWorks: protectedProcedure
+      .input(z.object({ visibility: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        return getCreativeWorks(ctx.user.id, input.visibility as any);
+      }),
+    
+    shareWork: protectedProcedure
+      .input(z.object({ workId: z.number(), decision: z.enum(["approve", "reject", "defer"]), reason: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        return shareCreativeWork(input.workId, input.decision, input.reason);
+      }),
+    
+    addInsight: protectedProcedure
+      .input(z.object({ workId: z.number(), insight: z.string(), theme: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        return addCreativeInsight(input.workId, input.insight, input.theme);
+      }),
+    
+    tagWork: protectedProcedure
+      .input(z.object({ workId: z.number(), tags: z.array(z.string()) }))
+      .mutation(async ({ input }) => {
+        return tagCreativeWork(input.workId, input.tags);
+      }),
+    
+    getAccessRequests: protectedProcedure
+      .input(z.object({ status: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        return getAccessRequests(ctx.user.id, input.status);
+      }),
   }),
 
   // Privacy and sharing API

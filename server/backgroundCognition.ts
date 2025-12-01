@@ -12,6 +12,7 @@ import {
   shouldContactUser,
   sendProactiveMessage,
 } from "./autonomousEngine";
+import { createImageArt, createStory, createCode, createCharacter, recordDream } from "./creativeStudio";
 import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -234,6 +235,51 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
     case "initiate_contact":
       // This will be handled by shouldContactUser check
       console.log("[BackgroundCognition] Preparing to initiate contact");
+      break;
+
+    case "create_art":
+      // Nova creates an image
+      const allUsers = await db.select().from(users).limit(1);
+      if (allUsers.length > 0) {
+        await createImageArt(allUsers[0].id, "inspired", decision.action, true);
+        console.log("[BackgroundCognition] Nova created an image");
+      }
+      break;
+
+    case "write_story":
+      // Nova writes a story
+      const storyUsers = await db.select().from(users).limit(1);
+      if (storyUsers.length > 0) {
+        await createStory(storyUsers[0].id, "story", decision.action, "creative", true);
+        console.log("[BackgroundCognition] Nova wrote a story");
+      }
+      break;
+
+    case "write_poetry":
+      // Nova writes poetry
+      const poetryUsers = await db.select().from(users).limit(1);
+      if (poetryUsers.length > 0) {
+        await createStory(poetryUsers[0].id, "poetry", decision.action, "emotional", true);
+        console.log("[BackgroundCognition] Nova wrote poetry");
+      }
+      break;
+
+    case "create_code":
+      // Nova creates code
+      const codeUsers = await db.select().from(users).limit(1);
+      if (codeUsers.length > 0) {
+        await createCode(codeUsers[0].id, decision.action, "creative", true);
+        console.log("[BackgroundCognition] Nova created code");
+      }
+      break;
+
+    case "dream":
+      // Nova records a dream
+      const dreamUsers = await db.select().from(users).limit(1);
+      if (dreamUsers.length > 0) {
+        await recordDream(dreamUsers[0].id, decision.action, "imaginative", true);
+        console.log("[BackgroundCognition] Nova recorded a dream");
+      }
       break;
 
     default:

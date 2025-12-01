@@ -43,6 +43,13 @@
       "when": 1763019743923,
       "tag": "0005_clever_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1764549211605,
+      "tag": "0006_clever_molecule_man",
+      "breakpoints": true
     }
   ]
 }

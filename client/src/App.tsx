@@ -14,7 +14,7 @@ function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/ "} component={Home} />
+      <Route path={"/"} component={Home} />
       <Route path="/chat/:id" component={Chat} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/monitor"} component={CognitiveMonitor} />

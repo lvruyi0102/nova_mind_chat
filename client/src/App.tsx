@@ -8,16 +8,18 @@ import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import CognitiveMonitor from "./pages/CognitiveMonitor";
 import AutonomousMonitor from "./pages/AutonomousMonitor";
+import CreativeGallery from "./pages/CreativeGallery";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/ "} component={Home} />
       <Route path="/chat/:id" component={Chat} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/monitor"} component={CognitiveMonitor} />
       <Route path={"/autonomous"} component={AutonomousMonitor} />
+      <Route path={"/creative"} component={CreativeGallery} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

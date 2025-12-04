@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power } from "lucide-react";
+import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette } from "lucide-react";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
@@ -26,7 +26,7 @@ export default function Home() {
           </div>
 
           {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 mt-12">
+          <div className="grid md:grid-cols-4 gap-6 mt-12">
             <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20">
               <Brain className="w-10 h-10 text-primary mx-auto" />
               <h3 className="font-semibold text-lg">学习智能体</h3>
@@ -48,6 +48,13 @@ export default function Home() {
                 回顾过去行为，找出误解并进行修正
               </p>
             </Card>
+            <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors">
+              <Palette className="w-10 h-10 text-primary mx-auto" />
+              <h3 className="font-semibold text-lg">创意世界</h3>
+              <p className="text-sm text-muted-foreground">
+                Nova的艺术、故事和梦想，自由创作与分享
+              </p>
+            </Card>
           </div>
 
           {/* CTA */}
@@ -58,11 +65,17 @@ export default function Home() {
                 加载中...
               </Button>
             ) : isAuthenticated ? (
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap justify-center">
             <Button size="lg" asChild>
               <Link href="/chat">
                 <MessageCircle className="w-5 h-5 mr-2" />
                 开始对话
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/creative">
+                <Palette className="w-4 h-4 mr-2" />
+                创意世界
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>

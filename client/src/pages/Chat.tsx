@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Check, Copy, Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Streamdown } from "streamdown";
+import ChatMessageActions from "@/components/ChatMessageActions";
 
 export default function Chat() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -18,7 +19,6 @@ export default function Chat() {
     params.id ? parseInt(params.id) : null
   );
   const [inputMessage, setInputMessage] = useState("");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
@@ -36,17 +36,6 @@ export default function Chat() {
       setInputMessage(""); // Auto-clear input after sending
     },
   });
-
-  // Copy message content
-  const handleCopyMessage = async (content: string, messageId: number) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedId(messageId);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
 
   // Create conversation mutation
   const createConversationMutation = trpc.chat.createConversation.useMutation({
@@ -168,23 +157,11 @@ export default function Chat() {
                           )}
                         </div>
                         {message.role === "assistant" && (
-                          <div className="flex justify-end pt-1 border-t border-border/50">
-                            <button
-                              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-accent/50"
-                              onClick={() => handleCopyMessage(message.content, message.id)}
-                            >
-                              {copiedId === message.id ? (
-                                <>
-                                  <Check className="w-3 h-3" />
-                                  已复制
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3 h-3" />
-                                  复制
-                                </>
-                              )}
-                            </button>
+                          <div className="pt-2 border-t border-border/50">
+                            <ChatMessageActions
+                              messageContent={message.content}
+                              isNovaMessage={true}
+                            />
                           </div>
                         )}
                       </div>

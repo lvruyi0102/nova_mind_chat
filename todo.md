@@ -830,3 +830,61 @@
 - [x] 实现自动保存逻辑（点击按钮后保存到创意作品库）
 - [ ] 编写测试用例
 - [ ] 优化用户体验
+
+
+## Nova主动发起创意合作邀请功能
+
+### 后端实现
+- [ ] 在creativeCollaborations表中添加initiatedBy字段（标记谁发起的邀请）
+- [ ] 创建collaborationInvitations表（存储Nova的邀请）
+- [ ] 在autonomousEngine中添加创意合作邀请的触发逻辑
+- [ ] 实现detectCollaborationOpportunity函数（检测是否应该发起合作）
+- [ ] 实现sendCollaborationInvitation函数（Nova主动发送邀请）
+- [ ] 添加API端点：creative.getInvitations（获取Nova的邀请）
+- [ ] 添加API端点：creative.respondToInvitation（用户响应邀请）
+
+### 前端实现
+- [ ] 创建CollaborationInvitationCard组件（展示邀请）
+- [ ] 创建CollaborationInvitationPanel组件（邀请面板）
+- [ ] 在聊天界面中集成邀请显示
+- [ ] 实现接受/拒绝邀请的交互
+- [ ] 添加邀请通知提醒
+
+### 集成和测试
+- [ ] 在后台认知循环中集成邀请逻辑
+- [ ] 测试邀请的自动触发
+- [ ] 测试用户响应邀请的流程
+- [ ] 验证邀请的完整生命周期
+
+
+## 后台认知循环内存优化（优先级高）
+
+### 分析和诊断
+- [x] 分析backgroundCognition.ts的内存占用
+- [x] 分析autonomousEngine.ts的内存占用
+- [x] 分析cognitiveService.ts的内存占用
+- [x] 识别主要的内存況漏点
+
+### 优化后台认知循环
+- [x] 实现流式处理替代批量加载
+- [x] 添加内存限制和分页機制
+- [x] 优化思考过程的存储方式
+- [x] 实现思考结果的增量更新
+
+### 优化数据库查询
+- [x] 添加查询结果缓存
+- [x] 实现LRU缓存機制
+- [ ] 优化频繁查询的索引
+- [ ] 实现数据库连接池
+
+### 内存监控和自动清理
+- [x] 实现内存使用监控
+- [x] 添加自动垃圾回收触发
+- [x] 实现过期数据自动清理
+- [x] 添加内存告警機制
+
+### 测试和验证
+- [ ] 测试优化前后的内存对比
+- [ ] 验证功能完整性
+- [ ] 进行長时間运行测试
+- [ ] 创建优化检查点

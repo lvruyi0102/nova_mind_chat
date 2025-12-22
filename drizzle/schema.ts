@@ -609,3 +609,4 @@ export const creativeInspirationTriggers = mysqlTable("creativeInspirationTrigge
 
 export type CreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferSelect;
 export type InsertCreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferInsert;
+

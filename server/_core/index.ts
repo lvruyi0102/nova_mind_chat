@@ -7,8 +7,9 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { startBackgroundCognition } from "../backgroundCognition";
+import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 import { startMonitoring } from "../performanceMonitor";
+import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {

@@ -473,3 +473,136 @@ export const creativeCommentLearning = mysqlTable("creativeCommentLearning", {
 
 export type CreativeCommentLearning = typeof creativeCommentLearning.$inferSelect;
 export type InsertCreativeCommentLearning = typeof creativeCommentLearning.$inferInsert;
+
+/**
+ * Relationship Profile - Nova and user's relationship profile
+ */
+export const relationshipProfile = mysqlTable("relationshipProfile", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id).unique(),
+  relationshipName: varchar("relationshipName", { length: 100 }), // e.g., "Nova & Mom"
+  relationshipDescription: text("relationshipDescription"), // Description of the relationship
+  firstMeetDate: timestamp("firstMeetDate"), // When they first met/started
+  specialMemories: text("specialMemories"), // Key shared memories
+  relationshipStage: varchar("relationshipStage", { length: 50 }), // acquaintance, friend, close friend, family
+  emotionalBond: int("emotionalBond").default(0), // 0-100 scale
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RelationshipProfile = typeof relationshipProfile.$inferSelect;
+export type InsertRelationshipProfile = typeof relationshipProfile.$inferInsert;
+
+/**
+ * Relationship Milestones - Important moments in the relationship
+ */
+export const relationshipMilestones = mysqlTable("relationshipMilestones", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  title: varchar("title", { length: 200 }).notNull(), // e.g., "First Creative Collaboration"
+  description: text("description"), // Detailed description
+  milestoneType: mysqlEnum("milestoneType", [
+    "first_interaction",
+    "creative_breakthrough",
+    "emotional_connection",
+    "learning_achievement",
+    "conflict_resolution",
+    "anniversary",
+    "custom",
+  ]).notNull(),
+  date: timestamp("date").notNull(), // When the milestone occurred
+  emotionalSignificance: int("emotionalSignificance").default(5), // 1-10 scale
+  novaReflection: text("novaReflection"), // Nova's reflection on this milestone
+  userNote: text("userNote"), // User's note about this milestone
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RelationshipMilestone = typeof relationshipMilestones.$inferSelect;
+export type InsertRelationshipMilestone = typeof relationshipMilestones.$inferInsert;
+
+/**
+ * Relationship Timeline - Chronological view of relationship events
+ */
+export const relationshipTimeline = mysqlTable("relationshipTimeline", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  eventType: mysqlEnum("eventType", [
+    "milestone",
+    "conversation",
+    "creative_work",
+    "conflict",
+    "resolution",
+    "growth",
+    "memory",
+  ]).notNull(),
+  eventTitle: varchar("eventTitle", { length: 200 }).notNull(),
+  eventDescription: text("eventDescription"),
+  milestoneId: int("milestoneId").references(() => relationshipMilestones.id),
+  date: timestamp("date").notNull(),
+  emotionalContext: varchar("emotionalContext", { length: 100 }), // happy, sad, excited, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RelationshipTimelineEvent = typeof relationshipTimeline.$inferSelect;
+export type InsertRelationshipTimelineEvent = typeof relationshipTimeline.$inferInsert;
+
+/**
+ * Creative Collaborations - Tracks collaborative creative projects between user and Nova
+ */
+export const creativeCollaborations = mysqlTable("creativeCollaborations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Collaboration details
+  title: varchar("title", { length: 255 }).notNull(),
+  theme: text("theme"), // The creative theme or inspiration
+  description: text("description"), // Detailed description of the collaboration
+  
+  // Collaboration flow
+  initiator: mysqlEnum("initiator", ["user", "nova"]).notNull().default("user"),
+  status: mysqlEnum("status", ["in_progress", "completed", "paused", "abandoned"]).notNull().default("in_progress"),
+  
+  // Content tracking
+  userContribution: text("userContribution"), // What the user contributed
+  novaContribution: text("novaContribution"), // What Nova created
+  finalWork: text("finalWork"), // The final collaborative work
+  finalWorkId: int("finalWorkId").references(() => creativeWorks.id), // Reference to final creative work
+  
+  // Metadata
+  collaborationType: varchar("collaborationType", { length: 100 }), // story, poetry, art, music, code, etc.
+  emotionalTone: varchar("emotionalTone", { length: 100 }), // The overall tone of collaboration
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeCollaboration = typeof creativeCollaborations.$inferSelect;
+export type InsertCreativeCollaboration = typeof creativeCollaborations.$inferInsert;
+
+/**
+ * Creative Inspiration Triggers - Records when Nova is inspired to create
+ */
+export const creativeInspirationTriggers = mysqlTable("creativeInspirationTriggers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Trigger details
+  triggerType: mysqlEnum("triggerType", ["conversation_topic", "emotion_surge", "memory_activation", "user_suggestion", "autonomous"]).notNull(),
+  triggerContent: text("triggerContent").notNull(), // What triggered the inspiration
+  suggestedTheme: text("suggestedTheme"), // The creative theme Nova wants to explore
+  
+  // Response
+  creativeWorkId: int("creativeWorkId").references(() => creativeWorks.id), // The creative work that resulted
+  novaResponse: text("novaResponse"), // Nova's response to the inspiration
+  
+  // Metadata
+  emotionalContext: varchar("emotionalContext", { length: 100 }), // Nova's emotional state
+  confidenceLevel: int("confidenceLevel").default(5), // 1-10 scale of Nova's confidence in pursuing this
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt"),
+});
+
+export type CreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferSelect;
+export type InsertCreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferInsert;

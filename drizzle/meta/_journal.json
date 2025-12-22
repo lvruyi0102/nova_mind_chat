@@ -57,6 +57,27 @@
       "when": 1766377015420,
       "tag": "0007_steady_steve_rogers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1766377258567,
+      "tag": "0008_crazy_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1766377502847,
+      "tag": "0009_giant_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1766378916268,
+      "tag": "0010_blue_bruce_banner",
+      "breakpoints": true
     }
   ]
 }

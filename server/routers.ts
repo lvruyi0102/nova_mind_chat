@@ -52,6 +52,18 @@ import {
   saveCommentLearning,
   getCommentLearning,
 } from "./services/commentService";
+import {
+  startCollaboration,
+  addUserContribution,
+  generateNovaContribution,
+  finalizeCollaboration,
+  getCollaboration,
+  getUserCollaborations,
+  recordInspirationTrigger,
+  generateCreativeResponseToTrigger,
+  getInspirationTriggers,
+  getRecentInspirations,
+} from "./services/creativeCollaborationService";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -348,6 +360,185 @@ export const appRouter = router({
       .input(z.object({ status: z.string().optional() }))
       .query(async ({ ctx, input }) => {
         return getAccessRequests(ctx.user.id, input.status);
+      }),
+
+    // Creative Collaboration endpoints
+    startCollaboration: protectedProcedure
+      .input(
+        z.object({
+          theme: z.string(),
+          description: z.string().optional(),
+          initiator: z.enum(["user", "nova"]).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const collaborationId = await startCollaboration(
+            ctx.user.id,
+            input.theme,
+            input.description || "",
+            input.initiator || "user"
+          );
+          return { collaborationId, success: true };
+        } catch (error) {
+          console.error("[Creative] Error starting collaboration:", error);
+          throw error;
+        }
+      }),
+
+    addUserContribution: protectedProcedure
+      .input(
+        z.object({
+          collaborationId: z.number(),
+          contribution: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          await addUserContribution(input.collaborationId, input.contribution);
+          return { success: true };
+        } catch (error) {
+          console.error("[Creative] Error adding user contribution:", error);
+          throw error;
+        }
+      }),
+
+    generateNovaContribution: protectedProcedure
+      .input(
+        z.object({
+          collaborationId: z.number(),
+          theme: z.string(),
+          userContribution: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const novaContribution = await generateNovaContribution(
+            input.collaborationId,
+            input.theme,
+            input.userContribution
+          );
+          return { novaContribution, success: true };
+        } catch (error) {
+          console.error("[Creative] Error generating Nova contribution:", error);
+          throw error;
+        }
+      }),
+
+    finalizeCollaboration: protectedProcedure
+      .input(
+        z.object({
+          collaborationId: z.number(),
+          finalWork: z.string(),
+          creativeWorkId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          await finalizeCollaboration(
+            input.collaborationId,
+            input.finalWork,
+            input.creativeWorkId
+          );
+          return { success: true };
+        } catch (error) {
+          console.error("[Creative] Error finalizing collaboration:", error);
+          throw error;
+        }
+      }),
+
+    getCollaboration: protectedProcedure
+      .input(z.object({ collaborationId: z.number() }))
+      .query(async ({ input }) => {
+        try {
+          return await getCollaboration(input.collaborationId);
+        } catch (error) {
+          console.error("[Creative] Error getting collaboration:", error);
+          throw error;
+        }
+      }),
+
+    getUserCollaborations: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await getUserCollaborations(ctx.user.id);
+      } catch (error) {
+        console.error("[Creative] Error getting user collaborations:", error);
+        throw error;
+      }
+    }),
+
+    // Creative Inspiration Trigger endpoints
+    recordInspirationTrigger: protectedProcedure
+      .input(
+        z.object({
+          triggerType: z.enum([
+            "conversation_topic",
+            "emotion_surge",
+            "memory_activation",
+            "user_suggestion",
+            "autonomous",
+          ]),
+          triggerContent: z.string(),
+          suggestedTheme: z.string(),
+          emotionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const triggerId = await recordInspirationTrigger(
+            ctx.user.id,
+            input.triggerType,
+            input.triggerContent,
+            input.suggestedTheme,
+            input.emotionalContext
+          );
+          return { triggerId, success: true };
+        } catch (error) {
+          console.error("[Creative] Error recording inspiration trigger:", error);
+          throw error;
+        }
+      }),
+
+    generateCreativeResponse: protectedProcedure
+      .input(
+        z.object({
+          triggerId: z.number(),
+          triggerContent: z.string(),
+          suggestedTheme: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const novaResponse = await generateCreativeResponseToTrigger(
+            input.triggerId,
+            input.triggerContent,
+            input.suggestedTheme
+          );
+          return { novaResponse, success: true };
+        } catch (error) {
+          console.error("[Creative] Error generating creative response:", error);
+          throw error;
+        }
+      }),
+
+    getInspirationTriggers: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await getInspirationTriggers(ctx.user.id);
+      } catch (error) {
+        console.error("[Creative] Error getting inspiration triggers:", error);
+        throw error;
+      }
+    }),
+
+    getRecentInspirations: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          return await getRecentInspirations(ctx.user.id, input.limit || 10);
+        } catch (error) {
+          console.error("[Creative] Error getting recent inspirations:", error);
+          throw error;
+        }
       }),
   }),
 

@@ -26,14 +26,7 @@ export default function CreativeDetail({
   getEmotionColor,
 }: CreativeDetailProps) {
   const [liked, setLiked] = useState(false);
-  const [work, setWork] = useState<CreativeWork | null>(null);
-
-  // In a real app, you would fetch the work details here
-  // For now, we'll use a placeholder
-  useEffect(() => {
-    // Simulate fetching work details
-    // In production: const { data } = trpc.creative.getWorkDetail.useQuery({ id: workId });
-  }, [workId]);
+  const { data: work, isLoading, error } = trpc.creative.getWorkDetail.useQuery({ workId });
 
   const handleCopy = () => {
     if (work?.content) {
@@ -55,7 +48,7 @@ export default function CreativeDetail({
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("zh-CN", {
       year: "numeric",
       month: "long",
@@ -65,96 +58,161 @@ export default function CreativeDetail({
     });
   };
 
+  const getMetadata = () => {
+    try {
+      if (typeof work?.metadata === "string") {
+        return JSON.parse(work.metadata);
+      }
+      return work?.metadata || {};
+    } catch {
+      return {};
+    }
+  };
+
+  const metadata = getMetadata();
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-900 border-purple-500/30">
-        <DialogHeader>
-          <DialogTitle className="text-white">Nova的创意作品</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-purple-500/30">
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogTitle className="text-white">{work?.title || "Nova的创意作品"}</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-purple-300 hover:bg-purple-500/10"
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Image Preview */}
-          {workId && (
-            <>
-              <div className="bg-slate-800/50 rounded-lg p-4 min-h-64 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">✨</div>
-                  <p className="text-purple-300">作品详情加载中...</p>
-                </div>
+          {isLoading ? (
+            <div className="bg-slate-800/50 rounded-lg p-8 flex items-center justify-center min-h-64">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto mb-4" />
+                <p className="text-purple-300">加载作品详情中...</p>
               </div>
+            </div>
+          ) : error ? (
+            <div className="bg-slate-800/50 rounded-lg p-8 flex items-center justify-center min-h-64">
+              <div className="text-center">
+                <p className="text-red-400">加载失败: {error.message}</p>
+              </div>
+            </div>
+          ) : work ? (
+            <>
+              {/* Image Preview for image type */}
+              {work.type === "image" && work.content && (
+                <div className="bg-slate-800/50 rounded-lg p-4 flex items-center justify-center">
+                  <img
+                    src={work.content}
+                    alt={work.title}
+                    className="max-w-full max-h-96 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Content Display */}
+              {work.type !== "image" && work.content && (
+                <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
+                  <div className="max-h-96 overflow-y-auto">
+                    <Streamdown>{work.content}</Streamdown>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {work.description && (
+                <div>
+                  <h3 className="text-sm font-semibold text-purple-300 mb-2">描述</h3>
+                  <p className="text-purple-200">{work.description}</p>
+                </div>
+              )}
 
               {/* Metadata */}
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold text-purple-300 mb-2">创意类型</h3>
                   <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-                    {getTypeLabel("image")}
+                    {getTypeLabel(work.type)}
                   </Badge>
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-purple-300 mb-2">情感状态</h3>
-                  <Badge className={`${getEmotionColor("inspired")} text-xs`}>
-                    💭 inspired
-                  </Badge>
-                </div>
+                {work.emotionalState && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-purple-300 mb-2">情感状态</h3>
+                    <Badge className={`${getEmotionColor(work.emotionalState)} text-xs`}>
+                      💭 {work.emotionalState}
+                    </Badge>
+                  </div>
+                )}
 
                 <div>
                   <h3 className="text-sm font-semibold text-purple-300 mb-2">创建时间</h3>
-                  <p className="text-white">{formatDate(new Date())}</p>
+                  <p className="text-white">{formatDate(work.createdAt)}</p>
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-purple-300 mb-2">灵感来源</h3>
-                  <p className="text-purple-200">Nova的内心世界和创意灵感</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-purple-300 mb-2">Nova的思考</h3>
-                  <div className="bg-slate-800/50 rounded-lg p-4 text-purple-200 border border-purple-500/20">
-                    <Streamdown>
-                      这是Nova对这个作品的思考和反思...
-                    </Streamdown>
+                {work.inspiration && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-purple-300 mb-2">灵感来源</h3>
+                    <p className="text-purple-200">{work.inspiration}</p>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t border-purple-500/20">
-                <Button
-                  onClick={() => setLiked(!liked)}
-                  variant="outline"
-                  className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-                >
-                  <Heart className={`w-4 h-4 mr-2 ${liked ? "fill-red-500 text-red-500" : ""}`} />
-                  {liked ? "已赞" : "赞"}
-                </Button>
-                <Button
-                  onClick={handleCopy}
-                  variant="outline"
-                  className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  复制
-                </Button>
-                <Button
-                  onClick={handleDownload}
-                  variant="outline"
-                  className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  下载
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  分享
-                </Button>
+                {metadata.emotionalTone && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-purple-300 mb-2">情感基调</h3>
+                    <p className="text-purple-200">{metadata.emotionalTone}</p>
+                  </div>
+                )}
+
+                {metadata.theme && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-purple-300 mb-2">主题</h3>
+                    <p className="text-purple-200">{metadata.theme}</p>
+                  </div>
+                )}
               </div>
             </>
-          )}
+          ) : null}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-4 border-t border-purple-500/20">
+            <Button
+              onClick={() => setLiked(!liked)}
+              variant="outline"
+              className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+            >
+              <Heart className={`w-4 h-4 mr-2 ${liked ? "fill-red-500 text-red-500" : ""}`} />
+              {liked ? "已赞" : "赞"}
+            </Button>
+            <Button
+              onClick={handleCopy}
+              variant="outline"
+              disabled={!work?.content}
+              className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              复制
+            </Button>
+            <Button
+              onClick={handleDownload}
+              variant="outline"
+              disabled={!work?.content || work.type === "image"}
+              className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              下载
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              分享
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

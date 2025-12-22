@@ -64,6 +64,15 @@ import {
   getInspirationTriggers,
   getRecentInspirations,
 } from "./services/creativeCollaborationService";
+import {
+  generateCreativeImage,
+  generateCreativeGame,
+  generateCreativeMedia,
+  getGenerationHistory,
+  recordGenerationInteraction,
+  getGameById,
+  getMediaById,
+} from "./services/multimodalService";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -338,6 +347,22 @@ export const appRouter = router({
         return getCreativeWorks(ctx.user.id, input.visibility as any);
       }),
     
+    getWorkDetail: protectedProcedure
+      .input(z.object({ workId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const db = await import("./db").then(m => m.getDb());
+        if (!db) throw new Error("Database not available");
+        
+        const { creativeWorks } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        
+        const work = await db.select().from(creativeWorks).where(eq(creativeWorks.id, input.workId)).limit(1);
+        if (work.length === 0) throw new Error("Work not found");
+        
+        return work[0];
+      }),
+    
+    
     shareWork: protectedProcedure
       .input(z.object({ workId: z.number(), decision: z.enum(["approve", "reject", "defer"]), reason: z.string().optional() }))
       .mutation(async ({ input }) => {
@@ -550,6 +575,142 @@ export const appRouter = router({
           return await getRecentInspirations(ctx.user.id, input.limit || 10);
         } catch (error) {
           console.error("[Creative] Error getting recent inspirations:", error);
+          throw error;
+        }
+      }),
+  }),
+
+  // Multimodal Creative Generation API
+  multimodal: router({
+    generateImage: protectedProcedure
+      .input(
+        z.object({
+          prompt: z.string(),
+          context: z.string().optional(),
+          emotionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const result = await generateCreativeImage(
+            ctx.user.id,
+            input.prompt,
+            input.context,
+            input.emotionalContext
+          );
+          return result;
+        } catch (error) {
+          console.error("[Multimodal] Error generating image:", error);
+          throw error;
+        }
+      }),
+
+    generateGame: protectedProcedure
+      .input(
+        z.object({
+          gameType: z.enum(["puzzle", "adventure", "quiz", "story", "interactive", "other"]),
+          prompt: z.string(),
+          context: z.string().optional(),
+          emotionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const result = await generateCreativeGame(
+            ctx.user.id,
+            input.gameType,
+            input.prompt,
+            input.context,
+            input.emotionalContext
+          );
+          return result;
+        } catch (error) {
+          console.error("[Multimodal] Error generating game:", error);
+          throw error;
+        }
+      }),
+
+    generateMedia: protectedProcedure
+      .input(
+        z.object({
+          mediaType: z.enum(["music", "video", "audio", "animation"]),
+          prompt: z.string(),
+          context: z.string().optional(),
+          emotionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const result = await generateCreativeMedia(
+            ctx.user.id,
+            input.mediaType,
+            input.prompt,
+            input.context,
+            input.emotionalContext
+          );
+          return result;
+        } catch (error) {
+          console.error("[Multimodal] Error generating media:", error);
+          throw error;
+        }
+      }),
+
+    getGenerationHistory: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          return await getGenerationHistory(ctx.user.id, input.limit || 20);
+        } catch (error) {
+          console.error("[Multimodal] Error getting generation history:", error);
+          throw error;
+        }
+      }),
+
+    recordInteraction: protectedProcedure
+      .input(
+        z.object({
+          generationRequestId: z.number(),
+          action: z.enum(["viewed", "played", "saved", "shared", "regenerated", "edited"]),
+          actionDetails: z.any().optional(),
+          rating: z.number().optional(),
+          feedback: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await recordGenerationInteraction(
+            ctx.user.id,
+            input.generationRequestId,
+            input.action,
+            input.actionDetails,
+            input.rating,
+            input.feedback
+          );
+          return { success: true };
+        } catch (error) {
+          console.error("[Multimodal] Error recording interaction:", error);
+          throw error;
+        }
+      }),
+
+    getGame: protectedProcedure
+      .input(z.object({ gameId: z.number() }))
+      .query(async ({ input }) => {
+        try {
+          return await getGameById(input.gameId);
+        } catch (error) {
+          console.error("[Multimodal] Error getting game:", error);
+          throw error;
+        }
+      }),
+
+    getMedia: protectedProcedure
+      .input(z.object({ mediaId: z.number() }))
+      .query(async ({ input }) => {
+        try {
+          return await getMediaById(input.mediaId);
+        } catch (error) {
+          console.error("[Multimodal] Error getting media:", error);
           throw error;
         }
       }),

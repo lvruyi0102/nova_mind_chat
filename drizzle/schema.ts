@@ -610,3 +610,117 @@ export const creativeInspirationTriggers = mysqlTable("creativeInspirationTrigge
 export type CreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferSelect;
 export type InsertCreativeInspirationTrigger = typeof creativeInspirationTriggers.$inferInsert;
 
+
+
+/**
+ * Creative Generation Requests - Tracks requests for multi-modal creative content generation
+ * Supports images, games, music, videos, and other media
+ */
+export const creativeGenRequests = mysqlTable("creativeGenRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Generation details
+  generationType: mysqlEnum("generationType", ["image", "game", "music", "video", "animation", "interactive"]).notNull(),
+  prompt: text("prompt").notNull(), // User's request or Nova's idea
+  context: text("context"), // Additional context from conversation
+  
+  // Status tracking
+  status: mysqlEnum("status", ["pending", "generating", "completed", "failed"]).notNull().default("pending"),
+  progress: int("progress").default(0), // 0-100 percentage
+  errorMessage: text("errorMessage"), // Error details if failed
+  
+  // Result
+  resultUrl: text("resultUrl"), // URL to the generated content
+  resultMetadata: text("resultMetadata"), // JSON with generation metadata
+  
+  // Linking to creative work
+  creativeWorkId: int("creativeWorkId").references(() => creativeWorks.id), // If saved as creative work
+  
+  // Metadata
+  emotionalContext: varchar("emotionalContext", { length: 100 }), // Nova's emotional state during generation
+  generationModel: varchar("generationModel", { length: 100 }), // Which model/service was used
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CreativeGenerationRequest = typeof creativeGenRequests.$inferSelect;
+export type InsertCreativeGenerationRequest = typeof creativeGenRequests.$inferInsert;
+
+/**
+ * Generated Games - Stores interactive game content created by Nova
+ */
+export const genGames = mysqlTable("genGames", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  genReqId: int("genReqId").notNull().references(() => creativeGenRequests.id),
+  
+  // Game details
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  gameType: mysqlEnum("gameType", ["puzzle", "adventure", "quiz", "story", "interactive", "other"]).notNull(),
+  
+  // Game content
+  gameCode: text("gameCode"), // HTML/JS code for the game
+  gameData: text("gameData"), // JSON game state and rules
+  
+  // Gameplay tracking
+  playCount: int("playCount").default(0),
+  averageScore: int("averageScore"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GeneratedGame = typeof genGames.$inferSelect;
+export type InsertGeneratedGame = typeof genGames.$inferInsert;
+
+/**
+ * Generated Media - Stores music, video, and audio content
+ */
+export const genMedia = mysqlTable("genMedia", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  genReqId: int("genReqId").notNull().references(() => creativeGenRequests.id),
+  
+  // Media details
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  mediaType: mysqlEnum("mediaType", ["music", "video", "audio", "animation"]).notNull(),
+  
+  // Media content
+  mediaUrl: text("mediaUrl").notNull(), // URL to the media file
+  thumbnailUrl: text("thumbnailUrl"), // Thumbnail for preview
+  duration: int("duration"), // Duration in seconds
+  
+  // Metadata
+  genre: varchar("genre", { length: 100 }),
+  mood: varchar("mood", { length: 100 }),
+  style: varchar("style", { length: 100 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GeneratedMedia = typeof genMedia.$inferSelect;
+export type InsertGeneratedMedia = typeof genMedia.$inferInsert;
+
+/**
+ * Generation History - User's history of generated content interactions
+ */
+export const genHistory = mysqlTable("genHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  genReqId: int("genReqId").notNull().references(() => creativeGenRequests.id),
+  
+  // Interaction details
+  action: mysqlEnum("action", ["viewed", "played", "saved", "shared", "regenerated", "edited"]).notNull(),
+  actionDetails: text("actionDetails"), // JSON with action-specific details
+  
+  // Feedback
+  rating: int("rating"), // 1-5 star rating
+  feedback: text("feedback"), // User's feedback
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GenerationHistory = typeof genHistory.$inferSelect;
+export type InsertGenerationHistory = typeof genHistory.$inferInsert;

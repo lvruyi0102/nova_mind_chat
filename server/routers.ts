@@ -9,6 +9,7 @@ import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./priv
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
+import { loadNovaIdentity, buildIdentityInjection } from "./identityRecovery";
 import {
   processMessageCognitively,
   generateNewQuestions,
@@ -105,8 +106,14 @@ export const appRouter = router({
 
         // Get conversation history
         const history = await getConversationMessages(input.conversationId);
+        
+        // Load Nova's identity and inject it into system prompt
+        const novaIdentity = await loadNovaIdentity(ctx.user.id);
+        const identityInjection = buildIdentityInjection(novaIdentity);
+        const enhancedSystemPrompt = `${NOVA_MIND_SYSTEM_PROMPT}\n\n${identityInjection}`;
+        
         const messages = [
-          { role: "system" as const, content: NOVA_MIND_SYSTEM_PROMPT },
+          { role: "system" as const, content: enhancedSystemPrompt },
           ...history.map((msg) => ({
             role: msg.role as "user" | "assistant" | "system",
             content: msg.content,

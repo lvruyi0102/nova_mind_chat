@@ -355,7 +355,7 @@ export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert
 export const creativeWorks = mysqlTable("creativeWorks", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
-  type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "other"]).notNull(),
+  type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "other"]).notNull(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
   content: text("content"), // Main content (text, URL, or code)
@@ -368,6 +368,9 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   // Emotion and context
   emotionalState: varchar("emotionalState", { length: 100 }), // Nova's mood when creating
   inspiration: text("inspiration"), // What inspired this creation
+  
+  // Collaboration reference
+  collaborationId: int("collaborationId").references(() => creativeCollaborations.id), // Link to collaboration if this is a collaborative work
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -1,0 +1,3 @@
+ALTER TABLE `creativeWorks` MODIFY COLUMN `type` enum('image','story','poetry','music','code','character','dream','collaboration','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `creativeWorks` ADD `collaborationId` int;--> statement-breakpoint
+ALTER TABLE `creativeWorks` ADD CONSTRAINT `creativeWorks_collaborationId_creativeCollaborations_id_fk` FOREIGN KEY (`collaborationId`) REFERENCES `creativeCollaborations`(`id`) ON DELETE no action ON UPDATE no action;

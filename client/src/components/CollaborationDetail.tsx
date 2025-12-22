@@ -2,9 +2,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Download, Share2, Heart } from "lucide-react";
+import { X, Download, Share2, Heart, Save, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 interface CollaborationDetailProps {
   collaboration: any;
@@ -16,6 +17,9 @@ export default function CollaborationDetail({
   onClose,
 }: CollaborationDetailProps) {
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(!!collaboration.finalWorkId);
+  const saveCollaborationMutation = trpc.creative.saveCollaborationAsCreativeWork.useMutation();
 
   const handleLike = () => {
     setIsLiked(!isLiked);
@@ -64,6 +68,27 @@ ${collaboration.finalWork || "（暂无）"}
     } else {
       navigator.clipboard.writeText(text);
       toast.success("已复制到剪贴板");
+    }
+  };
+
+  const handleSaveAsCreativeWork = async () => {
+    if (isSaved) {
+      toast.info("此合作已保存为创意作品");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await saveCollaborationMutation.mutateAsync({
+        collaborationId: collaboration.id,
+        workType: "other",
+      });
+      setIsSaved(true);
+      toast.success("已保存为创意作品！");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("保存失败");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -206,6 +231,20 @@ ${collaboration.finalWork || "（暂无）"}
             下载
           </Button>
         </div>
+        <Button
+          onClick={handleSaveAsCreativeWork}
+          disabled={isSaving || isSaved}
+          variant="outline"
+          size="sm"
+          className="w-full border-green-500/30 hover:bg-green-500/10 disabled:opacity-50"
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
+          {isSaved ? "已保存为作品" : "保存为创意作品"}
+        </Button>
         <Button
           onClick={handleShare}
           variant="outline"

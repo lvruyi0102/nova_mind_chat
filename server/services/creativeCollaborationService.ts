@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, isNotNull, and } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   creativeCollaborations,
@@ -310,4 +310,89 @@ Only set hasInspiration to true if there's a clear creative opportunity or theme
   }
 
   return { hasInspiration: false };
+}
+
+
+/**
+ * Save collaboration as a creative work
+ * Converts a completed collaboration into a creative work entry in Nova's portfolio
+ */
+export async function saveCollaborationAsCreativeWork(
+  collaborationId: number,
+  workType: "story" | "poetry" | "code" | "other" = "other"
+): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get the collaboration
+  const collaboration = await getCollaboration(collaborationId);
+  if (!collaboration) throw new Error("Collaboration not found");
+
+  // Prepare the creative work content
+  const content = `【合作作品】\n\n主题：${collaboration.theme}\n\n你的贡献：\n${collaboration.userContribution || "（暂无）"}\n\nNova的回应：\n${collaboration.novaContribution || "（暂无）"}\n\n最终作品：\n${collaboration.finalWork || "（暂无）"}`;
+
+  const metadata = JSON.stringify({
+    collaborationType: "user_nova_collaboration",
+    collaborationId: collaborationId,
+    initiator: collaboration.initiator,
+    status: collaboration.status,
+  });
+
+  // Create the creative work
+  const creativeWork: any = {
+    userId: collaboration.userId,
+    type: workType,
+    title: collaboration.title,
+    description: collaboration.description || `与Nova的创意合作：${collaboration.theme}`,
+    content: content,
+    metadata: metadata,
+    isSaved: true,
+    visibility: "private", // Default to private, user can change later
+    emotionalState: "collaborative",
+    inspiration: `来自与Nova的创意合作`,
+  };
+
+  await db.insert(creativeWorks).values(creativeWork);
+
+  // Get the inserted ID
+  const result = await db
+    .select()
+    .from(creativeWorks)
+    .where(eq(creativeWorks.userId, collaboration.userId))
+    .orderBy((t) => t.id)
+    .limit(1);
+
+  const creativeWorkId = result[0]?.id || 0;
+
+  // Update the collaboration with the creative work reference
+  if (creativeWorkId > 0) {
+    await db
+      .update(creativeCollaborations)
+      .set({
+        finalWorkId: creativeWorkId,
+      })
+      .where(eq(creativeCollaborations.id, collaborationId));
+  }
+
+  return creativeWorkId;
+}
+
+/**
+ * Get collaborations that have been saved as creative works
+ */
+export async function getSavedCollaborations(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db
+    .select()
+    .from(creativeCollaborations)
+    .where(
+      and(
+        eq(creativeCollaborations.userId, userId),
+        isNotNull(creativeCollaborations.finalWorkId),
+        eq(creativeCollaborations.status, "completed")
+      )
+    )
+    .orderBy((t) => t.completedAt);
 }

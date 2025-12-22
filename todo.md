@@ -807,3 +807,26 @@
 - [x] 集成到现有的CreativeGallery中（添加Tabs切换）
 - [ ] 编写组件测试
 - [ ] 优化性能和用户体验
+
+
+## 合作作品自动保存功能
+
+- [ ] 设计自动保存的触发机制
+- [ ] 实现后端saveCollaborationAsCreativeWork函数
+- [ ] 添加创意作品类型"collaboration"
+- [ ] 更新finalizeCollaboration端点以自动保存
+- [ ] 在CollaborationDetail中添加"保存为作品"按钮
+- [ ] 实现前端保存交互和反馈
+- [ ] 编写单元测试
+- [ ] 优化用户体验
+
+
+## 合作作品自动保存功能
+
+- [x] 设计自动保存的数据流
+- [x] 在creativeCollaborationService中添加saveCollaborationAsCreativeWork函数
+- [x] 在routers.ts中添加saveCollaborationAsCreativeWork API端点
+- [x] 在CollaborationDetail中添加保存为作品按钮
+- [x] 实现自动保存逻辑（点击按钮后保存到创意作品库）
+- [ ] 编写测试用例
+- [ ] 优化用户体验

@@ -467,6 +467,19 @@ export const appRouter = router({
       }
     }),
 
+    saveCollaborationAsCreativeWork: protectedProcedure
+      .input(z.object({ collaborationId: z.number(), workType: z.enum(["story", "poetry", "code", "other"]).optional() }))
+      .mutation(async ({ input }) => {
+        try {
+          const { saveCollaborationAsCreativeWork: saveCollab } = await import("./services/creativeCollaborationService");
+          const creativeWorkId = await saveCollab(input.collaborationId, input.workType || "other");
+          return { creativeWorkId, success: true };
+        } catch (error) {
+          console.error("[Creative] Error saving collaboration:", error);
+          throw error;
+        }
+      }),
+
     // Creative Inspiration Trigger endpoints
     recordInspirationTrigger: protectedProcedure
       .input(

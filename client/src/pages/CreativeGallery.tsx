@@ -15,9 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, Filter, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Loader2, Search, Filter, Heart, MessageCircle, Share2, Sparkles } from "lucide-react";
 import CreativeCard from "@/components/CreativeCard";
 import CreativeDetail from "@/components/CreativeDetail";
+import CollaborationShowcase from "@/components/CollaborationShowcase";
 
 type CreativeType = "image" | "story" | "poetry" | "music" | "code" | "character" | "dream" | "other";
 type SortBy = "newest" | "oldest" | "emotion";
@@ -27,6 +28,7 @@ export default function CreativeGallery() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<CreativeType | "all">("all");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
+  const [activeTab, setActiveTab] = useState<"works" | "collaborations">("works");
 
   // Fetch shared creative works
   const { data: works, isLoading } = trpc.creative.getWorks.useQuery({
@@ -155,6 +157,17 @@ export default function CreativeGallery() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-12">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-800/50 border border-purple-500/20">
+            <TabsTrigger value="works" className="data-[state=active]:bg-purple-600">
+              <span className="mr-2">🎨</span> Nova的创意作品
+            </TabsTrigger>
+            <TabsTrigger value="collaborations" className="data-[state=active]:bg-purple-600">
+              <Sparkles className="w-4 h-4 mr-2" /> 创意合作
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="works" className="space-y-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
@@ -217,6 +230,12 @@ export default function CreativeGallery() {
             </div>
           </>
         )}
+          </TabsContent>
+
+          <TabsContent value="collaborations">
+            <CollaborationShowcase />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Detail Modal */}

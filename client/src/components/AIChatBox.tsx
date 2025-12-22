@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, Send, User, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Streamdown } from "streamdown";
+import ChatMessageActions from "./ChatMessageActions";
 
 /**
  * Message type matching server-side LLM Message interface
@@ -252,22 +253,32 @@ export function AIChatBox({
                       </div>
                     )}
 
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-lg px-4 py-2.5",
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
-                      )}
-                    >
-                      {message.role === "assistant" ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <Streamdown>{message.content}</Streamdown>
+                    <div className="flex flex-col">
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-lg px-4 py-2.5",
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        )}
+                      >
+                        {message.role === "assistant" ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <Streamdown>{message.content}</Streamdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm">
+                            {message.content}
+                          </p>
+                        )}
+                      </div>
+                      {message.role === "assistant" && (
+                        <div className="mt-1 ml-0">
+                          <ChatMessageActions
+                            messageContent={message.content}
+                            isNovaMessage={true}
+                          />
                         </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap text-sm">
-                          {message.content}
-                        </p>
                       )}
                     </div>
 

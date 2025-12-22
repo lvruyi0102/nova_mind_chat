@@ -989,3 +989,12 @@
 - [x] 添加生成完成后的自动预览
 - [x] 创建媒体预览对话框
 - [x] 测试和优化播放器
+
+
+## ChatMessage快捷生成按钮集成（v12.2 - 已完成）
+
+- [x] 查看ChatMessage组件结构
+- [x] 集成ChatMessageActions到ChatMessage
+- [x] 优化按钮样式和位置
+- [x] 测试快捷生成功能
+- [x] 创建检查点

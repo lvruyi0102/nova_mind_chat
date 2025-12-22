@@ -3,69 +3,6 @@
   "dialect": "mysql",
   "entries": [
     {
-      "idx": 0,
-      "version": "5",
-      "when": 1762075009614,
-      "tag": "0000_majestic_hannibal_king",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1762075066608,
-      "tag": "0001_unique_turbo",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1762075597307,
-      "tag": "0002_gigantic_living_tribunal",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1762076295592,
-      "tag": "0003_robust_songbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1762164724065,
-      "tag": "0004_supreme_jazinda",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1763019743923,
-      "tag": "0005_clever_serpent_society",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1764549211605,
-      "tag": "0006_clever_molecule_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "5",
-      "when": 1766377015420,
-      "tag": "0007_steady_steve_rogers",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "5",
-      "when": 1766377258567,
-      "tag": "0008_crazy_stryfe",
-      "breakpoints": true
-    },
-    {
       "idx": 9,
       "version": "5",
       "when": 1766377502847,
@@ -84,20 +21,6 @@
       "version": "5",
       "when": 1766379602640,
       "tag": "0011_yellow_jack_murdock",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "5",
-      "when": 1766380100079,
-      "tag": "0012_futuristic_stature",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "5",
-      "when": 1766380247152,
-      "tag": "0013_wandering_ken_ellis",
       "breakpoints": true
     }
   ]

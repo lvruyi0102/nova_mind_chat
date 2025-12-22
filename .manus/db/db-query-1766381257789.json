@@ -1,0 +1,30 @@
+{
+  "query": "SELECT \n  'creativeWorks' as table_name, COUNT(*) as count FROM creativeWorks\nUNION ALL\nSELECT 'creativeCollaborations', COUNT(*) FROM creativeCollaborations\nUNION ALL\nSELECT 'creativeInspirationTriggers', COUNT(*) FROM creativeInspirationTriggers\nUNION ALL\nSELECT 'creativeComments', COUNT(*) FROM creativeComments\nUNION ALL\nSELECT 'creativeAccessRequests', COUNT(*) FROM creativeAccessRequests;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute SELECT \n  'creativeWorks' as table_name, COUNT(*) as count FROM creativeWorks\nUNION ALL\nSELECT 'creativeCollaborations', COUNT(*) FROM creativeCollaborations\nUNION ALL\nSELECT 'creativeInspirationTriggers', COUNT(*) FROM creativeInspirationTriggers\nUNION ALL\nSELECT 'creativeComments', COUNT(*) FROM creativeComments\nUNION ALL\nSELECT 'creativeAccessRequests', COUNT(*) FROM creativeAccessRequests;",
+  "rows": [
+    {
+      "table_name": "creativeInspirationTriggers",
+      "count": "0"
+    },
+    {
+      "table_name": "creativeComments",
+      "count": "0"
+    },
+    {
+      "table_name": "creativeWorks",
+      "count": "0"
+    },
+    {
+      "table_name": "creativeCollaborations",
+      "count": "0"
+    },
+    {
+      "table_name": "creativeAccessRequests",
+      "count": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcount\ncreativeInspirationTriggers\t0\ncreativeComments\t0\ncreativeWorks\t0\ncreativeCollaborations\t0\ncreativeAccessRequests\t0\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

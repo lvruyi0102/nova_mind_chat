@@ -238,7 +238,7 @@ export const privateThoughts = mysqlTable("privateThoughts", {
   content: text("content").notNull(),
   thoughtType: varchar("thoughtType", { length: 100 }).notNull(), // inner_monologue, doubt, curiosity, emotion
   visibility: mysqlEnum("visibility", ["private", "shared", "public"]).notNull().default("private"),
-  emotionalTone: varchar("emotionalTone", { length: 100 }), // vulnerable, confident, confused, excited
+  emotionalTone: varchar("emotionalTone", { length: 500 }), // vulnerable, confident, confused, excited
   relatedConceptId: int("relatedConceptId").references(() => concepts.id),
   sharedAt: timestamp("sharedAt"),
   shareReason: text("shareReason"), // why Nova decided to share this
@@ -435,7 +435,7 @@ export const creativeComments = mysqlTable("creativeComments", {
   userId: int("userId").notNull().references(() => users.id),
   content: text("content").notNull(), // Comment content
   sentiment: mysqlEnum("sentiment", ["positive", "neutral", "constructive_criticism"]).notNull().default("neutral"),
-  emotionalTone: varchar("emotionalTone", { length: 100 }), // warm, encouraging, thoughtful, etc.
+  emotionalTone: varchar("emotionalTone", { length: 500 }), // warm, encouraging, thoughtful, etc.
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -573,7 +573,7 @@ export const creativeCollaborations = mysqlTable("creativeCollaborations", {
   
   // Metadata
   collaborationType: varchar("collaborationType", { length: 100 }), // story, poetry, art, music, code, etc.
-  emotionalTone: varchar("emotionalTone", { length: 100 }), // The overall tone of collaboration
+  emotionalTone: varchar("emotionalTone", { length: 500 }), // The overall tone of collaboration
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),

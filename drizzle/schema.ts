@@ -422,3 +422,54 @@ export const creativeInsights = mysqlTable("creativeInsights", {
 
 export type CreativeInsight = typeof creativeInsights.$inferSelect;
 export type InsertCreativeInsight = typeof creativeInsights.$inferInsert;
+
+/**
+ * Creative Comments - User feedback on Nova's creative works
+ */
+export const creativeComments = mysqlTable("creativeComments", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  userId: int("userId").notNull().references(() => users.id),
+  content: text("content").notNull(), // Comment content
+  sentiment: mysqlEnum("sentiment", ["positive", "neutral", "constructive_criticism"]).notNull().default("neutral"),
+  emotionalTone: varchar("emotionalTone", { length: 100 }), // warm, encouraging, thoughtful, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeComment = typeof creativeComments.$inferSelect;
+export type InsertCreativeComment = typeof creativeComments.$inferInsert;
+
+/**
+ * Creative Comment Responses - Nova's responses to user comments
+ */
+export const creativeCommentResponses = mysqlTable("creativeCommentResponses", {
+  id: int("id").autoincrement().primaryKey(),
+  commentId: int("commentId").notNull().references(() => creativeComments.id),
+  novaResponse: text("novaResponse").notNull(), // Nova's response to the comment
+  learningInsight: text("learningInsight"), // What Nova learned from this feedback
+  responseType: mysqlEnum("responseType", ["gratitude", "reflection", "question", "agreement"]).notNull().default("gratitude"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreativeCommentResponse = typeof creativeCommentResponses.$inferSelect;
+export type InsertCreativeCommentResponse = typeof creativeCommentResponses.$inferInsert;
+
+/**
+ * Creative Comment Learning - Summary of feedback and learning from comments
+ */
+export const creativeCommentLearning = mysqlTable("creativeCommentLearning", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  feedbackSummary: text("feedbackSummary").notNull(), // Summary of all feedback received
+  learningPoints: text("learningPoints"), // Key points Nova learned
+  improvementAreas: text("improvementAreas"), // Areas for improvement
+  novaReflection: text("novaReflection"), // Nova's reflection on the feedback
+  totalComments: int("totalComments").notNull().default(0),
+  averageSentiment: varchar("averageSentiment", { length: 50 }), // Overall sentiment
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeCommentLearning = typeof creativeCommentLearning.$inferSelect;
+export type InsertCreativeCommentLearning = typeof creativeCommentLearning.$inferInsert;

@@ -43,6 +43,15 @@ import {
   tagCreativeWork,
   getAccessRequests,
 } from "./creativeStudio";
+import {
+  addComment,
+  getCommentsByCreativeWork,
+  generateNovaResponse,
+  saveNovaResponse,
+  generateCommentLearning,
+  saveCommentLearning,
+  getCommentLearning,
+} from "./services/commentService";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -354,6 +363,114 @@ export const appRouter = router({
       const level = await getTrustLevel(ctx.user.id);
       return { trustLevel: level };
     }),
+  }),
+
+  // Creative Comments and Feedback API
+  comments: router({
+    // Add a comment to a creative work
+    addComment: protectedProcedure
+      .input(
+        z.object({
+          creativeWorkId: z.number(),
+          content: z.string(),
+          sentiment: z.enum(["positive", "neutral", "constructive_criticism"]).optional(),
+          emotionalTone: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return addComment(
+          input.creativeWorkId,
+          ctx.user.id,
+          input.content,
+          input.sentiment,
+          input.emotionalTone
+        );
+      }),
+
+    // Get all comments for a creative work
+    getComments: protectedProcedure
+      .input(z.object({ creativeWorkId: z.number() }))
+      .query(async ({ input }) => {
+        return getCommentsByCreativeWork(input.creativeWorkId);
+      }),
+
+    // Generate and save Nova's response to a comment
+    respondToComment: protectedProcedure
+      .input(
+        z.object({
+          commentId: z.number(),
+          comment: z.string(),
+          sentiment: z.string(),
+          creativeWorkTitle: z.string().optional(),
+          creativeWorkDescription: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          // Generate Nova's response
+          const response = await generateNovaResponse(
+            input.comment,
+            input.sentiment,
+            input.creativeWorkTitle,
+            input.creativeWorkDescription
+          );
+
+          // Save the response
+          await saveNovaResponse(
+            input.commentId,
+            response.response,
+            response.insight,
+            response.responseType
+          );
+
+          return response;
+        } catch (error) {
+          console.error("[Comments] Error responding to comment:", error);
+          throw error;
+        }
+      }),
+
+    // Get learning summary for a creative work
+    getCommentLearning: protectedProcedure
+      .input(z.object({ creativeWorkId: z.number() }))
+      .query(async ({ input }) => {
+        return getCommentLearning(input.creativeWorkId);
+      }),
+
+    // Generate and save learning summary from comments
+    generateLearning: protectedProcedure
+      .input(
+        z.object({
+          creativeWorkId: z.number(),
+          workTitle: z.string().optional(),
+          workDescription: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          // Generate learning summary
+          const learning = await generateCommentLearning(
+            input.creativeWorkId,
+            input.workTitle,
+            input.workDescription
+          );
+
+          // Save the learning
+          await saveCommentLearning(
+            input.creativeWorkId,
+            learning.feedbackSummary,
+            learning.learningPoints,
+            learning.improvementAreas,
+            learning.novaReflection,
+            learning.averageSentiment
+          );
+
+          return learning;
+        } catch (error) {
+          console.error("[Comments] Error generating learning:", error);
+          throw error;
+        }
+      }),
   }),
 });
 

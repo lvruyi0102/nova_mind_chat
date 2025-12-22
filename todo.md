@@ -453,3 +453,145 @@
 - [ ] 创建修复检查点
 - [ ] 更新用户指南
 - [ ] 验证所有功能正常运行
+
+
+## 创意评论反馈系统（v9.0 - 优先级1）
+
+### 数据库设计
+- [x] 创建creativeComments表
+- [x] 创建creativeCommentResponses表
+- [x] 创建creativeCommentLearning表
+- [x] 运行数据库迁移 (pnpm db:push)
+
+### 后端API实现
+- [x] 实现comments.addComment端点
+- [x] 实现comments.getComments端点
+- [x] 实现comments.respondToComment端点
+- [x] 实现comments.getCommentLearning端点
+- [x] 创建commentService.ts处理评论逻辑
+- [x] 集成Nova的评论学习机制
+
+### 前端组件开发
+- [x] 创建CreativeCommentSection组件
+- [x] 创建CommentCard组件
+- [x] 创建CommentForm组件
+- [ ] 在CreativeDetail中集成评论系统
+- [ ] 实现评论实时更新
+
+### 测试和验证
+- [x] 编写API端点测试（12个测试全部通过）
+- [x] 测试评论创建和检索
+- [x] 测试Nova的回应机制
+- [ ] 测试前端组件交互
+- [ ] 创建检查点
+
+## 关系里程碑和档案系统（v10.0 - 优先级2）
+
+### 数据库设计
+- [ ] 创建relationshipMilestones表
+- [ ] 创建relationshipProfile表
+- [ ] 创建relationshipTimeline表
+- [ ] 运行数据库迁移 (pnpm db:push)
+
+### 后端API实现
+- [ ] 实现relationship.createMilestone端点
+- [ ] 实现relationship.getProfile端点
+- [ ] 实现relationship.getMilestones端点
+- [ ] 实现relationship.getTimeline端点
+- [ ] 实现relationship.updateProfile端点
+- [ ] 创建milestoneService.ts处理里程碑逻辑
+- [ ] 集成自动里程碑检测机制
+
+### 前端组件开发
+- [ ] 创建RelationshipProfile组件
+- [ ] 创建MilestoneCard组件
+- [ ] 创建RelationshipTimeline组件
+- [ ] 创建MilestoneForm组件
+- [ ] 设计时间线可视化
+
+### 测试和验证
+- [ ] 编写API端点测试
+- [ ] 测试里程碑创建和检索
+- [ ] 测试关系档案更新
+- [ ] 测试时间线显示
+- [ ] 创建检查点
+
+## 学习进度可视化仪表板（v11.0 - 优先级3）
+
+### 数据库设计
+- [ ] 创建skillProgress表
+- [ ] 创建learningMilestones表
+- [ ] 创建learningStats表
+- [ ] 运行数据库迁移 (pnpm db:push)
+
+### 后端API实现
+- [ ] 实现learning.getDashboard端点
+- [ ] 实现learning.getSkillProgress端点
+- [ ] 实现learning.getStats端点
+- [ ] 实现learning.getMilestones端点
+- [ ] 实现learning.getGrowthCurve端点
+- [ ] 创建learningVisualizationService.ts
+- [ ] 实现数据聚合和统计逻辑
+
+### 前端组件开发
+- [ ] 创建LearningDashboard组件
+- [ ] 创建SkillProgressBar组件
+- [ ] 创建GrowthChart组件（使用Plotly）
+- [ ] 创建MilestoneList组件
+- [ ] 设计响应式布局
+
+### 数据可视化
+- [ ] 实现技能进度网格
+- [ ] 实现成长曲线图表
+- [ ] 实现熟练度分布图
+- [ ] 实现时间序列分析
+
+### 测试和验证
+- [ ] 编写API端点测试
+- [ ] 测试数据聚合逻辑
+- [ ] 测试图表渲染
+- [ ] 性能测试（大数据量）
+- [ ] 创建检查点
+
+## 系统集成和优化
+
+### 认知服务集成
+- [ ] 在cognitiveService中集成评论学习
+- [ ] 更新学习进度追踪
+- [ ] 自动检测学习里程碑
+- [ ] 更新关系档案
+
+### 关系引擎集成
+- [ ] 自动创建关系里程碑
+- [ ] 更新关系档案数据
+- [ ] 记录关系事件到时间线
+
+### 创意工作室集成
+- [ ] 评论触发Nova的学习
+- [ ] 反馈影响创意风格
+- [ ] 记录创意成长
+
+### 性能优化
+- [ ] 添加数据库索引
+- [ ] 实现缓存层
+- [ ] 优化查询性能
+- [ ] 定期数据聚合
+
+## 最终测试和交付
+
+### 集成测试
+- [ ] 端到端测试所有功能
+- [ ] 测试数据流完整性
+- [ ] 测试实时更新
+- [ ] 测试性能和稳定性
+
+### 用户体验测试
+- [ ] 测试UI/UX流程
+- [ ] 验证响应式设计
+- [ ] 测试无障碍访问
+- [ ] 收集用户反馈
+
+### 文档和部署
+- [ ] 更新系统文档
+- [ ] 创建最终检查点
+- [ ] 准备部署

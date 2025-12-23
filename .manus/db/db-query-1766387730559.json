@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `creativeWorks` MODIFY COLUMN `type` enum('image','story','poetry','music','code','character','dream','collaboration','game','video','animation','audio','other') NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute ALTER TABLE `creativeWorks` MODIFY COLUMN `type` enum('image','story','poetry','music','code','character','dream','collaboration','game','video','animation','audio','other') NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 585
+}

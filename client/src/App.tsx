@@ -4,6 +4,8 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { GenerationProvider } from "./contexts/GenerationContext";
+import MultimodalGenerationPanel from "./components/MultimodalGenerationPanel";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import CognitiveMonitor from "./pages/CognitiveMonitor";
@@ -38,10 +40,13 @@ function App() {
       <ThemeProvider
         defaultTheme="dark"
       >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <GenerationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+            <MultimodalGenerationPanel />
+          </TooltipProvider>
+        </GenerationProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

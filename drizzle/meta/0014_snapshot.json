@@ -1,9 +1,141 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "748ef997-170f-468c-91ee-7210b5bfbf8b",
-  "prevId": "ecaca68a-5b02-452d-a070-9848edbf0630",
+  "id": "96f63147-54ca-47d6-8536-67015ed4a666",
+  "prevId": "3fcd0b97-1ca8-43c0-8592-9e74510fa8fd",
   "tables": {
+    "autonomousCreativeTasks": {
+      "name": "autonomousCreativeTasks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "workId": {
+          "name": "workId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "taskType": {
+          "name": "taskType",
+          "type": "enum('improve','enhance','refactor','optimize','reimagine')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','in_progress','completed','failed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "analysis": {
+          "name": "analysis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "improvementSuggestions": {
+          "name": "improvementSuggestions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resultVersionId": {
+          "name": "resultVersionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "executionLog": {
+          "name": "executionLog",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scheduledAt": {
+          "name": "scheduledAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "executedAt": {
+          "name": "executedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "autonomousCreativeTasks_workId_creativeWorks_id_fk": {
+          "name": "autonomousCreativeTasks_workId_creativeWorks_id_fk",
+          "tableFrom": "autonomousCreativeTasks",
+          "tableTo": "creativeWorks",
+          "columnsFrom": [
+            "workId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "autonomousCreativeTasks_resultVersionId_creativeWorkVersions_id_fk": {
+          "name": "autonomousCreativeTasks_resultVersionId_creativeWorkVersions_id_fk",
+          "tableFrom": "autonomousCreativeTasks",
+          "tableTo": "creativeWorkVersions",
+          "columnsFrom": [
+            "resultVersionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "autonomousCreativeTasks_id": {
+          "name": "autonomousCreativeTasks_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "autonomousDecisions": {
       "name": "autonomousDecisions",
       "columns": {
@@ -755,7 +887,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1046,7 +1178,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1520,6 +1652,139 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "creativeWorkVersions": {
+      "name": "creativeWorkVersions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "workId": {
+          "name": "workId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "versionNumber": {
+          "name": "versionNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contentType": {
+          "name": "contentType",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "enum('user','nova')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "changeLog": {
+          "name": "changeLog",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "improvedFrom": {
+          "name": "improvedFrom",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "storageUrl": {
+          "name": "storageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fileSize": {
+          "name": "fileSize",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "creativeWorkVersions_workId_creativeWorks_id_fk": {
+          "name": "creativeWorkVersions_workId_creativeWorks_id_fk",
+          "tableFrom": "creativeWorkVersions",
+          "tableTo": "creativeWorks",
+          "columnsFrom": [
+            "workId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "creativeWorkVersions_id": {
+          "name": "creativeWorkVersions_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "creativeWorks": {
       "name": "creativeWorks",
       "columns": {
@@ -1539,7 +1804,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum('image','story','poetry','music','code','character','dream','collaboration','other')",
+          "type": "enum('image','story','poetry','music','code','character','dream','collaboration','game','video','animation','audio','other')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -1590,7 +1855,7 @@
         },
         "emotionalState": {
           "name": "emotionalState",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -2364,7 +2629,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

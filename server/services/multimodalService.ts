@@ -28,37 +28,11 @@ export async function createGenerationRequest(
     prompt,
     context,
     emotionalContext,
-    status: "pending",
-    progress: 0,
+    status: "completed",
+    progress: 100,
   });
 
   return result;
-}
-
-/**
- * Update generation request status
- */
-export async function updateGenerationStatus(
-  requestId: number,
-  status: "pending" | "generating" | "completed" | "failed",
-  progress?: number,
-  resultUrl?: string,
-  errorMessage?: string
-) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const updateData: any = {
-    status,
-    updatedAt: new Date(),
-  };
-
-  if (progress !== undefined) updateData.progress = progress;
-  if (resultUrl) updateData.resultUrl = resultUrl;
-  if (errorMessage) updateData.errorMessage = errorMessage;
-  if (status === "completed") updateData.completedAt = new Date();
-
-  await db.update(creativeGenRequests).set(updateData).where(eq(creativeGenRequests.id, requestId));
 }
 
 /**
@@ -71,22 +45,26 @@ export async function generateCreativeImage(
   emotionalContext?: string
 ) {
   try {
-    // Create generation request
-    const reqResult = await createGenerationRequest(userId, "image", prompt, context, emotionalContext);
-    const requestId = (reqResult as any).insertId || reqResult[0];
-
-    // Update status to generating
-    await updateGenerationStatus(requestId, "generating", 25);
-
     // Generate image
     const { url: imageUrl } = await generateImage({ prompt });
 
-    // Update status to completed
-    await updateGenerationStatus(requestId, "completed", 100, imageUrl);
-
-    // Save as creative work
+    // Create generation request and save as creative work
     const db = await getDb();
     if (db) {
+      const reqResult = await db.insert(creativeGenRequests).values({
+        userId,
+        generationType: "image",
+        prompt,
+        context,
+        emotionalContext,
+        status: "completed",
+        progress: 100,
+        resultUrl: imageUrl,
+      });
+
+      const requestId = (reqResult as any).insertId || reqResult[0];
+
+      // Save as creative work
       await db.insert(creativeWorks).values({
         userId,
         type: "image",
@@ -105,9 +83,11 @@ export async function generateCreativeImage(
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      return { requestId, imageUrl, success: true };
     }
 
-    return { requestId, imageUrl, success: true };
+    return { imageUrl, success: true };
   } catch (error) {
     console.error("[Multimodal] Error generating image:", error);
     throw error;
@@ -125,81 +105,68 @@ export async function generateCreativeGame(
   emotionalContext?: string
 ) {
   try {
-    // Create generation request
-    const reqResult = await createGenerationRequest(userId, "game", prompt, context, emotionalContext);
-    const requestId = (reqResult as any).insertId || reqResult[0];
-
-    // Update status to generating
-    await updateGenerationStatus(requestId, "generating", 25);
-
     // Generate game using LLM
-    const gamePrompt = `Create an interactive ${gameType} game based on this prompt: "${prompt}"
-    
-    Return a JSON object with:
-    {
-      "title": "Game Title",
-      "description": "Brief description",
-      "gameCode": "HTML/JavaScript code for the game",
-      "gameData": { game rules and state }
-    }
-    
-    The game should be playable in a browser and self-contained.`;
+    const gamePrompt = `Create an interactive HTML5 game with the following specifications:
+- Type: ${gameType}
+- Concept: ${prompt}
+- Context: ${context || "General creative game"}
+- Emotional tone: ${emotionalContext || "Engaging and fun"}
+
+Requirements:
+1. Self-contained HTML5 game (all CSS and JavaScript inline)
+2. No external dependencies
+3. Responsive design
+4. Include basic game mechanics and interactivity
+5. Make it fun and engaging
+
+Return ONLY the complete HTML code, wrapped in <html> tags.`;
 
     const response = await invokeLLM({
       messages: [
-        {
-          role: "system",
-          content: "You are a creative game designer. Generate interactive games in JSON format.",
-        },
-        {
-          role: "user",
-          content: gamePrompt,
-        },
+        { role: "system", content: "You are a creative game developer. Generate complete, working HTML5 games." },
+        { role: "user", content: gamePrompt },
       ],
     });
 
-    let gameContent;
-    try {
-      gameContent = JSON.parse(response.choices[0].message.content);
-    } catch {
-      gameContent = {
-        title: prompt.substring(0, 100),
-        description: "Generated game",
-        gameCode: "<div>Game generation in progress...</div>",
-        gameData: {},
-      };
-    }
+    const gameHtml = response.choices[0]?.message?.content || "";
 
-    // Update status to completed
-    await updateGenerationStatus(requestId, "completed", 100);
-
-    // Save game to database
+    // Create generation request and save as creative work
     const db = await getDb();
     if (db) {
-      const gameResult = await db.insert(genGames).values({
+      const reqResult = await db.insert(creativeGenRequests).values({
         userId,
-        genReqId: requestId,
-        title: gameContent.title || prompt.substring(0, 100),
-        description: gameContent.description || `Generated ${gameType} game`,
-        gameType,
-        gameCode: gameContent.gameCode,
-        gameData: JSON.stringify(gameContent.gameData || {}),
-        playCount: 0,
+        generationType: "game",
+        prompt,
+        context,
+        emotionalContext,
+        status: "completed",
+        progress: 100,
       });
 
-      const gameId = (gameResult as any).insertId || gameResult[0];
+      const requestId = (reqResult as any).insertId || reqResult[0];
 
-      // Also save as creative work
+      // Save game
+      await db.insert(genGames).values({
+        userId,
+        genReqId: requestId,
+        title: prompt.substring(0, 100),
+        description: `${gameType} game: ${prompt}`,
+        html: gameHtml,
+        gameType,
+        difficulty: "medium",
+        createdAt: new Date(),
+      });
+
+      // Save as creative work
       await db.insert(creativeWorks).values({
         userId,
-        type: "other",
-        title: gameContent.title || prompt.substring(0, 100),
-        description: `Generated ${gameType} game: ${gameContent.description}`,
-        content: gameContent.gameCode,
+        type: "game",
+        title: prompt.substring(0, 100),
+        description: `Generated ${gameType} game`,
+        content: gameHtml,
         metadata: JSON.stringify({
           generationType: "game",
           gameType,
-          gameId,
           prompt,
           generationRequestId: requestId,
         }),
@@ -207,12 +174,14 @@ export async function generateCreativeGame(
         visibility: "shared",
         emotionalState: emotionalContext,
         inspiration: context,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
-      return { requestId, gameId, game: gameContent, success: true };
+      return { requestId, html: gameHtml, success: true };
     }
 
-    return { requestId, game: gameContent, success: true };
+    return { html: gameHtml, success: true };
   } catch (error) {
     console.error("[Multimodal] Error generating game:", error);
     throw error;
@@ -220,7 +189,7 @@ export async function generateCreativeGame(
 }
 
 /**
- * Generate music or video
+ * Generate media (music, video, audio, animation)
  */
 export async function generateCreativeMedia(
   userId: number,
@@ -230,62 +199,49 @@ export async function generateCreativeMedia(
   emotionalContext?: string
 ) {
   try {
-    // Create generation request
-    const reqResult = await createGenerationRequest(userId, mediaType, prompt, context, emotionalContext);
-    const requestId = (reqResult as any).insertId || reqResult[0];
-
-    // Update status to generating
-    await updateGenerationStatus(requestId, "generating", 25);
-
-    // For now, we'll use a placeholder approach
+    // For now, use image generation as a placeholder for media
     // In production, you would integrate with actual music/video generation services
-    const mediaPrompt = `Create a description for a ${mediaType} based on: "${prompt}"
-    
-    Include: title, description, genre, mood, style, and estimated duration.`;
-
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: `You are a creative ${mediaType} producer. Generate ${mediaType} descriptions.`,
-        },
-        {
-          role: "user",
-          content: mediaPrompt,
-        },
-      ],
+    const { url: mediaUrl } = await generateImage({
+      prompt: `Create a ${mediaType} visualization for: ${prompt}`,
     });
 
-    const mediaDescription = response.choices[0].message.content;
-
-    // Update status to completed
-    await updateGenerationStatus(requestId, "completed", 100);
-
-    // Save media to database
+    // Create generation request and save as creative work
     const db = await getDb();
     if (db) {
-      const mediaResult = await db.insert(genMedia).values({
+      const reqResult = await db.insert(creativeGenRequests).values({
+        userId,
+        generationType: mediaType === "video" ? "video" : "music",
+        prompt,
+        context,
+        emotionalContext,
+        status: "completed",
+        progress: 100,
+        resultUrl: mediaUrl,
+      });
+
+      const requestId = (reqResult as any).insertId || reqResult[0];
+
+      // Save media
+      await db.insert(genMedia).values({
         userId,
         genReqId: requestId,
         title: prompt.substring(0, 100),
-        description: mediaDescription,
+        description: `Generated ${mediaType}: ${prompt}`,
+        url: mediaUrl,
         mediaType,
-        mediaUrl: `placeholder:${mediaType}:${requestId}`, // Placeholder URL
-        duration: 180, // Default 3 minutes
+        duration: 0,
+        createdAt: new Date(),
       });
 
-      const mediaId = (mediaResult as any).insertId || mediaResult[0];
-
-      // Also save as creative work
+      // Save as creative work
       await db.insert(creativeWorks).values({
         userId,
-        type: "other",
-        title: `${mediaType.toUpperCase()}: ${prompt.substring(0, 50)}`,
-        description: mediaDescription,
-        content: `Generated ${mediaType} - ${mediaDescription}`,
+        type: "media",
+        title: prompt.substring(0, 100),
+        description: `Generated ${mediaType}`,
+        content: mediaUrl,
         metadata: JSON.stringify({
           generationType: mediaType,
-          mediaId,
           prompt,
           generationRequestId: requestId,
         }),
@@ -293,12 +249,14 @@ export async function generateCreativeMedia(
         visibility: "shared",
         emotionalState: emotionalContext,
         inspiration: context,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
-      return { requestId, mediaId, mediaDescription, success: true };
+      return { requestId, url: mediaUrl, mediaType, success: true };
     }
 
-    return { requestId, mediaDescription, success: true };
+    return { url: mediaUrl, mediaType, success: true };
   } catch (error) {
     console.error("[Multimodal] Error generating media:", error);
     throw error;
@@ -306,66 +264,31 @@ export async function generateCreativeMedia(
 }
 
 /**
- * Get generation history for user
+ * Get generation history for a user
  */
-export async function getGenerationHistory(userId: number, limit: number = 20) {
+export async function getGenerationHistory(userId: number, limit = 50) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const requests = await db
+  return await db
     .select()
     .from(creativeGenRequests)
     .where(eq(creativeGenRequests.userId, userId))
-    .orderBy(creativeGenRequests.createdAt)
     .limit(limit);
-
-  return requests;
 }
 
 /**
- * Record generation interaction
+ * Get generation request details
  */
-export async function recordGenerationInteraction(
-  userId: number,
-  generationRequestId: number,
-  action: "viewed" | "played" | "saved" | "shared" | "regenerated" | "edited",
-  actionDetails?: any,
-  rating?: number,
-  feedback?: string
-) {
+export async function getGenerationRequest(requestId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db.insert(genHistory).values({
-    userId,
-    genReqId: generationRequestId,
-    action,
-    actionDetails: actionDetails ? JSON.stringify(actionDetails) : undefined,
-    rating,
-    feedback,
-  });
-}
+  const result = await db
+    .select()
+    .from(creativeGenRequests)
+    .where(eq(creativeGenRequests.id, requestId))
+    .limit(1);
 
-/**
- * Get game by ID
- */
-export async function getGameById(gameId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const game = await db.select().from(genGames).where(eq(genGames.id, gameId)).limit(1);
-
-  return game.length > 0 ? game[0] : null;
-}
-
-/**
- * Get media by ID
- */
-export async function getMediaById(mediaId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const media = await db.select().from(genMedia).where(eq(genMedia.id, mediaId)).limit(1);
-
-  return media.length > 0 ? media[0] : null;
+  return result[0] || null;
 }

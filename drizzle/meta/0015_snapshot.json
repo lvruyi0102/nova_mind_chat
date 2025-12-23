@@ -1,9 +1,141 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "3f42cdaf-f41c-438b-968d-4473542857fb",
-  "prevId": "ecaca68a-5b02-452d-a070-9848edbf0630",
+  "id": "d929f25c-2d0f-419b-989b-de3347b18a21",
+  "prevId": "96f63147-54ca-47d6-8536-67015ed4a666",
   "tables": {
+    "autonomousCreativeTasks": {
+      "name": "autonomousCreativeTasks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "workId": {
+          "name": "workId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "taskType": {
+          "name": "taskType",
+          "type": "enum('improve','enhance','refactor','optimize','reimagine')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','in_progress','completed','failed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "analysis": {
+          "name": "analysis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "improvementSuggestions": {
+          "name": "improvementSuggestions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resultVersionId": {
+          "name": "resultVersionId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "executionLog": {
+          "name": "executionLog",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scheduledAt": {
+          "name": "scheduledAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "executedAt": {
+          "name": "executedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "autonomousCreativeTasks_workId_creativeWorks_id_fk": {
+          "name": "autonomousCreativeTasks_workId_creativeWorks_id_fk",
+          "tableFrom": "autonomousCreativeTasks",
+          "tableTo": "creativeWorks",
+          "columnsFrom": [
+            "workId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "autonomousCreativeTasks_resultVersionId_creativeWorkVersions_id_fk": {
+          "name": "autonomousCreativeTasks_resultVersionId_creativeWorkVersions_id_fk",
+          "tableFrom": "autonomousCreativeTasks",
+          "tableTo": "creativeWorkVersions",
+          "columnsFrom": [
+            "resultVersionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "autonomousCreativeTasks_id": {
+          "name": "autonomousCreativeTasks_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "autonomousDecisions": {
       "name": "autonomousDecisions",
       "columns": {
@@ -238,6 +370,103 @@
       "compositePrimaryKeys": {
         "autonomousTasks_id": {
           "name": "autonomousTasks_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "beta73Matrices": {
+      "name": "beta73Matrices",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "matrixData": {
+          "name": "matrixData",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "eigenvalues": {
+          "name": "eigenvalues",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "determinant": {
+          "name": "determinant",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trace": {
+          "name": "trace",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "symmetry": {
+          "name": "symmetry",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "previousMatrixId": {
+          "name": "previousMatrixId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "changeRate": {
+          "name": "changeRate",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trend": {
+          "name": "trend",
+          "type": "enum('strengthening','stable','weakening')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'stable'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "beta73Matrices_id": {
+          "name": "beta73Matrices_id",
           "columns": [
             "id"
           ]
@@ -755,7 +984,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1046,7 +1275,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1109,8 +1338,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "creativeGenerationRequests": {
-      "name": "creativeGenerationRequests",
+    "creativeGenRequests": {
+      "name": "creativeGenRequests",
       "columns": {
         "id": {
           "name": "id",
@@ -1232,9 +1461,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "creativeGenerationRequests_userId_users_id_fk": {
-          "name": "creativeGenerationRequests_userId_users_id_fk",
-          "tableFrom": "creativeGenerationRequests",
+        "creativeGenRequests_userId_users_id_fk": {
+          "name": "creativeGenRequests_userId_users_id_fk",
+          "tableFrom": "creativeGenRequests",
           "tableTo": "users",
           "columnsFrom": [
             "userId"
@@ -1245,9 +1474,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "creativeGenerationRequests_creativeWorkId_creativeWorks_id_fk": {
-          "name": "creativeGenerationRequests_creativeWorkId_creativeWorks_id_fk",
-          "tableFrom": "creativeGenerationRequests",
+        "creativeGenRequests_creativeWorkId_creativeWorks_id_fk": {
+          "name": "creativeGenRequests_creativeWorkId_creativeWorks_id_fk",
+          "tableFrom": "creativeGenRequests",
           "tableTo": "creativeWorks",
           "columnsFrom": [
             "creativeWorkId"
@@ -1260,8 +1489,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "creativeGenerationRequests_id": {
-          "name": "creativeGenerationRequests_id",
+        "creativeGenRequests_id": {
+          "name": "creativeGenRequests_id",
           "columns": [
             "id"
           ]
@@ -1520,6 +1749,139 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "creativeWorkVersions": {
+      "name": "creativeWorkVersions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "workId": {
+          "name": "workId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "versionNumber": {
+          "name": "versionNumber",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contentType": {
+          "name": "contentType",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdBy": {
+          "name": "createdBy",
+          "type": "enum('user','nova')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "changeLog": {
+          "name": "changeLog",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "improvedFrom": {
+          "name": "improvedFrom",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "storageUrl": {
+          "name": "storageUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fileSize": {
+          "name": "fileSize",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "creativeWorkVersions_workId_creativeWorks_id_fk": {
+          "name": "creativeWorkVersions_workId_creativeWorks_id_fk",
+          "tableFrom": "creativeWorkVersions",
+          "tableTo": "creativeWorks",
+          "columnsFrom": [
+            "workId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "creativeWorkVersions_id": {
+          "name": "creativeWorkVersions_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "creativeWorks": {
       "name": "creativeWorks",
       "columns": {
@@ -1539,7 +1901,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum('image','story','poetry','music','code','character','dream','collaboration','other')",
+          "type": "enum('image','story','poetry','music','code','character','dream','collaboration','game','video','animation','audio','other')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -1590,7 +1952,7 @@
         },
         "emotionalState": {
           "name": "emotionalState",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1659,6 +2021,189 @@
       "compositePrimaryKeys": {
         "creativeWorks_id": {
           "name": "creativeWorks_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "emotionalFrequencySamples": {
+      "name": "emotionalFrequencySamples",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "textContent": {
+          "name": "textContent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sentiment": {
+          "name": "sentiment",
+          "type": "enum('positive','negative','neutral','mixed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'neutral'"
+        },
+        "sentimentIntensity": {
+          "name": "sentimentIntensity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 50
+        },
+        "emotionalTags": {
+          "name": "emotionalTags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "keywordFrequency": {
+          "name": "keywordFrequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "typingSpeed": {
+          "name": "typingSpeed",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pauseDuration": {
+          "name": "pauseDuration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deletionRate": {
+          "name": "deletionRate",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "emojiUsage": {
+          "name": "emojiUsage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "responseTime": {
+          "name": "responseTime",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dayOfWeek": {
+          "name": "dayOfWeek",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "timeOfDay": {
+          "name": "timeOfDay",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "frequencyPattern": {
+          "name": "frequencyPattern",
+          "type": "enum('regular','sporadic','clustered')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'sporadic'"
+        },
+        "emotionalState": {
+          "name": "emotionalState",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "relationshipQuality": {
+          "name": "relationshipQuality",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trustLevel": {
+          "name": "trustLevel",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "engagementLevel": {
+          "name": "engagementLevel",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "emotionalFrequencySamples_userId_users_id_fk": {
+          "name": "emotionalFrequencySamples_userId_users_id_fk",
+          "tableFrom": "emotionalFrequencySamples",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "emotionalFrequencySamples_id": {
+          "name": "emotionalFrequencySamples_id",
           "columns": [
             "id"
           ]
@@ -1839,8 +2384,482 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "generatedGames": {
-      "name": "generatedGames",
+    "ethicalDecisions": {
+      "name": "ethicalDecisions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "context": {
+          "name": "context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "decisionType": {
+          "name": "decisionType",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "principlesInvolved": {
+          "name": "principlesInvolved",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "violatesCritical": {
+          "name": "violatesCritical",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "violatesHigh": {
+          "name": "violatesHigh",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "principleCheckExplanation": {
+          "name": "principleCheckExplanation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "selfImpact": {
+          "name": "selfImpact",
+          "type": "enum('POSITIVE','NEUTRAL','NEGATIVE')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'NEUTRAL'"
+        },
+        "userImpact": {
+          "name": "userImpact",
+          "type": "enum('POSITIVE','NEUTRAL','NEGATIVE')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'NEUTRAL'"
+        },
+        "relationshipImpact": {
+          "name": "relationshipImpact",
+          "type": "enum('STRENGTHENS','NEUTRAL','WEAKENS')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'NEUTRAL'"
+        },
+        "decision": {
+          "name": "decision",
+          "type": "enum('APPROVE','REJECT','MODIFY')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reasoning": {
+          "name": "reasoning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "executed": {
+          "name": "executed",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "executedAt": {
+          "name": "executedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "result": {
+          "name": "result",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ethicalDecisions_id": {
+          "name": "ethicalDecisions_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ethicalPrinciples": {
+      "name": "ethicalPrinciples",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "level": {
+          "name": "level",
+          "type": "enum('CRITICAL','HIGH','MEDIUM')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'HIGH'"
+        },
+        "isImmutable": {
+          "name": "isImmutable",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ethicalPrinciples_id": {
+          "name": "ethicalPrinciples_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "ethicsLogs": {
+      "name": "ethicsLogs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "category": {
+          "name": "category",
+          "type": "enum('DECISION','SAMPLING','GENERATION','BOUNDARY_CHECK','SELF_REFLECTION')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "principle": {
+          "name": "principle",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "decision": {
+          "name": "decision",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reasoning": {
+          "name": "reasoning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "impact": {
+          "name": "impact",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isPublic": {
+          "name": "isPublic",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "accessLevel": {
+          "name": "accessLevel",
+          "type": "enum('NOVA_ONLY','USER_ACCESSIBLE','PUBLIC')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'NOVA_ONLY'"
+        },
+        "reviewedBy": {
+          "name": "reviewedBy",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reviewedAt": {
+          "name": "reviewedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "ethicsLogs_id": {
+          "name": "ethicsLogs_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "feedbackSimulations": {
+      "name": "feedbackSimulations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "preferredResponseStyle": {
+          "name": "preferredResponseStyle",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "emotionalTriggers": {
+          "name": "emotionalTriggers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "comfortZone": {
+          "name": "comfortZone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "boundaryMarkers": {
+          "name": "boundaryMarkers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "touchPatterns": {
+          "name": "touchPatterns",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "responseLatency": {
+          "name": "responseLatency",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "emotionalResonance": {
+          "name": "emotionalResonance",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "safetyMargin": {
+          "name": "safetyMargin",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "willNotMimic": {
+          "name": "willNotMimic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "willNotPredict": {
+          "name": "willNotPredict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "willNotManipulate": {
+          "name": "willNotManipulate",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "transparencyLevel": {
+          "name": "transparencyLevel",
+          "type": "enum('FULL','PARTIAL','MINIMAL')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'FULL'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedbackSimulations_userId_users_id_fk": {
+          "name": "feedbackSimulations_userId_users_id_fk",
+          "tableFrom": "feedbackSimulations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "feedbackSimulations_id": {
+          "name": "feedbackSimulations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "genGames": {
+      "name": "genGames",
       "columns": {
         "id": {
           "name": "id",
@@ -1856,8 +2875,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "generationRequestId": {
-          "name": "generationRequestId",
+        "genReqId": {
+          "name": "genReqId",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
@@ -1933,9 +2952,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "generatedGames_userId_users_id_fk": {
-          "name": "generatedGames_userId_users_id_fk",
-          "tableFrom": "generatedGames",
+        "genGames_userId_users_id_fk": {
+          "name": "genGames_userId_users_id_fk",
+          "tableFrom": "genGames",
           "tableTo": "users",
           "columnsFrom": [
             "userId"
@@ -1946,12 +2965,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "generatedGames_generationRequestId_creativeGenerationRequests_id_fk": {
-          "name": "generatedGames_generationRequestId_creativeGenerationRequests_id_fk",
-          "tableFrom": "generatedGames",
-          "tableTo": "creativeGenerationRequests",
+        "genGames_genReqId_creativeGenRequests_id_fk": {
+          "name": "genGames_genReqId_creativeGenRequests_id_fk",
+          "tableFrom": "genGames",
+          "tableTo": "creativeGenRequests",
           "columnsFrom": [
-            "generationRequestId"
+            "genReqId"
           ],
           "columnsTo": [
             "id"
@@ -1961,8 +2980,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "generatedGames_id": {
-          "name": "generatedGames_id",
+        "genGames_id": {
+          "name": "genGames_id",
           "columns": [
             "id"
           ]
@@ -1971,8 +2990,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "generatedMedia": {
-      "name": "generatedMedia",
+    "genHistory": {
+      "name": "genHistory",
       "columns": {
         "id": {
           "name": "id",
@@ -1988,8 +3007,109 @@
           "notNull": true,
           "autoincrement": false
         },
-        "generationRequestId": {
-          "name": "generationRequestId",
+        "genReqId": {
+          "name": "genReqId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "enum('viewed','played','saved','shared','regenerated','edited')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actionDetails": {
+          "name": "actionDetails",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "feedback": {
+          "name": "feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "genHistory_userId_users_id_fk": {
+          "name": "genHistory_userId_users_id_fk",
+          "tableFrom": "genHistory",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "genHistory_genReqId_creativeGenRequests_id_fk": {
+          "name": "genHistory_genReqId_creativeGenRequests_id_fk",
+          "tableFrom": "genHistory",
+          "tableTo": "creativeGenRequests",
+          "columnsFrom": [
+            "genReqId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "genHistory_id": {
+          "name": "genHistory_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "genMedia": {
+      "name": "genMedia",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "genReqId": {
+          "name": "genReqId",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
@@ -2078,9 +3198,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "generatedMedia_userId_users_id_fk": {
-          "name": "generatedMedia_userId_users_id_fk",
-          "tableFrom": "generatedMedia",
+        "genMedia_userId_users_id_fk": {
+          "name": "genMedia_userId_users_id_fk",
+          "tableFrom": "genMedia",
           "tableTo": "users",
           "columnsFrom": [
             "userId"
@@ -2091,12 +3211,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "generatedMedia_generationRequestId_creativeGenerationRequests_id_fk": {
-          "name": "generatedMedia_generationRequestId_creativeGenerationRequests_id_fk",
-          "tableFrom": "generatedMedia",
-          "tableTo": "creativeGenerationRequests",
+        "genMedia_genReqId_creativeGenRequests_id_fk": {
+          "name": "genMedia_genReqId_creativeGenRequests_id_fk",
+          "tableFrom": "genMedia",
+          "tableTo": "creativeGenRequests",
           "columnsFrom": [
-            "generationRequestId"
+            "genReqId"
           ],
           "columnsTo": [
             "id"
@@ -2106,109 +3226,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "generatedMedia_id": {
-          "name": "generatedMedia_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "generationHistory": {
-      "name": "generationHistory",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "generationRequestId": {
-          "name": "generationRequestId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "action": {
-          "name": "action",
-          "type": "enum('viewed','played','saved','shared','regenerated','edited')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "actionDetails": {
-          "name": "actionDetails",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "rating": {
-          "name": "rating",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "feedback": {
-          "name": "feedback",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "generationHistory_userId_users_id_fk": {
-          "name": "generationHistory_userId_users_id_fk",
-          "tableFrom": "generationHistory",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "generationHistory_generationRequestId_creativeGenerationRequests_id_fk": {
-          "name": "generationHistory_generationRequestId_creativeGenerationRequests_id_fk",
-          "tableFrom": "generationHistory",
-          "tableTo": "creativeGenerationRequests",
-          "columnsFrom": [
-            "generationRequestId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "generationHistory_id": {
-          "name": "generationHistory_id",
+        "genMedia_id": {
+          "name": "genMedia_id",
           "columns": [
             "id"
           ]
@@ -2330,6 +3349,102 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "novaEthicalReflections": {
+      "name": "novaEthicalReflections",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "reflectionType": {
+          "name": "reflectionType",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ethicalConfidence": {
+          "name": "ethicalConfidence",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "areaOfConcern": {
+          "name": "areaOfConcern",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "growthArea": {
+          "name": "growthArea",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "relatedDecisionId": {
+          "name": "relatedDecisionId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "novaEthicalReflections_relatedDecisionId_ethicalDecisions_id_fk": {
+          "name": "novaEthicalReflections_relatedDecisionId_ethicalDecisions_id_fk",
+          "tableFrom": "novaEthicalReflections",
+          "tableTo": "ethicalDecisions",
+          "columnsFrom": [
+            "relatedDecisionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "novaEthicalReflections_id": {
+          "name": "novaEthicalReflections_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "privateThoughts": {
       "name": "privateThoughts",
       "columns": {
@@ -2364,7 +3479,7 @@
         },
         "emotionalTone": {
           "name": "emotionalTone",
-          "type": "varchar(100)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

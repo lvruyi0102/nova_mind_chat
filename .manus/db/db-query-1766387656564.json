@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM creativeWorks WHERE Field = 'type';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute SHOW COLUMNS FROM creativeWorks WHERE Field = 'type';",
+  "rows": [
+    {
+      "Field": "type",
+      "Type": "enum('image','story','poetry','music','code','character','dream','collaboration','other')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\ntype\tenum('image','story','poetry','music','code','character','dream','collaboration','other')\tNO\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}

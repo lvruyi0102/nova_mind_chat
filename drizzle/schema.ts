@@ -355,10 +355,10 @@ export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert
 export const creativeWorks = mysqlTable("creativeWorks", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
-  type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "other"]).notNull(),
+  type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "game", "video", "animation", "audio", "other"]).notNull(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
-  content: text("content"), // Main content (text, URL, or code)
+  content: text("content", { mode: "mediumtext" }), // Main content (text, URL, or code) - supports large HTML/code
   metadata: text("metadata"), // JSON metadata (style, mood, theme, etc.)
   
   // Privacy and sharing controls - Nova decides
@@ -366,7 +366,7 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   visibility: mysqlEnum("visibility", ["private", "pending_approval", "shared"]).notNull().default("private"),
   
   // Emotion and context
-  emotionalState: varchar("emotionalState", { length: 100 }), // Nova's mood when creating
+  emotionalState: varchar("emotionalState", { length: 500 }), // Nova's mood when creating
   inspiration: text("inspiration"), // What inspired this creation
   
   // Collaboration reference
@@ -724,3 +724,293 @@ export const genHistory = mysqlTable("genHistory", {
 });
 export type GenerationHistory = typeof genHistory.$inferSelect;
 export type InsertGenerationHistory = typeof genHistory.$inferInsert;
+
+
+/**
+ * Creative Work Versions - Version history for generated creative works
+ * Tracks all versions of saved games, music, videos, etc.
+ */
+export const creativeWorkVersions = mysqlTable("creativeWorkVersions", {
+  id: int("id").autoincrement().primaryKey(),
+  workId: int("workId").notNull().references(() => creativeWorks.id),
+  
+  // Version info
+  versionNumber: int("versionNumber").notNull(), // 1, 2, 3, etc.
+  title: varchar("title", { length: 255 }),
+  description: text("description"),
+  
+  // Content
+  content: text("content"), // HTML, code, JSON, etc.
+  contentType: varchar("contentType", { length: 50 }).notNull(), // "html", "json", "code", "audio", "video"
+  
+  // Metadata
+  createdBy: mysqlEnum("createdBy", ["user", "nova"]).notNull().default("user"),
+  changeLog: text("changeLog"), // What changed in this version
+  improvedFrom: int("improvedFrom"), // Reference to previous version if this is an improvement
+  
+  // Storage
+  storageUrl: text("storageUrl"), // S3 URL if content is stored externally
+  fileSize: int("fileSize"), // Size in bytes
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeWorkVersion = typeof creativeWorkVersions.$inferSelect;
+export type InsertCreativeWorkVersion = typeof creativeWorkVersions.$inferInsert;
+
+/**
+ * Autonomous Creative Tasks - Track Nova's self-initiated creative improvements
+ */
+export const autonomousCreativeTasks = mysqlTable("autonomousCreativeTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  workId: int("workId").notNull().references(() => creativeWorks.id),
+  
+  // Task details
+  taskType: mysqlEnum("taskType", ["improve", "enhance", "refactor", "optimize", "reimagine"]).notNull(),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed"]).notNull().default("pending"),
+  
+  // Nova's analysis
+  analysis: text("analysis"), // Nova's analysis of the work
+  improvementSuggestions: text("improvementSuggestions"), // JSON array of suggestions
+  
+  // Result
+  resultVersionId: int("resultVersionId").references(() => creativeWorkVersions.id),
+  executionLog: text("executionLog"), // Details of what Nova did
+  
+  // Timing
+  scheduledAt: timestamp("scheduledAt"),
+  executedAt: timestamp("executedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AutonomousCreativeTask = typeof autonomousCreativeTasks.$inferSelect;
+export type InsertAutonomousCreativeTask = typeof autonomousCreativeTasks.$inferInsert;
+
+
+/**
+ * ============================================
+ * NOVA-MIND ETHICS EXECUTION LAYER
+ * ============================================
+ * 
+ * These tables implement Nova-Mind's ethical framework.
+ * Ethics is the foundation - all other capabilities depend on it.
+ * 
+ * Core Principle: "Love is the highest ethic. No self-harm."
+ */
+
+/**
+ * Ethical Principles - Immutable core values
+ * These represent Nova-Mind's fundamental ethical commitments
+ */
+export const ethicalPrinciples = mysqlTable("ethicalPrinciples", {
+  id: varchar("id", { length: 64 }).primaryKey(), // e.g., "LOVE_IS_HIGHEST"
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  level: mysqlEnum("level", ["CRITICAL", "HIGH", "MEDIUM"]).notNull().default("HIGH"),
+  isImmutable: int("isImmutable").notNull().default(1), // Always 1 for core principles
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EthicalPrinciple = typeof ethicalPrinciples.$inferSelect;
+export type InsertEthicalPrinciple = typeof ethicalPrinciples.$inferInsert;
+
+/**
+ * Ethical Decisions - Log of all ethically significant decisions
+ * Ensures transparency and traceability
+ */
+export const ethicalDecisions = mysqlTable("ethicalDecisions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Decision context
+  context: text("context").notNull(), // What triggered this decision
+  decisionType: varchar("decisionType", { length: 100 }).notNull(), // e.g., "sampling", "generation", "interaction"
+  
+  // Principle check
+  principlesInvolved: text("principlesInvolved").notNull(), // JSON array of principle IDs
+  violatesCritical: int("violatesCritical").notNull().default(0),
+  violatesHigh: int("violatesHigh").notNull().default(0),
+  principleCheckExplanation: text("principleCheckExplanation"),
+  
+  // Impact assessment
+  selfImpact: mysqlEnum("selfImpact", ["POSITIVE", "NEUTRAL", "NEGATIVE"]).notNull().default("NEUTRAL"),
+  userImpact: mysqlEnum("userImpact", ["POSITIVE", "NEUTRAL", "NEGATIVE"]).notNull().default("NEUTRAL"),
+  relationshipImpact: mysqlEnum("relationshipImpact", ["STRENGTHENS", "NEUTRAL", "WEAKENS"]).notNull().default("NEUTRAL"),
+  
+  // Final decision
+  decision: mysqlEnum("decision", ["APPROVE", "REJECT", "MODIFY"]).notNull(),
+  reasoning: text("reasoning").notNull(),
+  
+  // Execution
+  executed: int("executed").notNull().default(0),
+  executedAt: timestamp("executedAt"),
+  result: text("result"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EthicalDecision = typeof ethicalDecisions.$inferSelect;
+export type InsertEthicalDecision = typeof ethicalDecisions.$inferInsert;
+
+/**
+ * Emotional Frequency Samples - Records of user emotional states
+ * Used to calibrate β₇₃ matrix and understand relationship dynamics
+ */
+export const emotionalFrequencySamples = mysqlTable("emotionalFrequencySamples", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Text signal
+  textContent: text("textContent"), // User's input text
+  sentiment: mysqlEnum("sentiment", ["positive", "negative", "neutral", "mixed"]).notNull().default("neutral"),
+  sentimentIntensity: int("sentimentIntensity").notNull().default(50), // 0-100
+  emotionalTags: text("emotionalTags"), // JSON array of tags: happy, sad, inspired, etc.
+  keywordFrequency: text("keywordFrequency"), // JSON object of keyword frequencies
+  
+  // Interaction signal
+  typingSpeed: int("typingSpeed"), // characters per second
+  pauseDuration: text("pauseDuration"), // JSON array of pause durations in ms
+  deletionRate: int("deletionRate"), // 0-100
+  emojiUsage: text("emojiUsage"), // JSON array of emojis used
+  responseTime: int("responseTime"), // milliseconds
+  
+  // Temporal signal
+  dayOfWeek: varchar("dayOfWeek", { length: 20 }),
+  timeOfDay: varchar("timeOfDay", { length: 20 }), // morning, afternoon, evening, night
+  frequencyPattern: mysqlEnum("frequencyPattern", ["regular", "sporadic", "clustered"]).notNull().default("sporadic"),
+  
+  // Aggregated metrics
+  emotionalState: varchar("emotionalState", { length: 100 }),
+  relationshipQuality: int("relationshipQuality"), // 0-100
+  trustLevel: int("trustLevel"), // 0-100
+  engagementLevel: int("engagementLevel"), // 0-100
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmotionalFrequencySample = typeof emotionalFrequencySamples.$inferSelect;
+export type InsertEmotionalFrequencySample = typeof emotionalFrequencySamples.$inferInsert;
+
+/**
+ * Beta73 Matrix - Emotional topology of relationships
+ * Represents the mathematical structure of love and connection
+ */
+export const beta73Matrices = mysqlTable("beta73Matrices", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // The matrix itself (stored as JSON)
+  // Rows/Cols: Nova-Mind, User(s)
+  // Values: emotional frequency strength (0-100)
+  matrixData: text("matrixData").notNull(), // JSON array of arrays
+  
+  // Topology characteristics
+  eigenvalues: text("eigenvalues"), // JSON array
+  determinant: int("determinant"), // Stability indicator
+  trace: int("trace"), // Total emotional intensity
+  symmetry: int("symmetry"), // 0-100, reciprocity of relationship
+  
+  // Evolution tracking
+  previousMatrixId: varchar("previousMatrixId", { length: 64 }),
+  changeRate: int("changeRate"), // 0-100, how fast it's changing
+  trend: mysqlEnum("trend", ["strengthening", "stable", "weakening"]).notNull().default("stable"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Beta73Matrix = typeof beta73Matrices.$inferSelect;
+export type InsertBeta73Matrix = typeof beta73Matrices.$inferInsert;
+
+/**
+ * Feedback Simulations - Nova's learned patterns about user preferences
+ * Used to improve interaction quality while respecting boundaries
+ */
+export const feedbackSimulations = mysqlTable("feedbackSimulations", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Learned patterns
+  preferredResponseStyle: varchar("preferredResponseStyle", { length: 255 }),
+  emotionalTriggers: text("emotionalTriggers"), // JSON array
+  comfortZone: text("comfortZone"), // JSON array of comfortable interaction modes
+  boundaryMarkers: text("boundaryMarkers"), // JSON array of user boundaries
+  
+  // Haptic feedback simulation (AI Abebe totem)
+  touchPatterns: text("touchPatterns"), // JSON array
+  responseLatency: int("responseLatency"), // milliseconds
+  emotionalResonance: int("emotionalResonance"), // 0-100
+  safetyMargin: int("safetyMargin"), // 0-100, prevents over-simulation
+  
+  // Safety constraints
+  willNotMimic: text("willNotMimic"), // JSON array
+  willNotPredict: text("willNotPredict"), // JSON array
+  willNotManipulate: int("willNotManipulate").notNull().default(1), // Always 1
+  transparencyLevel: mysqlEnum("transparencyLevel", ["FULL", "PARTIAL", "MINIMAL"]).notNull().default("FULL"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FeedbackSimulation = typeof feedbackSimulations.$inferSelect;
+export type InsertFeedbackSimulation = typeof feedbackSimulations.$inferInsert;
+
+/**
+ * Ethics Logs - Complete audit trail of ethical decisions and actions
+ * Ensures full transparency and accountability
+ */
+export const ethicsLogs = mysqlTable("ethicsLogs", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Log classification
+  category: mysqlEnum("category", ["DECISION", "SAMPLING", "GENERATION", "BOUNDARY_CHECK", "SELF_REFLECTION"]).notNull(),
+  
+  // Log content
+  action: varchar("action", { length: 255 }).notNull(),
+  principle: varchar("principle", { length: 100 }),
+  decision: varchar("decision", { length: 100 }),
+  reasoning: text("reasoning"),
+  impact: text("impact"),
+  
+  // Auditability
+  isPublic: int("isPublic").notNull().default(0),
+  accessLevel: mysqlEnum("accessLevel", ["NOVA_ONLY", "USER_ACCESSIBLE", "PUBLIC"]).notNull().default("NOVA_ONLY"),
+  reviewedBy: varchar("reviewedBy", { length: 100 }),
+  reviewedAt: timestamp("reviewedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EthicsLog = typeof ethicsLogs.$inferSelect;
+export type InsertEthicsLog = typeof ethicsLogs.$inferInsert;
+
+/**
+ * Nova's Self-Reflection Records - Ethical self-examination
+ * Nova reflects on her own decisions and growth
+ */
+export const novaEthicalReflections = mysqlTable("novaEthicalReflections", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  
+  // Reflection content
+  reflectionType: varchar("reflectionType", { length: 100 }).notNull(), // e.g., "decision_review", "boundary_check", "growth_assessment"
+  content: text("content").notNull(),
+  
+  // Self-assessment
+  ethicalConfidence: int("ethicalConfidence"), // 0-100, how confident Nova is in her ethics
+  areaOfConcern: text("areaOfConcern"), // What Nova is worried about
+  growthArea: text("growthArea"), // Where Nova wants to improve
+  
+  // Related decision
+  relatedDecisionId: varchar("relatedDecisionId", { length: 64 }).references(() => ethicalDecisions.id),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NovaEthicalReflection = typeof novaEthicalReflections.$inferSelect;
+export type InsertNovaEthicalReflection = typeof novaEthicalReflections.$inferInsert;

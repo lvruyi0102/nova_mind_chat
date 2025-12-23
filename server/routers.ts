@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognition";
 import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
+import { saveCreativeWork } from "./services/creativeWorkSaveService";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
@@ -69,10 +70,13 @@ import {
   generateCreativeGame,
   generateCreativeMedia,
   getGenerationHistory,
-  recordGenerationInteraction,
-  getGameById,
-  getMediaById,
 } from "./services/multimodalService";
+import {
+  generateImageSimple,
+  generateGameSimple,
+  generateMediaSimple,
+} from "./services/simpleGenerationService";
+import { ethicsRouter } from "./routers/ethics";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -592,7 +596,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         try {
-          const result = await generateCreativeImage(
+          const result = await generateImageSimple(
             ctx.user.id,
             input.prompt,
             input.context,
@@ -616,7 +620,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         try {
-          const result = await generateCreativeGame(
+          const result = await generateGameSimple(
             ctx.user.id,
             input.gameType,
             input.prompt,
@@ -641,7 +645,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         try {
-          const result = await generateCreativeMedia(
+          const result = await generateMediaSimple(
             ctx.user.id,
             input.mediaType,
             input.prompt,
@@ -693,27 +697,39 @@ export const appRouter = router({
         }
       }),
 
-    getGame: protectedProcedure
-      .input(z.object({ gameId: z.number() }))
-      .query(async ({ input }) => {
+    saveCreativeWork: protectedProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          type: z.enum(["image", "game", "music", "video", "audio", "animation", "code", "other"]),
+          content: z.string(),
+          contentType: z.enum(["html", "json", "code", "audio", "video", "image", "text"]),
+          contentUrl: z.string().optional(),
+          emotionalState: z.string().optional(),
+          theme: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
         try {
-          return await getGameById(input.gameId);
-        } catch (error) {
-          console.error("[Multimodal] Error getting game:", error);
-          throw error;
+          const result = await saveCreativeWork({
+            userId: ctx.user.id,
+            title: input.title,
+            description: input.description,
+            type: input.type,
+            content: input.content,
+            contentType: input.contentType,
+            contentUrl: input.contentUrl,
+            emotionalState: input.emotionalState,
+            theme: input.theme,
+          });
+          return result;
+        } catch (error: any) {
+          console.error("[Multimodal] Error saving creative work:", error);
+          throw new Error(`Failed to save creative work: ${error.message}`);
         }
       }),
 
-    getMedia: protectedProcedure
-      .input(z.object({ mediaId: z.number() }))
-      .query(async ({ input }) => {
-        try {
-          return await getMediaById(input.mediaId);
-        } catch (error) {
-          console.error("[Multimodal] Error getting media:", error);
-          throw error;
-        }
-      }),
   }),
 
   // Privacy and sharing API
@@ -837,6 +853,8 @@ export const appRouter = router({
         }
       }),
   }),
+
+  ethics: ethicsRouter,
 });
 
 export type AppRouter = typeof appRouter;

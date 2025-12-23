@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `creativeWorkVersions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`workId` int NOT NULL,\n\t`versionNumber` int NOT NULL,\n\t`title` varchar(255),\n\t`description` text,\n\t`content` text,\n\t`contentType` varchar(50) NOT NULL,\n\t`createdBy` enum('user','nova') NOT NULL DEFAULT 'user',\n\t`changeLog` text,\n\t`improvedFrom` int,\n\t`storageUrl` text,\n\t`fileSize` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `creativeWorkVersions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute CREATE TABLE IF NOT EXISTS `creativeWorkVersions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`workId` int NOT NULL,\n\t`versionNumber` int NOT NULL,\n\t`title` varchar(255),\n\t`description` text,\n\t`content` text,\n\t`contentType` varchar(50) NOT NULL,\n\t`createdBy` enum('user','nova') NOT NULL DEFAULT 'user',\n\t`changeLog` text,\n\t`improvedFrom` int,\n\t`storageUrl` text,\n\t`fileSize` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `creativeWorkVersions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 166
+}

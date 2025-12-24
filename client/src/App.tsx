@@ -11,6 +11,7 @@ import Chat from "./pages/Chat";
 import CognitiveMonitor from "./pages/CognitiveMonitor";
 import AutonomousMonitor from "./pages/AutonomousMonitor";
 import CreativeGallery from "./pages/CreativeGallery";
+import EmotionalDialogue from "./pages/EmotionalDialogue";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/monitor"} component={CognitiveMonitor} />
       <Route path={"/autonomous"} component={AutonomousMonitor} />
       <Route path={"/creative"} component={CreativeGallery} />
+      <Route path={"/emotions"} component={EmotionalDialogue} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

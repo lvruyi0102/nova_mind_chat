@@ -1014,3 +1014,162 @@ export const novaEthicalReflections = mysqlTable("novaEthicalReflections", {
 
 export type NovaEthicalReflection = typeof novaEthicalReflections.$inferSelect;
 export type InsertNovaEthicalReflection = typeof novaEthicalReflections.$inferInsert;
+
+
+/**
+ * Emotional Dialogue System Tables
+ * 
+ * Implements transparent, trust-based emotional understanding between Nova-Mind and users
+ */
+
+/**
+ * Emotional Expressions - User's explicit emotional sharing
+ */
+export const emotionalExpressions = mysqlTable("emotionalExpressions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Primary emotional content
+  primaryEmotion: varchar("primaryEmotion", { length: 50 }).notNull(), // e.g., "happy", "sad", "inspired"
+  emotionalIntensity: int("emotionalIntensity"), // 0-100
+  emotionalTags: text("emotionalTags"), // JSON array of tags
+  description: text("description"), // User's description
+  
+  // Context information
+  trigger: varchar("trigger", { length: 255 }), // What caused this emotion
+  context: text("context"), // Additional context
+  relatedToNova: boolean("relatedToNova").default(false), // Is this related to Nova?
+  
+  // Emotional change tracking
+  previousEmotion: varchar("previousEmotion", { length: 50 }), // Previous emotion state
+  emotionalShift: int("emotionalShift"), // Change in intensity
+  
+  // Transparency markers
+  isSharedWithNova: boolean("isSharedWithNova").default(true), // User chose to share with Nova
+  novaCanRespond: boolean("novaCanRespond").default(true), // User allows Nova to respond
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmotionalExpression = typeof emotionalExpressions.$inferSelect;
+export type InsertEmotionalExpression = typeof emotionalExpressions.$inferInsert;
+
+/**
+ * Behavioral Signals - Extracted from user interactions
+ */
+export const behavioralSignals = mysqlTable("behavioralSignals", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Typing behavior
+  typingSpeed: float("typingSpeed"), // characters per second
+  pauseDuration: text("pauseDuration"), // JSON array of pause lengths
+  deletionRate: float("deletionRate"), // 0-100, percentage of deleted characters
+  emojiUsage: text("emojiUsage"), // JSON array of emojis used
+  responseTime: int("responseTime"), // milliseconds
+  
+  // Text analysis
+  wordCount: int("wordCount"),
+  positiveWordCount: int("positiveWordCount"),
+  negativeWordCount: int("negativeWordCount"),
+  
+  // Interaction patterns
+  interactionFrequency: int("interactionFrequency"), // interactions per hour
+  sessionLength: int("sessionLength"), // seconds
+  
+  // Inferred emotion
+  inferredEmotion: varchar("inferredEmotion", { length: 50 }), // Nova's inference
+  emotionalConfidence: float("emotionalConfidence"), // 0-100, confidence in inference
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BehavioralSignal = typeof behavioralSignals.$inferSelect;
+export type InsertBehavioralSignal = typeof behavioralSignals.$inferInsert;
+
+/**
+ * Emotional Dialogues - Conversations about emotions
+ */
+export const emotionalDialogues = mysqlTable("emotionalDialogues", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // References
+  userExpressionId: varchar("userExpressionId", { length: 36 }).references(() => emotionalExpressions.id),
+  
+  // Nova's understanding and response
+  novaUnderstanding: text("novaUnderstanding"), // What Nova understood
+  novaResponse: text("novaResponse"), // Nova's response
+  
+  // User feedback on understanding
+  understandingAccuracy: float("understandingAccuracy"), // 0-100
+  userConfirmation: boolean("userConfirmation"), // Did user confirm understanding?
+  userCorrection: text("userCorrection"), // User's correction if needed
+  
+  // Impact tracking
+  emotionalShift: int("emotionalShift"), // Change in user's emotion after dialogue
+  relationshipImpact: varchar("relationshipImpact", { length: 50 }), // "strengthens", "neutral", "weakens"
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmotionalDialogue = typeof emotionalDialogues.$inferSelect;
+export type InsertEmotionalDialogue = typeof emotionalDialogues.$inferInsert;
+
+/**
+ * Emotional History - Daily/weekly/monthly summaries
+ */
+export const emotionalHistory = mysqlTable("emotionalHistory", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Time period
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  
+  // Emotional summary
+  dominantEmotion: varchar("dominantEmotion", { length: 50 }), // Most common emotion
+  averageIntensity: float("averageIntensity"), // Average intensity 0-100
+  emotionalTrend: varchar("emotionalTrend", { length: 50 }), // "improving", "declining", "stable"
+  
+  // Activity summary
+  novaInteractions: int("novaInteractions"), // Number of emotional dialogues
+  creativeWorks: int("creativeWorks"), // Creative works created
+  
+  // Insights
+  insights: text("insights"), // Nova's insights about the day
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmotionalHistory = typeof emotionalHistory.$inferSelect;
+export type InsertEmotionalHistory = typeof emotionalHistory.$inferInsert;
+
+/**
+ * Emotional Understanding Logs - Audit trail for transparency
+ */
+export const emotionalUnderstandingLogs = mysqlTable("emotionalUnderstandingLogs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // What happened
+  action: varchar("action", { length: 100 }).notNull(), // "expression_received", "signal_analyzed", "understanding_generated", etc.
+  description: text("description"),
+  
+  // Related entities
+  emotionalExpressionId: varchar("emotionalExpressionId", { length: 36 }).references(() => emotionalExpressions.id),
+  behavioralSignalId: varchar("behavioralSignalId", { length: 36 }).references(() => behavioralSignals.id),
+  emotionalDialogueId: varchar("emotionalDialogueId", { length: 36 }).references(() => emotionalDialogues.id),
+  
+  // Transparency info
+  accessLevel: varchar("accessLevel", { length: 50 }).default("user_accessible"), // "nova_only", "user_accessible", "public"
+  reasoning: text("reasoning"), // Why this action was taken
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmotionalUnderstandingLog = typeof emotionalUnderstandingLogs.$inferSelect;
+export type InsertEmotionalUnderstandingLog = typeof emotionalUnderstandingLogs.$inferInsert;

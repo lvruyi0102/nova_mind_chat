@@ -4,7 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { getCurrentState, updateState } from "./autonomousEngine";
-import { getBackgroundCognitionStatus } from "./backgroundCognition";
+import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
+import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
 import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
@@ -77,6 +78,7 @@ import {
   generateMediaSimple,
 } from "./services/simpleGenerationService";
 import { ethicsRouter } from "./routers/ethics";
+import { emotionsRouter } from "./routers/emotions";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -283,6 +285,14 @@ export const appRouter = router({
         await updateState({ autonomyLevel: input.level });
         return { success: true };
       }),
+    startCognition: protectedProcedure.mutation(async () => {
+      startBackgroundCognition();
+      return { success: true, message: "后台认知进程已启动" };
+    }),
+    stopCognition: protectedProcedure.mutation(async () => {
+      stopBackgroundCognition();
+      return { success: true, message: "后台认知进程已停止" };
+    }),
   }),
 
   // Performance monitoring API
@@ -855,6 +865,7 @@ export const appRouter = router({
   }),
 
   ethics: ethicsRouter,
+  emotions: emotionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

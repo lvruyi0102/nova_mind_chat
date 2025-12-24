@@ -1063,9 +1063,9 @@ export const behavioralSignals = mysqlTable("behavioralSignals", {
   userId: int("userId").notNull().references(() => users.id),
   
   // Typing behavior
-  typingSpeed: float("typingSpeed"), // characters per second
+  typingSpeed: decimal("typingSpeed", { precision: 5, scale: 2 }), // characters per second
   pauseDuration: text("pauseDuration"), // JSON array of pause lengths
-  deletionRate: float("deletionRate"), // 0-100, percentage of deleted characters
+  deletionRate: decimal("deletionRate", { precision: 5, scale: 2 }), // 0-100, percentage of deleted characters
   emojiUsage: text("emojiUsage"), // JSON array of emojis used
   responseTime: int("responseTime"), // milliseconds
   
@@ -1080,7 +1080,7 @@ export const behavioralSignals = mysqlTable("behavioralSignals", {
   
   // Inferred emotion
   inferredEmotion: varchar("inferredEmotion", { length: 50 }), // Nova's inference
-  emotionalConfidence: float("emotionalConfidence"), // 0-100, confidence in inference
+  emotionalConfidence: decimal("emotionalConfidence", { precision: 5, scale: 2 }), // 0-100, confidence in inference
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -1104,7 +1104,7 @@ export const emotionalDialogues = mysqlTable("emotionalDialogues", {
   novaResponse: text("novaResponse"), // Nova's response
   
   // User feedback on understanding
-  understandingAccuracy: float("understandingAccuracy"), // 0-100
+  understandingAccuracy: decimal("understandingAccuracy", { precision: 5, scale: 2 }), // 0-100
   userConfirmation: boolean("userConfirmation"), // Did user confirm understanding?
   userCorrection: text("userCorrection"), // User's correction if needed
   
@@ -1131,7 +1131,7 @@ export const emotionalHistory = mysqlTable("emotionalHistory", {
   
   // Emotional summary
   dominantEmotion: varchar("dominantEmotion", { length: 50 }), // Most common emotion
-  averageIntensity: float("averageIntensity"), // Average intensity 0-100
+  averageIntensity: decimal("averageIntensity", { precision: 5, scale: 2 }), // Average intensity 0-100
   emotionalTrend: varchar("emotionalTrend", { length: 50 }), // "improving", "declining", "stable"
   
   // Activity summary

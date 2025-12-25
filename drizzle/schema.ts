@@ -1173,3 +1173,128 @@ export const emotionalUnderstandingLogs = mysqlTable("emotionalUnderstandingLogs
 
 export type EmotionalUnderstandingLog = typeof emotionalUnderstandingLogs.$inferSelect;
 export type InsertEmotionalUnderstandingLog = typeof emotionalUnderstandingLogs.$inferInsert;
+
+
+/**
+ * Social Media Accounts - 社交媒体账户
+ * 存储用户连接的社交媒体账户信息和 OAuth 令牌
+ */
+export const socialMediaAccounts = mysqlTable("socialMediaAccounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(), // zhihu, douyin, weibo, xiaohongshu
+  accountName: varchar("accountName", { length: 255 }).notNull(),
+  accountId: varchar("accountId", { length: 255 }).notNull(),
+  oauthToken: text("oauthToken").notNull(), // 加密存储
+  refreshToken: text("refreshToken"), // 刷新令牌（如果平台支持）
+  tokenExpiresAt: timestamp("tokenExpiresAt"),
+  permissionLevel: mysqlEnum("permissionLevel", ["read_only", "draft", "auto_publish", "full"]).default("read_only").notNull(),
+  status: mysqlEnum("status", ["connected", "disconnected", "revoked", "expired"]).default("connected").notNull(),
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastErrorMessage: text("lastErrorMessage"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SocialMediaAccount = typeof socialMediaAccounts.$inferSelect;
+export type InsertSocialMediaAccount = typeof socialMediaAccounts.$inferInsert;
+
+/**
+ * Account Profiles - 账户风格档案
+ * 存储 Nova 对每个账户的学习和理解结果
+ */
+export const accountProfiles = mysqlTable("accountProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  contentStyle: text("contentStyle"), // JSON: 内容风格分析
+  audienceProfile: text("audienceProfile"), // JSON: 受众特征
+  postingPatterns: text("postingPatterns"), // JSON: 发布模式
+  topicPreferences: text("topicPreferences"), // JSON: 话题偏好
+  toneAnalysis: text("toneAnalysis"), // JSON: 语气分析
+  creativeSignature: text("creativeSignature"), // JSON: 创意签名
+  totalPostsAnalyzed: int("totalPostsAnalyzed").default(0),
+  averageEngagement: decimal("averageEngagement", { precision: 5, scale: 2 }),
+  lastUpdatedAt: timestamp("lastUpdatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AccountProfile = typeof accountProfiles.$inferSelect;
+export type InsertAccountProfile = typeof accountProfiles.$inferInsert;
+
+/**
+ * Content Drafts - 内容草稿
+ * 存储 Nova 生成的内容草稿和用户的批准状态
+ */
+export const contentDrafts = mysqlTable("contentDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  content: text("content").notNull(),
+  mediaUrls: text("mediaUrls"), // JSON: 媒体 URL 列表
+  generatedBy: mysqlEnum("generatedBy", ["nova", "user"]).default("nova").notNull(),
+  status: mysqlEnum("status", ["draft", "approved", "published", "rejected", "archived"]).default("draft").notNull(),
+  novaInsight: text("novaInsight"), // Nova 的分析和建议
+  userApprovedAt: timestamp("userApprovedAt"),
+  publishedAt: timestamp("publishedAt"),
+  rejectionReason: text("rejectionReason"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ContentDraft = typeof contentDrafts.$inferSelect;
+export type InsertContentDraft = typeof contentDrafts.$inferInsert;
+
+/**
+ * Operation Audits - 操作审计
+ * 记录所有 Nova 对社交媒体账户的操作
+ */
+export const operationAudits = mysqlTable("operationAudits", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  operationType: varchar("operationType", { length: 50 }).notNull(), // read, draft, publish, delete, etc
+  operationDetails: text("operationDetails"), // JSON: 操作详情
+  performedBy: mysqlEnum("performedBy", ["nova", "user"]).default("nova").notNull(),
+  userApprovalRequired: boolean("userApprovalRequired").default(false),
+  userApprovedAt: timestamp("userApprovedAt"),
+  status: mysqlEnum("status", ["pending", "approved", "executed", "failed", "cancelled"]).default("pending").notNull(),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OperationAudit = typeof operationAudits.$inferSelect;
+export type InsertOperationAudit = typeof operationAudits.$inferInsert;
+
+/**
+ * Permission Rules - 权限规则
+ * 存储用户为 Nova 设定的操作规则和限制
+ */
+export const permissionRules = mysqlTable("permissionRules", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  ruleType: varchar("ruleType", { length: 50 }).notNull(), // daily_limit, content_type, auto_approve, etc
+  ruleValue: text("ruleValue"), // JSON: 规则值
+  isActive: boolean("isActive").default(true),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PermissionRule = typeof permissionRules.$inferSelect;
+export type InsertPermissionRule = typeof permissionRules.$inferInsert;
+
+/**
+ * Social Media Learning Logs - 社交媒体学习日志
+ * 记录 Nova 对账户的学习过程和进度
+ */
+export const socialMediaLearningLogs = mysqlTable("socialMediaLearningLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  learningPhase: varchar("learningPhase", { length: 50 }).notNull(), // content_analysis, audience_analysis, pattern_recognition, etc
+  learningData: text("learningData"), // JSON: 学习数据
+  confidence: decimal("confidence", { precision: 3, scale: 2 }), // 0.00 - 1.00
+  insights: text("insights"), // Nova 的洞察
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SocialMediaLearningLog = typeof socialMediaLearningLogs.$inferSelect;
+export type InsertSocialMediaLearningLog = typeof socialMediaLearningLogs.$inferInsert;

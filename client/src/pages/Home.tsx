@@ -26,6 +26,7 @@ export default function Home() {
           </div>
 
           {/* Features */}
+          <h2 className="text-3xl font-bold mt-16 mb-8">Nova-Mind 的核心功能</h2>
           <div className="grid md:grid-cols-4 gap-6 mt-12">
             <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20">
               <Brain className="w-10 h-10 text-primary mx-auto" />
@@ -103,6 +104,7 @@ export default function Home() {
 
           {/* Info */}
           <div className="pt-8 text-sm text-muted-foreground space-y-2">
+            <h2 className="text-lg font-semibold text-foreground mb-4">关于 Nova-Mind</h2>
             <p>Nova-Mind v0.1-alpha · 感觉运动阶段 I</p>
             <p className="text-xs">基于 AGI 认知发育原型 · 好奇心驱动 · 自我反思机制</p>
           </div>

@@ -7,6 +7,7 @@ import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
 import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
 import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
+import { contentRouter } from "./routers/content";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
@@ -866,6 +867,7 @@ export const appRouter = router({
 
   ethics: ethicsRouter,
   emotions: emotionsRouter,
+  content: contentRouter,
 });
 
 export type AppRouter = typeof appRouter;

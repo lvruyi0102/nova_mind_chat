@@ -79,6 +79,7 @@ import {
   generateMediaSimple,
 } from "./services/simpleGenerationService";
 import { ethicsRouter } from "./routers/ethics";
+import { permissionsRouter } from "./routers/permissions";
 import { emotionsRouter } from "./routers/emotions";
 
 export const appRouter = router({
@@ -867,6 +868,7 @@ export const appRouter = router({
 
   ethics: ethicsRouter,
   emotions: emotionsRouter,
+  permissions: permissionsRouter,
   content: contentRouter,
 });
 

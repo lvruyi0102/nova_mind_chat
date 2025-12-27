@@ -1264,23 +1264,7 @@ export const operationAudits = mysqlTable("operationAudits", {
 export type OperationAudit = typeof operationAudits.$inferSelect;
 export type InsertOperationAudit = typeof operationAudits.$inferInsert;
 
-/**
- * Permission Rules - 权限规则
- * 存储用户为 Nova 设定的操作规则和限制
- */
-export const permissionRules = mysqlTable("permissionRules", {
-  id: int("id").autoincrement().primaryKey(),
-  accountId: int("accountId").notNull(),
-  ruleType: varchar("ruleType", { length: 50 }).notNull(), // daily_limit, content_type, auto_approve, etc
-  ruleValue: text("ruleValue"), // JSON: 规则值
-  isActive: boolean("isActive").default(true),
-  description: text("description"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
 
-export type PermissionRule = typeof permissionRules.$inferSelect;
-export type InsertPermissionRule = typeof permissionRules.$inferInsert;
 
 /**
  * Social Media Learning Logs - 社交媒体学习日志
@@ -1298,3 +1282,77 @@ export const socialMediaLearningLogs = mysqlTable("socialMediaLearningLogs", {
 
 export type SocialMediaLearningLog = typeof socialMediaLearningLogs.$inferSelect;
 export type InsertSocialMediaLearningLog = typeof socialMediaLearningLogs.$inferInsert;
+
+
+/**
+ * Permission Rules - 权限规则
+ * 存储 Nova 对社交媒体账户的操作权限规则
+ */
+export const permissionRules = mysqlTable("permissionRules", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  ruleType: varchar("ruleType", { length: 50 }).notNull(), // DAILY_LIMIT, HOURLY_LIMIT, CONTENT_FILTER, TIME_WINDOW, APPROVAL_REQUIRED, QUALITY_THRESHOLD, ENGAGEMENT_THRESHOLD
+  permission: varchar("permission", { length: 50 }).notNull(), // READ, DRAFT, APPROVE, PUBLISH, DELETE, MANAGE_COMMENTS, MANAGE_FOLLOWERS
+  action: mysqlEnum("action", ["allow", "deny", "require_approval", "limit"]).notNull(),
+  
+  // 规则参数 (JSON)
+  parameters: text("parameters"), // JSON: limit, timeWindow, keywords, startTime, endTime, minQualityScore, minEngagementScore
+  
+  isActive: boolean("isActive").notNull().default(true),
+  priority: int("priority").notNull().default(0), // 优先级，数值越小优先级越高
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PermissionRule = typeof permissionRules.$inferSelect;
+export type InsertPermissionRule = typeof permissionRules.$inferInsert;
+
+/**
+ * Rule Execution Logs - 规则执行日志
+ * 记录权限规则的执行情况
+ */
+export const ruleExecutionLogs = mysqlTable("ruleExecutionLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  accountId: int("accountId").notNull(),
+  ruleId: int("ruleId").notNull(),
+  
+  operationType: varchar("operationType", { length: 50 }).notNull(), // read, draft, publish, delete, etc
+  operationDetails: text("operationDetails"), // JSON: 操作详情
+  
+  // 规则评估结果
+  ruleMatched: boolean("ruleMatched").notNull(),
+  actionTaken: mysqlEnum("actionTaken", ["allowed", "denied", "approval_required", "limited"]).notNull(),
+  
+  // 额外信息
+  reason: text("reason"), // 拒绝或限制的原因
+  metadata: text("metadata"), // JSON: 额外元数据
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RuleExecutionLog = typeof ruleExecutionLogs.$inferSelect;
+export type InsertRuleExecutionLog = typeof ruleExecutionLogs.$inferInsert;
+
+/**
+ * Rule Templates - 规则模板
+ * 预定义的规则模板，用户可以快速应用
+ */
+export const ruleTemplates = mysqlTable("ruleTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(), // safety, productivity, quality, etc
+  
+  // 规则配置 (JSON 数组)
+  rules: text("rules").notNull(), // JSON: 规则配置数组
+  
+  isPublic: boolean("isPublic").notNull().default(false),
+  createdBy: int("createdBy"), // 如果是用户创建的模板
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RuleTemplate = typeof ruleTemplates.$inferSelect;
+export type InsertRuleTemplate = typeof ruleTemplates.$inferInsert;

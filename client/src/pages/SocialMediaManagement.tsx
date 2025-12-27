@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContentGenerationPanel } from "@/components/ContentGenerationPanel";
+import PermissionRulesEditor from "@/components/PermissionRulesEditor";
 import { Loader2, Plus, Settings } from "lucide-react";
 
 export default function SocialMediaManagement() {
@@ -34,9 +35,10 @@ export default function SocialMediaManagement() {
 
         {/* 主要内容 */}
         <Tabs defaultValue="accounts" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="accounts">我的账户</TabsTrigger>
             <TabsTrigger value="content">内容生成</TabsTrigger>
+            <TabsTrigger value="permissions">权限规则</TabsTrigger>
             <TabsTrigger value="analytics">分析</TabsTrigger>
           </TabsList>
 
@@ -130,6 +132,28 @@ export default function SocialMediaManagement() {
                     variant="outline"
                     onClick={() => {
                       // 切换到账户标签页
+                      const accountsTab = document.querySelector('[value="accounts"]');
+                      accountsTab?.click();
+                    }}
+                  >
+                    返回账户列表
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* 权限规则标签页 */}
+          <TabsContent value="permissions">
+            {selectedAccountId !== null ? (
+              <PermissionRulesEditor accountId={selectedAccountId} />
+            ) : (
+              <Card className="p-8 text-center border-dashed">
+                <div className="text-muted-foreground">
+                  <p className="mb-4">请先选择一个账户</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
                       const accountsTab = document.querySelector('[value="accounts"]');
                       accountsTab?.click();
                     }}

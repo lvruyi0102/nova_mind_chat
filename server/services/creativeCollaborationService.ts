@@ -1,4 +1,4 @@
-import { eq, isNotNull, and } from "drizzle-orm";
+import { eq, isNotNull, and, desc } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   creativeCollaborations,
@@ -41,7 +41,7 @@ export async function startCollaboration(
     .select()
     .from(creativeCollaborations)
     .where(eq(creativeCollaborations.userId, userId))
-    .orderBy((t) => t.id)
+    .orderBy(desc(creativeCollaborations.id))
     .limit(1);
 
   return result[0]?.id || 0;
@@ -180,7 +180,7 @@ export async function recordInspirationTrigger(
     .select()
     .from(creativeInspirationTriggers)
     .where(eq(creativeInspirationTriggers.userId, userId))
-    .orderBy((t) => t.id)
+    .orderBy(desc(creativeInspirationTriggers.id))
     .limit(1);
 
   return result[0]?.id || 0;
@@ -245,7 +245,7 @@ export async function getRecentInspirations(userId: number, limit: number = 10) 
     .select()
     .from(creativeInspirationTriggers)
     .where(eq(creativeInspirationTriggers.userId, userId))
-    .orderBy((t) => t.createdAt)
+    .orderBy(desc(creativeInspirationTriggers.createdAt))
     .limit(limit);
 }
 
@@ -359,7 +359,7 @@ export async function saveCollaborationAsCreativeWork(
     .select()
     .from(creativeWorks)
     .where(eq(creativeWorks.userId, collaboration.userId))
-    .orderBy((t) => t.id)
+    .orderBy(desc(creativeWorks.id))
     .limit(1);
 
   const creativeWorkId = result[0]?.id || 0;
@@ -394,5 +394,5 @@ export async function getSavedCollaborations(userId: number) {
         eq(creativeCollaborations.status, "completed")
       )
     )
-    .orderBy((t) => t.completedAt);
+    .orderBy(desc(creativeCollaborations.completedAt));
 }

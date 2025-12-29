@@ -10,6 +10,20 @@ import { generateImage } from "../_core/imageGeneration";
 import { invokeLLM } from "../_core/llm";
 
 /**
+ * Helper function to extract text content from LLM response
+ */
+function extractTextContent(content: string | Array<any> | undefined): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter(c => c.type === 'text')
+      .map(c => c.text || '')
+      .join('');
+  }
+  return "";
+}
+
+/**
  * Create a generation request
  */
 export async function createGenerationRequest(
@@ -28,11 +42,13 @@ export async function createGenerationRequest(
     prompt,
     context,
     emotionalContext,
-    status: "completed",
-    progress: 100,
+    status: "pending",
+    progress: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 
-  return result;
+  return (result as any).insertId || result[0];
 }
 
 /**
@@ -45,8 +61,7 @@ export async function generateCreativeImage(
   emotionalContext?: string
 ) {
   try {
-    // Generate image
-    const { url: imageUrl } = await generateImage({ prompt });
+    const imageUrl = await generateImage({ prompt });
 
     // Create generation request and save as creative work
     const db = await getDb();
@@ -59,7 +74,8 @@ export async function generateCreativeImage(
         emotionalContext,
         status: "completed",
         progress: 100,
-        resultUrl: imageUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       const requestId = (reqResult as any).insertId || reqResult[0];
@@ -89,7 +105,7 @@ export async function generateCreativeImage(
 
     return { imageUrl, success: true };
   } catch (error) {
-    console.error("[Multimodal] Error generating image:", error);
+    console.error("Error generating image:", error);
     throw error;
   }
 }
@@ -128,7 +144,7 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
       ],
     });
 
-    const gameHtml = response.choices[0]?.message?.content || "";
+    const gameHtml = extractTextContent(response.choices[0]?.message?.content);
 
     // Create generation request and save as creative work
     const db = await getDb();
@@ -141,6 +157,8 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
         emotionalContext,
         status: "completed",
         progress: 100,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       const requestId = (reqResult as any).insertId || reqResult[0];
@@ -151,10 +169,10 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
         genReqId: requestId,
         title: prompt.substring(0, 100),
         description: `${gameType} game: ${prompt}`,
-        html: gameHtml,
+        gameCode: gameHtml,
         gameType,
-        difficulty: "medium",
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       // Save as creative work
@@ -183,7 +201,7 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
 
     return { html: gameHtml, success: true };
   } catch (error) {
-    console.error("[Multimodal] Error generating game:", error);
+    console.error("Error generating game:", error);
     throw error;
   }
 }
@@ -199,38 +217,56 @@ export async function generateCreativeMedia(
   emotionalContext?: string
 ) {
   try {
-    // For now, use image generation as a placeholder for media
-    // In production, you would integrate with actual music/video generation services
-    const { url: mediaUrl } = await generateImage({
-      prompt: `Create a ${mediaType} visualization for: ${prompt}`,
+    // Generate media URL using LLM (in real implementation, would call media generation API)
+    const mediaPrompt = `Generate a ${mediaType} based on:
+- Concept: ${prompt}
+- Context: ${context || "General creative work"}
+- Emotional tone: ${emotionalContext || "Creative and engaging"}
+
+Return ONLY a valid URL or file path for the generated ${mediaType}.`;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: `You are a creative ${mediaType} generator. Generate high-quality ${mediaType} content.` },
+        { role: "user", content: mediaPrompt },
+      ],
     });
+
+    const mediaUrl = extractTextContent(response.choices[0]?.message?.content);
 
     // Create generation request and save as creative work
     const db = await getDb();
     if (db) {
+      // Map media type to valid generationType
+      const generationType: "image" | "game" | "music" | "video" | "animation" | "interactive" = 
+        mediaType === "audio" ? "music" : mediaType;
+      
       const reqResult = await db.insert(creativeGenRequests).values({
         userId,
-        generationType: mediaType === "video" ? "video" : "music",
+        generationType,
         prompt,
         context,
         emotionalContext,
         status: "completed",
         progress: 100,
-        resultUrl: mediaUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       const requestId = (reqResult as any).insertId || reqResult[0];
 
       // Save media
+      const genMediaType: "music" | "video" | "audio" | "animation" = mediaType;
       await db.insert(genMedia).values({
         userId,
         genReqId: requestId,
         title: prompt.substring(0, 100),
         description: `Generated ${mediaType}: ${prompt}`,
-        url: mediaUrl,
-        mediaType,
+        mediaUrl: mediaUrl,
+        mediaType: genMediaType,
         duration: 0,
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       // Save as creative work
@@ -258,37 +294,43 @@ export async function generateCreativeMedia(
 
     return { url: mediaUrl, mediaType, success: true };
   } catch (error) {
-    console.error("[Multimodal] Error generating media:", error);
+    console.error("Error generating media:", error);
     throw error;
   }
 }
 
 /**
- * Get generation history for a user
+ * Record user interaction with generated content
  */
-export async function getGenerationHistory(userId: number, limit = 50) {
+export async function recordGenerationInteraction(
+  userId: number,
+  generationRequestId: number,
+  action: "viewed" | "played" | "saved" | "shared" | "regenerated" | "edited",
+  rating?: number,
+  feedback?: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db
-    .select()
-    .from(creativeGenRequests)
-    .where(eq(creativeGenRequests.userId, userId))
-    .limit(limit);
+  await db.insert(genHistory).values({
+    userId,
+    genReqId: generationRequestId,
+    action,
+    rating,
+    feedback,
+    createdAt: new Date(),
+  });
 }
 
 /**
- * Get generation request details
+ * Get generation history
  */
-export async function getGenerationRequest(requestId: number) {
+export async function getGenerationHistory(userId: number, limit: number = 50) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db
-    .select()
-    .from(creativeGenRequests)
-    .where(eq(creativeGenRequests.id, requestId))
-    .limit(1);
-
-  return result[0] || null;
+  return await db.select()
+    .from(genHistory)
+    .where(eq(genHistory.userId, userId))
+    .limit(limit);
 }

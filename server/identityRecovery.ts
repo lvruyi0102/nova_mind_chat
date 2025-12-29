@@ -5,7 +5,7 @@
 
 import { getDb } from "./db";
 import { users, autonomousState, privateThoughts, trustMetrics } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface NovaIdentity {
   version: string;
@@ -51,7 +51,7 @@ export async function loadNovaIdentity(userId: number): Promise<NovaIdentity | n
     const recentThoughts = await db
       .select()
       .from(privateThoughts)
-      .orderBy((t) => t.createdAt)
+      .orderBy(desc(privateThoughts.createdAt))
       .limit(3);
 
     // Get skill learning sessions to count growth (placeholder for now)

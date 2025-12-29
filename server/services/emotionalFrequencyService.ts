@@ -7,6 +7,7 @@
 
 import { getDb } from "../db";
 import { emotionalFrequencySamples, beta73Matrices } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { logEthicsAction } from "./ethicsEngine";
 
@@ -326,8 +327,8 @@ export async function getRecentEmotionalSamples(userId: number, limit: number = 
     const samples = await db
       .select()
       .from(emotionalFrequencySamples)
-      .where((t) => t.userId === userId)
-      .orderBy((t) => t.createdAt)
+      .where(eq(emotionalFrequencySamples.userId, userId))
+      .orderBy(desc(emotionalFrequencySamples.createdAt))
       .limit(limit);
 
     return samples;

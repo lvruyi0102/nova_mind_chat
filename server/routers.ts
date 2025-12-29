@@ -71,6 +71,7 @@ import {
   generateCreativeImage,
   generateCreativeGame,
   generateCreativeMedia,
+  recordGenerationInteraction,
   getGenerationHistory,
 } from "./services/multimodalService";
 import {
@@ -698,7 +699,6 @@ export const appRouter = router({
             ctx.user.id,
             input.generationRequestId,
             input.action,
-            input.actionDetails,
             input.rating,
             input.feedback
           );

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { contentGenerationEngine } from "../services/contentGenerationEngine";
 import { getDb } from "../db";
 import { contentDrafts, socialMediaAccounts } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export const contentRouter = router({
   /**
@@ -220,16 +220,16 @@ export const contentRouter = router({
       }
 
       try {
-        let query = db
-          .select()
-          .from(contentDrafts)
-          .where(eq(contentDrafts.accountId, input.accountId));
-
+        let conditions = [eq(contentDrafts.accountId, input.accountId)];
+        
         if (input.status) {
-          query = query.where(eq(contentDrafts.status, input.status));
+          conditions.push(eq(contentDrafts.status, input.status));
         }
 
-        const drafts = await query;
+        const drafts = await db
+          .select()
+          .from(contentDrafts)
+          .where(and(...conditions));
 
         return {
           success: true,

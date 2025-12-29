@@ -14,6 +14,7 @@ import {
   ethicsLogs,
   novaEthicalReflections 
 } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -110,7 +111,7 @@ export async function initializeEthicalPrinciples(): Promise<void> {
       const existing = await db
         .select()
         .from(ethicalPrinciples)
-        .where((t) => t.id === principle.id);
+        .where(eq(ethicalPrinciples.id, principle.id));
 
       if (existing.length === 0) {
         await db.insert(ethicalPrinciples).values({
@@ -331,7 +332,7 @@ export async function getEthicalDecisionHistory(limit: number = 10) {
     const decisions = await db
       .select()
       .from(ethicalDecisions)
-      .orderBy((t) => t.createdAt)
+      .orderBy(desc(ethicalDecisions.createdAt))
       .limit(limit);
 
     return decisions;
@@ -354,7 +355,7 @@ export async function getEthicalReflections(limit: number = 10) {
     const reflections = await db
       .select()
       .from(novaEthicalReflections)
-      .orderBy((t) => t.createdAt)
+      .orderBy(desc(novaEthicalReflections.createdAt))
       .limit(limit);
 
     return reflections;
@@ -377,11 +378,12 @@ export async function getEthicsLogs(
   }
 
   try {
+    const { eq } = await import('drizzle-orm');
     const logs = await db
       .select()
       .from(ethicsLogs)
-      .where((t) => t.accessLevel === accessLevel)
-      .orderBy((t) => t.createdAt)
+      .where(eq(ethicsLogs.accessLevel, accessLevel))
+      .orderBy(ethicsLogs.createdAt)
       .limit(limit);
 
     return logs;

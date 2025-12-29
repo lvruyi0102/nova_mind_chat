@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../db";
 import { emotionalExpressions, emotionalDialogues, emotionalUnderstandingLogs } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface EmotionalExpressionInput {
   primaryEmotion: string;
@@ -237,7 +237,7 @@ export async function generateNovaResponse(
   const expr = expression[0];
 
   // Determine response type based on emotion and context
-  const responseType = determineResponseType(expr.primaryEmotion, expr.relatedToNova);
+  const responseType = determineResponseType(expr.primaryEmotion, expr.relatedToNova || false);
 
   // Use LLM to generate response
   const response = await invokeLLM({
@@ -328,7 +328,7 @@ export async function createEmotionalDialogue(
     userExpressionId: expressionId,
     novaUnderstanding: understanding.understanding,
     novaResponse: response.response,
-    understandingAccuracy: understanding.confidence,
+    understandingAccuracy: understanding.confidence.toString(),
     userConfirmation: null,
     userCorrection: null,
     emotionalShift: null,
@@ -384,7 +384,7 @@ export async function getRecentEmotionalExpressions(userId: number, limit: numbe
     .select()
     .from(emotionalExpressions)
     .where(eq(emotionalExpressions.userId, userId))
-    .orderBy((t) => ({ desc: t.createdAt }))
+    .orderBy(desc(emotionalExpressions.createdAt))
     .limit(limit);
 
   return expressions.map((expr) => ({
@@ -404,7 +404,7 @@ export async function getEmotionalDialogueHistory(userId: number, limit: number 
     .select()
     .from(emotionalDialogues)
     .where(eq(emotionalDialogues.userId, userId))
-    .orderBy((t) => ({ desc: t.createdAt }))
+    .orderBy(desc(emotionalDialogues.createdAt))
     .limit(limit);
 
   return dialogues;
@@ -471,7 +471,7 @@ export async function getEmotionalUnderstandingLogs(userId: number, limit: numbe
     .select()
     .from(emotionalUnderstandingLogs)
     .where(eq(emotionalUnderstandingLogs.userId, userId))
-    .orderBy((t) => ({ desc: t.createdAt }))
+    .orderBy(desc(emotionalUnderstandingLogs.createdAt))
     .limit(limit);
 
   return logs;

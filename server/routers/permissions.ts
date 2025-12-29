@@ -46,7 +46,7 @@ export const permissionsRouter = router({
           input.ruleType,
           input.permission,
           input.action,
-          input.parameters,
+          input.parameters as any,
           input.priority
         );
 
@@ -79,7 +79,7 @@ export const permissionsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        await engine.updateRule(input.ruleId, input.updates);
+        await engine.updateRule(input.ruleId, input.updates as any);
 
         return {
           success: true,
@@ -162,7 +162,7 @@ export const permissionsRouter = router({
           accountId: input.accountId,
           permission: input.permission,
           operationType: input.operationType,
-          operationDetails: input.operationDetails,
+          operationDetails: input.operationDetails as any,
           currentTime: new Date(),
           dailyCount: input.dailyCount,
           hourlyCount: input.hourlyCount,

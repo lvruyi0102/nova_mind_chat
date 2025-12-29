@@ -5,6 +5,7 @@
 
 import { getDb } from "../db";
 import { creativeWorks, creativeWorkVersions } from "../../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { storagePut } from "../storage";
 
 export async function saveCreativeWork(options: {
@@ -37,7 +38,7 @@ export async function saveCreativeWork(options: {
     });
 
     // Get the inserted ID - for Drizzle with MySQL2, we need to query it back
-    const insertedWork = await db.select().from(creativeWorks).where((t) => t.userId === options.userId).orderBy((t) => t.createdAt).limit(1);
+    const insertedWork = await db.select().from(creativeWorks).where(eq(creativeWorks.userId, options.userId)).orderBy(desc(creativeWorks.createdAt)).limit(1);
     const workId = insertedWork[0]?.id;
     if (!workId) {
       throw new Error("Failed to get inserted work ID");
@@ -71,7 +72,7 @@ export async function saveCreativeWork(options: {
     });
 
     // Get the inserted version ID
-    const insertedVersion = await db.select().from(creativeWorkVersions).where((t) => t.workId === workId).orderBy((t) => t.createdAt).limit(1);
+    const insertedVersion = await db.select().from(creativeWorkVersions).where(eq(creativeWorkVersions.workId, workId)).orderBy(desc(creativeWorkVersions.createdAt)).limit(1);
     const versionId = insertedVersion[0]?.id;
     if (!versionId) {
       throw new Error("Failed to get inserted version ID");
@@ -100,8 +101,8 @@ export async function getCreativeWorkVersions(workId: number) {
     const versions = await db
       .select()
       .from(creativeWorkVersions)
-      .where((t) => t.workId === workId)
-      .orderBy((t) => t.versionNumber);
+      .where(eq(creativeWorkVersions.workId, workId))
+      .orderBy(creativeWorkVersions.versionNumber);
 
     return versions;
   } catch (error) {
@@ -120,8 +121,8 @@ export async function getLatestVersion(workId: number) {
     const versions = await db
       .select()
       .from(creativeWorkVersions)
-      .where((t) => t.workId === workId)
-      .orderBy((t) => t.versionNumber);
+      .where(eq(creativeWorkVersions.workId, workId))
+      .orderBy(creativeWorkVersions.versionNumber);
 
     return versions[versions.length - 1] || null;
   } catch (error) {

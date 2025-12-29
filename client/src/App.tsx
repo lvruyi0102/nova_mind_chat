@@ -13,6 +13,7 @@ import AutonomousMonitor from "./pages/AutonomousMonitor";
 import CreativeGallery from "./pages/CreativeGallery";
 import EmotionalDialogue from "./pages/EmotionalDialogue";
 import SocialMediaManagement from "./pages/SocialMediaManagement";
+import VoiceChatPage from "./pages/VoiceChatPage";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -26,6 +27,7 @@ function Router() {
       <Route path={"/creative"} component={CreativeGallery} />
       <Route path={"/emotions"} component={EmotionalDialogue} />
       <Route path={"/social-media"} component={SocialMediaManagement} />
+      <Route path="/voice-chat" component={VoiceChatPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

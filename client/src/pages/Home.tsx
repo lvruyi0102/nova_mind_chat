@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette, Mic } from "lucide-react";
+import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette, Mic, Phone, Upload } from "lucide-react";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
@@ -71,6 +71,12 @@ export default function Home() {
               <Link href="/chat">
                 <MessageCircle className="w-5 h-5 mr-2" />
                 开始对话
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/multimodal-chat">
+                <Phone className="w-4 h-4 mr-2" />
+                多模态对话
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>

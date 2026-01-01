@@ -15,6 +15,7 @@ import EmotionalDialogue from "./pages/EmotionalDialogue";
 import SocialMediaManagement from "./pages/SocialMediaManagement";
 import VoiceChatPage from "./pages/VoiceChatPage";
 import MultimodalChatPage from "./pages/MultimodalChatPage";
+import DataExport from "./pages/DataExport";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -30,6 +31,7 @@ function Router() {
       <Route path={"/social-media"} component={SocialMediaManagement} />
       <Route path="/voice-chat" component={VoiceChatPage} />
       <Route path="/multimodal-chat" component={MultimodalChatPage} />
+      <Route path="/export" component={DataExport} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

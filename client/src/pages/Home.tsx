@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette, Mic, Phone, Upload } from "lucide-react";
+import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette, Mic, Phone, Upload, Download } from "lucide-react";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
@@ -101,6 +101,12 @@ export default function Home() {
               <Link href="/autonomous">
                 <Power className="w-4 h-4 mr-2" />
                 自主系统
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/export">
+                <Download className="w-4 h-4 mr-2" />
+                数据导出
               </Link>
             </Button>
           </div>

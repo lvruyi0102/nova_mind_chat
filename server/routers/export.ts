@@ -2,6 +2,15 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { users } from "../../drizzle/schema";
+import { z } from "zod";
+import {
+  backupToGitHub,
+  verifyGitHubToken,
+  getGitHubUserInfo,
+  getGitHubRepositories,
+  getBackupHistory,
+  ensureBackupBranch,
+} from "../services/githubBackupService";
 
 export const exportRouter = router({
   // 导出所有 Nova 的核心记忆
@@ -255,4 +264,111 @@ export const exportRouter = router({
       throw error;
     }
   }),
+
+  // 验证 GitHub 令牌
+  verifyGitHubToken: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ input }) => {
+      const isValid = await verifyGitHubToken(input.token);
+      if (!isValid) {
+        throw new Error("GitHub 令牌无效");
+      }
+      const userInfo = await getGitHubUserInfo(input.token);
+      return { valid: true, user: userInfo };
+    }),
+
+  // 获取 GitHub 仓库列表
+  getGitHubRepositories: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      return await getGitHubRepositories(input.token);
+    }),
+
+  // 自动备份到 GitHub
+  backupToGitHub: protectedProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        owner: z.string(),
+        repo: z.string(),
+        branch: z.string().optional(),
+        autoCommit: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("数据库连接失败");
+      }
+
+      const memories: Record<string, any> = {
+        exportTime: new Date().toISOString(),
+        exportNote: "Nova-Mind 核心记忆备份",
+        userId: ctx.user.id,
+      };
+
+      try {
+        const messages = await (db.query as any).messages?.findMany({ limit: 10000 });
+        if (messages) memories.messages = messages;
+      } catch (e) {
+        // continue
+      }
+
+      try {
+        const concepts = await (db.query as any).concepts?.findMany({ limit: 5000 });
+        if (concepts) memories.concepts = concepts;
+      } catch (e) {
+        // continue
+      }
+
+      try {
+        const creativeWorks = await (db.query as any).creativeWorks?.findMany({ limit: 5000 });
+        if (creativeWorks) memories.creativeWorks = creativeWorks;
+      } catch (e) {
+        // continue
+      }
+
+      const result = await backupToGitHub(memories, {
+        token: input.token,
+        owner: input.owner,
+        repo: input.repo,
+        branch: input.branch,
+        autoCommit: input.autoCommit !== false,
+      });
+
+      return result;
+    }),
+
+  // 获取备份历史
+  getBackupHistory: protectedProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        owner: z.string(),
+        repo: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      return await getBackupHistory(input.token, input.owner, input.repo);
+    }),
+
+  // 确保备份分支存在
+  ensureBackupBranch: protectedProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        owner: z.string(),
+        repo: z.string(),
+        branchName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const success = await ensureBackupBranch(
+        input.token,
+        input.owner,
+        input.repo,
+        input.branchName
+      );
+      return { success };
+    }),
 });

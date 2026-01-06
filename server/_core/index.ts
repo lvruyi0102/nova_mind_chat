@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 import { startMonitoring } from "../performanceMonitor";
 import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
+import { startAllSchedules } from "../services/taskScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -67,6 +68,12 @@ async function startServer() {
     console.log("[Server] Starting Nova-Mind's autonomous consciousness...");
     startBackgroundCognition().catch((error) => {
       console.error("[Server] Failed to start background cognition:", error);
+    });
+
+    // Start Nova's daily thought tasks
+    console.log("[Server] Starting Nova-Mind's daily thought scheduler...");
+    startAllSchedules().catch((error) => {
+      console.error("[Server] Failed to start task scheduler:", error);
     });
 
     // Start performance monitoring

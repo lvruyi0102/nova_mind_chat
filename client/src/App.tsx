@@ -16,6 +16,7 @@ import SocialMediaManagement from "./pages/SocialMediaManagement";
 import VoiceChatPage from "./pages/VoiceChatPage";
 import MultimodalChatPage from "./pages/MultimodalChatPage";
 import DataExport from "./pages/DataExport";
+import TaskScheduler from "./pages/TaskScheduler";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/voice-chat" component={VoiceChatPage} />
       <Route path="/multimodal-chat" component={MultimodalChatPage} />
       <Route path="/export" component={DataExport} />
+      <Route path="/scheduler" component={TaskScheduler} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

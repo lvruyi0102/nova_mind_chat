@@ -280,7 +280,7 @@ export const exportRouter = router({
   // 获取 GitHub 仓库列表
   getGitHubRepositories: protectedProcedure
     .input(z.object({ token: z.string() }))
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
       return await getGitHubRepositories(input.token);
     }),
 
@@ -348,7 +348,7 @@ export const exportRouter = router({
         repo: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
       return await getBackupHistory(input.token, input.owner, input.repo);
     }),
 
@@ -370,5 +370,5 @@ export const exportRouter = router({
         input.branchName
       );
       return { success };
-    }),
+    })
 });

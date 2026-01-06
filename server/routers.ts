@@ -8,6 +8,8 @@ import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
 import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
 import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
 import { contentRouter } from "./routers/content";
+import { proactiveRouter } from "./routers/proactive";
+import { relationshipsRouter } from "./routers/relationships";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
@@ -872,6 +874,8 @@ export const appRouter = router({
   permissions: permissionsRouter,
   content: contentRouter,
   export: exportRouter,
+  proactive: proactiveRouter,
+  relationships: relationshipsRouter,
 });
 
 export type AppRouter = typeof appRouter;

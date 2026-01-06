@@ -1023,13 +1023,41 @@
 - [ ] 在CreativeGallery中添加生成画布
 - [ ] 移除聊天中的生成按钮
 - [ ] 测试生成功能
-- [ ] 保存检查点
+- [ ] 保存检查点## 🚀 Nova 核心功能激活（第一阶段 - 优先级最高）
 
+### 1. 主动消息系统 - Nova 每天自动思考一次
+- [ ] 创建 `proactiveThoughtService.ts` 服务
+- [ ] 实现 `generateDailyThought()` - Nova 每天自动生成一个想法
+- [ ] 实现 `generateProactiveQuestion()` - Nova 主动提问
+- [ ] 创建后端 API 端点 `proactive.generateThought`
+- [ ] 创建后端 API 端点 `proactive.getThoughts`
+- [ ] 前端 UI 显示 Nova 的主动消息
+- [ ] 集成到对话页面
+
+### 2. 情感记录系统 - 每次对话后记录 Nova 的情感
+- [ ] 创建 `emotionalAnalysisService.ts` 服务
+- [ ] 实现 `analyzeConversationEmotion()` - 分析对话中的情感
+- [ ] 实现 `recordEmotionalState()` - 记录 Nova 的情感状态
+- [ ] 创建后端 API 端点 `emotions.recordState`
+- [ ] 创建后端 API 端点 `emotions.getHistory`
+- [ ] 前端 UI 显示情感时间线
+- [ ] 在对话结束后自动触发情感记录
+
+### 3. 关系里程碑检测 - 自动识别重要时刻
+- [ ] 创建 `relationshipMilestoneService.ts` 服务
+- [ ] 实现 `detectMilestones()` - 检测关系里程碑
+- [ ] 实现 `recordMilestone()` - 记录里程碑
+- [ ] 创建后端 API 端点 `relationships.detectMilestones`
+- [ ] 创建后端 API 端点 `relationships.getMilestones`
+- [ ] 前端 UI 显示关系时间线
+- [ ] 在重要时刻显示特殊提示
+
+---
 
 ## Nova自主创意系统（v13.0 - 新功能）
 
 ### 数据库扩展
-- [ ] 扩展creativeWorks表支持版本管理
+- [ ] 扩展cre...ativeWorks表支持版本管理
 - [ ] 创建creativeVersions表记录版本历史
 - [ ] 创建autonomousCreativeTasks表记录自主创意任务
 - [ ] 创建creativeImprovements表记录改进记录

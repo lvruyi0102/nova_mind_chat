@@ -111,11 +111,25 @@ export default function Home() {
             </Button>
           </div>
             ) : (
-              <Button size="lg" asChild>
-                <a href={getLoginUrl()}>
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  登录开始
-                </a>
+              <Button 
+                size="lg" 
+                onClick={() => {
+                  try {
+                    const url = getLoginUrl();
+                    if (!url || url.includes('undefined')) {
+                      console.error('登录 URL 生成失败:', url);
+                      alert('登录配置错误，请联系管理员');
+                      return;
+                    }
+                    window.location.href = url;
+                  } catch (error) {
+                    console.error('登录错误:', error);
+                    alert('登录失败，请重试');
+                  }
+                }}
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                登录开始
               </Button>
             )}
           </div>

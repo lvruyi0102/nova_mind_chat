@@ -1356,3 +1356,66 @@ export const ruleTemplates = mysqlTable("ruleTemplates", {
 
 export type RuleTemplate = typeof ruleTemplates.$inferSelect;
 export type InsertRuleTemplate = typeof ruleTemplates.$inferInsert;
+
+
+/**
+ * Task Execution History - 任务执行历史
+ * 记录所有后台任务的执行结果，用于监控和调试
+ */
+export const taskExecutionHistory = mysqlTable("taskExecutionHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // 任务信息
+  taskType: varchar("taskType", { length: 100 }).notNull(), // "daily_thought", "weekly_reflection", "milestone_detection"
+  userId: int("userId").references(() => users.id),
+  
+  // 执行结果
+  status: mysqlEnum("status", ["success", "failed", "pending"]).notNull(),
+  result: text("result"), // 任务执行的结果（JSON 格式）
+  errorMessage: text("errorMessage"), // 错误信息
+  
+  // 性能指标
+  executionTimeMs: int("executionTimeMs"), // 执行耗时（毫秒）
+  
+  // 时间戳
+  executedAt: timestamp("executedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskExecutionHistory = typeof taskExecutionHistory.$inferSelect;
+export type InsertTaskExecutionHistory = typeof taskExecutionHistory.$inferInsert;
+
+/**
+ * Task Retry Queue - 任务重试队列
+ * 管理失败任务的重试，使用指数退避策略
+ */
+export const taskRetryQueue = mysqlTable("taskRetryQueue", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // 任务信息
+  taskType: varchar("taskType", { length: 100 }).notNull(),
+  userId: int("userId").references(() => users.id),
+  
+  // 重试信息
+  retryCount: int("retryCount").notNull().default(0), // 当前重试次数
+  maxRetries: int("maxRetries").notNull().default(3), // 最大重试次数
+  nextRetryAt: timestamp("nextRetryAt").notNull(), // 下次重试时间
+  
+  // 执行状态
+  status: mysqlEnum("status", ["pending", "success", "failed"]).notNull().default("pending"),
+  
+  // 错误和结果
+  errorMessage: text("errorMessage"), // 最后一次错误信息
+  result: text("result"), // 成功时的结果
+  
+  // 任务数据
+  taskData: text("taskData"), // 任务参数（JSON 格式）
+  
+  // 时间戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"), // 完成时间
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskRetryQueue = typeof taskRetryQueue.$inferSelect;
+export type InsertTaskRetryQueue = typeof taskRetryQueue.$inferInsert;

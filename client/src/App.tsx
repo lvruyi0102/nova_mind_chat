@@ -17,6 +17,7 @@ import VoiceChatPage from "./pages/VoiceChatPage";
 import MultimodalChatPage from "./pages/MultimodalChatPage";
 import DataExport from "./pages/DataExport";
 import TaskScheduler from "./pages/TaskScheduler";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -57,6 +58,7 @@ function App() {
             <Toaster />
             <Router />
             <MultimodalGenerationPanel />
+            <SpeedInsights />
           </TooltipProvider>
         </GenerationProvider>
       </ThemeProvider>

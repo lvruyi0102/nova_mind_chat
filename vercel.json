@@ -1,0 +1,8 @@
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist/client",
+  "framework": null,
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

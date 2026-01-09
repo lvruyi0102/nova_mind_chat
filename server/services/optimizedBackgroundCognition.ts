@@ -2,6 +2,9 @@ import { getLLMOptimizer } from "./llmOptimizer";
 import { getCostTracker } from "./costTracker";
 import { getQueryOptimizer } from "./queryOptimizer";
 import { invokeLLM } from "../_core/llm";
+import { getHybridLLMOptimizer } from "./hybridLLMOptimizer";
+import { getCostBudgetManager } from "./costBudgetManager";
+import { getAutoOptimizationManager } from "./autoOptimizationManager";
 
 /**
  * 优化的后台认知循环
@@ -16,7 +19,10 @@ interface CognitionTask {
 
 class OptimizedBackgroundCognition {
   private llmOptimizer = getLLMOptimizer();
+  private hybridOptimizer = getHybridLLMOptimizer();
   private costTracker = getCostTracker();
+  private budgetManager = getCostBudgetManager();
+  private autoOptimizer = getAutoOptimizationManager();
   private queryOptimizer = getQueryOptimizer();
 
   /**
@@ -26,6 +32,12 @@ class OptimizedBackgroundCognition {
     const startTime = Date.now();
 
     try {
+      // 自动调整优化策略
+      await this.autoOptimizer.autoAdjustStrategy();
+      
+      // 检查预算状态
+      await this.budgetManager.checkBudgetAndAlert();
+
       let result: string;
 
       // 根据优先级选择优化策略
@@ -59,40 +71,72 @@ class OptimizedBackgroundCognition {
   }
 
   /**
-   * 执行高优先级任务（使用缓存，失败重试）
+   * 执行高优先级任务（使用混合优化器，优先质量）
    */
   private async executeHighPriorityTask(task: CognitionTask): Promise<string> {
     const prompt = this.buildPrompt(task);
 
-    // 使用 LLM 优化器的缓存机制
-    return await this.llmOptimizer.callWithCache(prompt, {
-      useCache: true,
-      cacheTTLHours: 24,
+    // 高优先级任务使用混合优化器，优先质量
+    const result = await this.hybridOptimizer.hybridCall(prompt, {
+      useLocalModels: true,
+      prioritize: "quality",
+      fallbackToManus: true,
     });
+
+    // 记录混合调用成本
+    this.costTracker.recordLLMCall(result.modelUsed, result.cost, {
+      taskType: task.type,
+      priority: task.priority,
+      modelUsed: result.modelUsed,
+    });
+
+    return result.response;
   }
 
   /**
-   * 执行普通优先级任务（使用缓存，失败返回降级响应）
+   * 执行普通优先级任务（使用混合优化器，平衡策略）
    */
   private async executeNormalPriorityTask(task: CognitionTask): Promise<string> {
     const prompt = this.buildPrompt(task);
 
-    return await this.llmOptimizer.callWithFallback(prompt, {
-      priority: "normal",
-      fallbackResponse: this.getDefaultResponse(task.type),
+    // 普通优先级任务使用混合优化器，平衡策略
+    const result = await this.hybridOptimizer.hybridCall(prompt, {
+      useLocalModels: true,
+      prioritize: "balanced",
+      fallbackToManus: true,
     });
+
+    // 记录混合调用成本
+    this.costTracker.recordLLMCall(result.modelUsed, result.cost, {
+      taskType: task.type,
+      priority: task.priority,
+      modelUsed: result.modelUsed,
+    });
+
+    return result.response;
   }
 
   /**
-   * 执行低优先级任务（优先使用缓存，不调用 LLM）
+   * 执行低优先级任务（使用混合优化器，成本优先）
    */
   private async executeLowPriorityTask(task: CognitionTask): Promise<string> {
     const prompt = this.buildPrompt(task);
 
-    return await this.llmOptimizer.callWithFallback(prompt, {
-      priority: "low",
-      fallbackResponse: this.getDefaultResponse(task.type),
+    // 低优先级任务使用混合优化器，成本优先
+    const result = await this.hybridOptimizer.hybridCall(prompt, {
+      useLocalModels: true,
+      prioritize: "cost",
+      fallbackToManus: true,
     });
+
+    // 记录混合调用成本
+    this.costTracker.recordLLMCall(result.modelUsed, result.cost, {
+      taskType: task.type,
+      priority: task.priority,
+      modelUsed: result.modelUsed,
+    });
+
+    return result.response;
   }
 
   /**

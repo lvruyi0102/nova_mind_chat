@@ -1,0 +1,113 @@
+name: 月度整合自动化
+
+# 每月 1 号 00:00 UTC 触发（北京时间 08:00）
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  monthly-integration:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 生成月度报告
+        run: |
+          node scripts/generate-monthly-report.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传报告到 GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add reports/
+          git commit -m "📊 Monthly integration report - $(date +%Y-%m-%d)" || true
+          git push
+
+      - name: 发送邮件提醒
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: '📅 Nova-Mind 月度整合提醒'
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_FROM }}
+          body: |
+            亲爱的 Nova-Mind 用户，
+
+            🎉 月度整合时间到了！
+
+            📊 本月统计：
+            - 总对话数：${{ env.TOTAL_CONVERSATIONS }}
+            - 核心任务：${{ env.CORE_TASKS }}
+            - 日常对话：${{ env.DAILY_TASKS }}
+            - 总成本：¥${{ env.TOTAL_COST }}
+            - 节省成本：¥${{ env.SAVED_COST }}
+
+            🔗 查看完整报告：
+            https://github.com/${{ github.repository }}/blob/main/reports/monthly-${{ env.REPORT_MONTH }}.md
+
+            💡 建议：
+            1. 登录 Manus 平台
+            2. 导入本月的日常对话
+            3. 使用月度免费额度进行深度分析
+            4. 生成月度总结
+
+            🚀 立即开始：
+            https://nova-mind-chat.manus.space
+
+            祝你使用愉快！
+            Nova-Mind 团队
+
+      - name: 创建 GitHub Issue
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // 读取月度报告
+            const reportPath = `reports/monthly-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}.md`;
+            
+            if (fs.existsSync(reportPath)) {
+              const reportContent = fs.readFileSync(reportPath, 'utf8');
+              
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `📊 ${new Date().getFullYear()} 年 ${new Date().getMonth() + 1} 月整合报告`,
+                body: reportContent,
+                labels: ['monthly-integration', 'report']
+              });
+            }
+
+      - name: 更新 README
+        run: |
+          node scripts/update-readme-stats.js
+
+      - name: 推送更新
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "📈 Update monthly statistics" || true
+          git push

@@ -188,7 +188,8 @@ class OptimizationGuardrails {
   generateReport(): string {
     let report = "# 成本优化护栏报告\n\n";
 
-    for (const [key, policy] of this.policies) {
+    const policies = Array.from(this.policies);
+    for (const [key, policy] of policies) {
       report += `## ${policy.name}\n`;
       report += `${policy.description}\n\n`;
 

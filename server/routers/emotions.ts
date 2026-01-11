@@ -236,4 +236,59 @@ export const emotionsRouter = router({
         throw new Error("Failed to get understanding logs");
       }
     }),
+
+  /**
+   * Generate emotional report
+   */
+  generateReport: protectedProcedure
+    .input(
+      z.object({
+        timeRange: z.enum(["week", "month", "all"]).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        const dialogues = await getEmotionalDialogueHistory(ctx.user.id, 100);
+        
+        const report = {
+          totalDialogues: dialogues.length,
+          timeRange: input.timeRange || "all",
+          emotionalTrends: dialogues.slice(0, 10).map((d: any) => ({
+            emotion: d.understanding?.emotionalState?.primaryEmotion || "unknown",
+            intensity: d.understanding?.emotionalState?.intensity || 0,
+            timestamp: d.createdAt,
+          })),
+          averageIntensity: dialogues.length > 0
+            ? dialogues.reduce((sum: number, d: any) => sum + (d.understanding?.emotionalState?.intensity || 0), 0) / dialogues.length
+            : 0,
+          summary: `过去时间内，共有${dialogues.length}次情感对话。`,
+        };
+        
+        return {
+          success: true,
+          report,
+        };
+      } catch (error) {
+        console.error("[Emotions] Error generating report:", error);
+        throw new Error("Failed to generate emotional report");
+      }
+    }),
+
+  /**
+   * Get recent emotional expressions (alias for getRecentExpressions)
+   */
+  getRecent: protectedProcedure
+    .input(z.object({ limit: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const expressions = await getRecentEmotionalExpressions(ctx.user.id, input.limit || 10);
+        return {
+          success: true,
+          expressions,
+        };
+      } catch (error) {
+        console.error("[Emotions] Error getting recent expressions:", error);
+        throw new Error("Failed to get recent emotional expressions");
+      }
+    }),
 });

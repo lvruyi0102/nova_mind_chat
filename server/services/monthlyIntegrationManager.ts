@@ -75,7 +75,8 @@ class MonthlyIntegrationManager {
     let totalManusLLMCost = 0;
     const conversationsByLabel: Record<string, number> = {};
 
-    for (const [date, conversations] of this.dailyConversations.entries()) {
+    const entries = Array.from(this.dailyConversations.entries());
+    for (const [date, conversations] of entries) {
       const [year, month] = date.split("-");
 
       if (month === targetMonth && parseInt(year) === targetYear) {

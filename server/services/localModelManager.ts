@@ -331,7 +331,8 @@ class LocalModelManager {
     if (modelId) {
       this.metrics.set(modelId, { calls: 0, successes: 0, totalTime: 0 });
     } else {
-      for (const key of this.metrics.keys()) {
+      const keys = Array.from(this.metrics.keys());
+      for (const key of keys) {
         this.metrics.set(key, { calls: 0, successes: 0, totalTime: 0 });
       }
     }

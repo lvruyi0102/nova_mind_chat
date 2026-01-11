@@ -171,7 +171,8 @@ class CacheManager {
    */
   private estimateMemoryUsage(): number {
     let bytes = 0;
-    for (const [key, entry] of this.memoryCache.entries()) {
+    const entries = Array.from(this.memoryCache.entries());
+    for (const [key, entry] of entries) {
       bytes += key.length * 2; // 字符串占用
       bytes += JSON.stringify(entry.value).length * 2;
       bytes += 64; // 对象开销

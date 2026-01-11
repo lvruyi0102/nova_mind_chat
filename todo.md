@@ -1462,3 +1462,14 @@
 - [ ] 验证 GitHub Actions 工作流
 - [ ] 验证邮件提醒功能
 - [ ] 提交最终检查点
+
+
+## TypeScript 错误修复（优先级：高）
+
+### 主要错误类型
+- [x] 修复 Map 迭代器错误（TS2802）- 4 个文件
+- [x] 修复 RequestInit timeout 错误 - 1 个文件
+- [x] 修复 z.record 参数错误 - 2 个文件
+- [x] 修复 temperature 参数错误 - 1 个文件
+- [x] 修复 CostTracker 方法缺失 - 1 个文件
+- [x] 启用 downlevelIteration TypeScript 配置

@@ -152,10 +152,15 @@ class ModelConfigManager {
 
       // 验证端点连接
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
         const response = await fetch(config.endpoint, {
           method: "HEAD",
-          timeout: 5000,
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (!response.ok && response.status !== 405) {
           errors.push(`Cannot connect to ${config.name} endpoint: ${config.endpoint}`);

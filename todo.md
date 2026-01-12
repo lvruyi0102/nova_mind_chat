@@ -1491,3 +1491,19 @@
 - [ ] 触发部署
 - [ ] 验证部署成功
 - [ ] 测试应用功能
+
+
+## GitHub Actions 月度整合配置（优先级：高）
+
+### 完成的任务
+- [x] 创建月度整合 GitHub Actions 工作流 (.github/workflows/monthly-integration.yml)
+- [x] 实现月度数据导出脚本 (scripts/export-monthly-data.js)
+- [x] 实现月度报告生成脚本 (scripts/generate-monthly-report.js)
+- [x] 创建 GitHub Actions 配置指南 (GITHUB_ACTIONS_SETUP.md)
+
+### 待完成的任务
+- [ ] 在 GitHub Secrets 中配置邮件信息
+- [ ] 手动测试工作流
+- [ ] 验证邮件提醒功能
+- [ ] 验证 GitHub Issue 创建功能
+- [ ] 配置 Slack 通知（可选）

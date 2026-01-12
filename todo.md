@@ -1473,3 +1473,21 @@
 - [x] 修复 temperature 参数错误 - 1 个文件
 - [x] 修复 CostTracker 方法缺失 - 1 个文件
 - [x] 启用 downlevelIteration TypeScript 配置
+
+
+## Vercel 部署（优先级：最高）
+
+### 部署准备
+- [x] 创建 .env.vercel.example 配置文件
+- [x] 创建 VERCEL_DEPLOYMENT.md 部署指南
+- [x] 创建 README_DEPLOYMENT.md GitHub 首页
+- [x] 优化 vercel.json 配置
+
+### 部署步骤
+- [ ] Fork GitHub 仓库
+- [ ] 在 Vercel 中导入项目
+- [ ] 配置 DeepSeek API 密钥
+- [ ] 设置环境变量
+- [ ] 触发部署
+- [ ] 验证部署成功
+- [ ] 测试应用功能

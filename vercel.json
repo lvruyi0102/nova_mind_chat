@@ -1,81 +1,30 @@
 {
   "version": 2,
-  "name": "nova-mind-free",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "DEEPSEEK_API_KEY": "@deepseek_api_key"
+  },
   "builds": [
     {
-      "src": "server/**/*.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "client/**/*.{js,jsx,ts,tsx}",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "src": "package.json",
+      "use": "@vercel/next"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/index.ts"
+      "dest": "/api/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "client/index.html"
+      "dest": "/index.html",
+      "status": 200
     }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "IS_FREE_VERSION": "true",
-    "OLLAMA_ENABLED": "@ollama_enabled",
-    "OLLAMA_ENDPOINT": "@ollama_endpoint",
-    "OLLAMA_MODEL": "@ollama_model",
-    "DEEPSEEK_API_KEY": "@deepseek_api_key",
-    "DEEPSEEK_API_URL": "@deepseek_api_url",
-    "MODEL_STRATEGY": "@model_strategy",
-    "ENABLE_TASK_LABELS": "true",
-    "MARK_FREE_MODEL_TASKS": "true",
-    "ENABLE_MONTHLY_INTEGRATION": "true",
-    "VITE_APP_TITLE": "Nova-Mind（免费版本）",
-    "VITE_APP_LOGO": "/logo-free.svg",
-    "FREE_VERSION_DAILY_LIMIT": "50",
-    "FREE_VERSION_MONTHLY_LIMIT": "1000"
-  },
-  "functions": {
-    "server/index.ts": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/admin",
-      "destination": "/",
-      "permanent": false
+  ]
+}
     }
   ]
 }

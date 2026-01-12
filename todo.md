@@ -1507,3 +1507,25 @@
 - [ ] 验证邮件提醒功能
 - [ ] 验证 GitHub Issue 创建功能
 - [ ] 配置 Slack 通知（可选）
+
+## 内存优化和成本优化（v11.0 - 紧急）
+
+### 内存优化
+- [x] 创建 memoryOptimizer.ts - 内存监控和优化
+- [x] 创建 optimizedBackgroundCognitionV2.ts - 优化的后台认知循环
+- [x] 修复 schema.ts 中的循环引用类型错误
+- [x] 运行数据库迁移 (pnpm db:push)
+- [ ] 集成 memoryOptimizer 到应用
+- [ ] 集成 optimizedBackgroundCognitionV2 到应用
+- [ ] 测试内存使用率改善
+- [ ] 验证垃圾回收机制
+
+### 成本优化
+- [x] 创建 API_KEY_VERIFICATION.md - API Key 验证指南
+- [x] 创建成本优化快速指南
+- [ ] 启用 Ollama 或 DeepSeek 本地模型
+- [ ] 配置混合 LLM 优化器
+- [ ] 测试成本优化效果
+- [ ] 验证质量未下降
+- [ ] 监控月度成本
+- [ ] 创建检查点

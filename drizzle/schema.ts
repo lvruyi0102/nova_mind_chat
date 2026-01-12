@@ -352,7 +352,7 @@ export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert
 /**
  * Creative Works - Nova's creative creations (art, stories, music, code, etc.)
  */
-export const creativeWorks = mysqlTable("creativeWorks", {
+export const creativeWorks: ReturnType<typeof mysqlTable> = mysqlTable("creativeWorks", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "game", "video", "animation", "audio", "other"]).notNull(),
@@ -370,7 +370,7 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   inspiration: text("inspiration"), // What inspired this creation
   
   // Collaboration reference
-  collaborationId: int("collaborationId").references(() => creativeCollaborations.id), // Link to collaboration if this is a collaborative work
+  collaborationId: int("collaborationId"), // Link to collaboration if this is a collaborative work (reference added after table definition)
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -552,7 +552,7 @@ export type InsertRelationshipTimelineEvent = typeof relationshipTimeline.$infer
 /**
  * Creative Collaborations - Tracks collaborative creative projects between user and Nova
  */
-export const creativeCollaborations = mysqlTable("creativeCollaborations", {
+export const creativeCollaborations: ReturnType<typeof mysqlTable> = mysqlTable("creativeCollaborations", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   
@@ -569,7 +569,7 @@ export const creativeCollaborations = mysqlTable("creativeCollaborations", {
   userContribution: text("userContribution"), // What the user contributed
   novaContribution: text("novaContribution"), // What Nova created
   finalWork: text("finalWork"), // The final collaborative work
-  finalWorkId: int("finalWorkId").references(() => creativeWorks.id), // Reference to final creative work
+  finalWorkId: int("finalWorkId"), // Reference to final creative work (reference added after table definition)
   
   // Metadata
   collaborationType: varchar("collaborationType", { length: 100 }), // story, poetry, art, music, code, etc.

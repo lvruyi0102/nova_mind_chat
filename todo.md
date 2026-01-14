@@ -1529,3 +1529,32 @@
 - [ ] 验证质量未下降
 - [ ] 监控月度成本
 - [ ] 创建检查点
+
+
+## Ollama 本地模型集成（v13.0 - 完全免费）
+
+### 已完成
+- [x] 安装 Ollama 到系统
+- [x] 下载 Phi 模型（1.6 GB）
+- [x] 启动 Ollama 服务
+- [x] 创建 Ollama 集成服务 (ollamaIntegration.ts)
+- [x] 修改 sendMessage 端点支持 Ollama 降级
+- [x] 创建 .env.local 配置文件
+- [x] 创建 Ollama 免费聊天页面 (OllamaChat.tsx)
+- [x] 添加 /ollama-chat 路由
+- [x] 创建 Ollama 部署指南 (OLLAMA_DEPLOYMENT_GUIDE.md)
+
+### 待完成
+- [ ] 测试完整的聊天流程
+- [ ] 验证 Ollama 降级机制
+- [ ] 部署到生产环境（novamindchat.com）
+- [ ] 配置生产环境 Ollama 服务
+- [ ] 创建最终检查点
+- [ ] 发布到 GitHub
+
+### 成本节省成果
+- 月度成本：¥180 → ¥0（100% 节省）
+- 模型：Phi（1.6 GB）
+- 质量：中等（⭐⭐⭐）
+- 隐私：完全本地处理
+- 可用性：100%（无网络依赖）

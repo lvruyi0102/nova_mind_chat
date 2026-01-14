@@ -76,6 +76,7 @@ import {
   recordGenerationInteraction,
   getGenerationHistory,
 } from "./services/multimodalService";
+import { getOllamaIntegration } from "./services/ollamaIntegration";
 import {
   generateImageSimple,
   generateGameSimple,
@@ -168,9 +169,30 @@ export const appRouter = router({
         ];
 
         // Get Nova-Mind's response
-        const response = await invokeLLM({ messages });
-        const rawContent = response.choices[0].message.content;
-        const assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        let assistantMessage = "我现在有些困惑，无法回应...";
+        
+        try {
+          // Try Manus LLM first
+          const response = await invokeLLM({ messages });
+          const rawContent = response.choices[0].message.content;
+          assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        } catch (error) {
+          // Fallback to Ollama if Manus fails
+          console.warn("[Routers] Manus LLM failed, trying Ollama...", error);
+          try {
+            const ollama = getOllamaIntegration();
+            if (await ollama.isAvailable()) {
+              assistantMessage = await ollama.chat(messages);
+              console.log("[Routers] Successfully used Ollama as fallback");
+            } else {
+              console.warn("[Routers] Ollama is not available");
+              assistantMessage = "抱歉，我现在无法处理您的请求。请稍后重试。";
+            }
+          } catch (ollamaError) {
+            console.error("[Routers] Ollama fallback also failed:", ollamaError);
+            assistantMessage = "抱歉，我现在无法处理您的请求。请稍后重试。";
+          }
+        }
 
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);

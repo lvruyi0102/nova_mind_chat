@@ -85,11 +85,16 @@ class OllamaIntegration {
     this.stats.totalCalls++;
 
     try {
+      // 使用 AbortController 设置 120 秒超时（模型加载可能需要较长时间）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      
       const response = await fetch(`${this.config.apiUrl}/api/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: this.config.model,
           prompt,
@@ -101,6 +106,8 @@ class OllamaIntegration {
           ...options,
         }),
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -117,9 +124,14 @@ class OllamaIntegration {
         this.stats.totalDuration += data.total_duration;
       }
 
+      console.log(`[OllamaIntegration] Generated response in ${(data.total_duration || 0) / 1e9}s`);
       return data.response.trim();
-    } catch (error) {
+    } catch (error: any) {
       this.stats.failedCalls++;
+      if (error.name === 'AbortError') {
+        console.error("[OllamaIntegration] Request timed out after 120s");
+        throw new Error("请求超时，请稍后重试");
+      }
       console.error("[OllamaIntegration] Generation failed:", error);
       throw error;
     }

@@ -17,7 +17,6 @@ import VoiceChatPage from "./pages/VoiceChatPage";
 import MultimodalChatPage from "./pages/MultimodalChatPage";
 import DataExport from "./pages/DataExport";
 import TaskScheduler from "./pages/TaskScheduler";
-import OllamaChat from "./pages/OllamaChat";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -36,7 +35,6 @@ function Router() {
       <Route path="/multimodal-chat" component={MultimodalChatPage} />
       <Route path="/export" component={DataExport} />
       <Route path="/scheduler" component={TaskScheduler} />
-      <Route path="/ollama-chat" component={OllamaChat} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

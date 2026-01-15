@@ -37,13 +37,17 @@ export default function Chat() {
   );
 
   // Send message mutation with proper error handling
-  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
+  const sendMessageMutation = trpc.simpleChat.sendMessageSimple.useMutation({
     onSuccess: () => {
       // Use the current value of currentConversationId at the time of success
       if (currentConversationId) {
         utils.chat.getMessages.invalidate({ conversationId: currentConversationId });
       }
       setInputMessage(""); // Auto-clear input after sending
+      // Refetch messages to show the new assistant response
+      if (currentConversationId) {
+        utils.chat.getMessages.refetch({ conversationId: currentConversationId });
+      }
     },
     onError: (error) => {
       console.error("Failed to send message:", error);

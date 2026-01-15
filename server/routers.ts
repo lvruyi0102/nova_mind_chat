@@ -91,9 +91,48 @@ import { retryManagementRouter } from "./routers/retryManagement";
 import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
+import { simpleChatRouter } from "./routers/simpleSendMessage";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // 调试端点 - 检查 Ollama 配置
+  simpleChat: simpleChatRouter,
+  debug: router({
+    checkOllama: publicProcedure.query(async () => {
+      const ollama = getOllamaIntegration();
+      const config = ollama.getConfig();
+      const available = await ollama.isAvailable();
+      return {
+        config,
+        available,
+        env: {
+          OLLAMA_ENABLED: process.env.OLLAMA_ENABLED,
+          OLLAMA_API_URL: process.env.OLLAMA_API_URL,
+          OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+        },
+      };
+    }),
+    testChat: publicProcedure.query(async () => {
+      const ollama = getOllamaIntegration();
+      try {
+        const response = await ollama.chat([{ role: 'user', content: 'Hello' }]);
+        return { success: true, response };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    }),
+    testSendMessage: protectedProcedure
+      .input(z.object({ content: z.string() }))
+      .mutation(async ({ input }) => {
+        const ollama = getOllamaIntegration();
+        try {
+          const response = await ollama.chat([{ role: 'user', content: input.content }]);
+          return { success: true, response };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+      })
+  }),
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure

@@ -1604,4 +1604,8 @@
 - [x] 添加空值检查和防御性编程
 - [x] 修复 Chat.tsx - 添加 useMemo 和 useCallback
 - [x] 修复所有无输入端点 - 显式定义 .input(z.void())
+- [x] 修复 NovaGrowthDashboard.tsx - 修正参数名称和添加配置
+- [x] 修复 proactive.ts - 添加 .input(z.void())
+- [x] 修复 relationships.ts - 添加 .input(z.void())
+- [x] 修复数据库 - 添加 userExpressionId 列
 - [x] 重启服务器并验证修复

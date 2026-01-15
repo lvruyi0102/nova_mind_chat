@@ -14,8 +14,11 @@ import { toast } from "sonner";
 export default function NovaGrowthDashboard() {
   const [activeTab, setActiveTab] = useState("proactive");
 
-  // 主动消息
-  const proactiveQuery = trpc.proactive.getToday.useQuery();
+  // 主动消息 - 传递 undefined 作为第一个参数
+  const proactiveQuery = trpc.proactive.getToday.useQuery(undefined, {
+    retry: 1,
+    staleTime: 30000,
+  });
   const generateThoughtMutation = trpc.proactive.generateDailyThought.useMutation({
     onSuccess: () => {
       toast.success("✨ Nova 生成了新的想法！");
@@ -26,13 +29,25 @@ export default function NovaGrowthDashboard() {
     },
   });
 
-  // 情感历史
-  const emotionsQuery = trpc.emotions.getRecent.useQuery({ days: 7 });
-  const emotionReportQuery = trpc.emotions.generateReport.useQuery();
+  // 情感历史 - 修复参数名称：days -> limit
+  const emotionsQuery = trpc.emotions.getRecent.useQuery({ limit: 7 }, {
+    retry: 1,
+    staleTime: 30000,
+  });
+  const emotionReportQuery = trpc.emotions.generateReport.useQuery({ timeRange: "week" }, {
+    retry: 1,
+    staleTime: 60000,
+  });
 
-  // 关系里程碑
-  const milestonesQuery = trpc.relationships.getRecent.useQuery({ days: 30 });
-  const timelineQuery = trpc.relationships.getTimeline.useQuery();
+  // 关系里程碑 - 修复参数
+  const milestonesQuery = trpc.relationships.getRecent.useQuery({ days: 30 }, {
+    retry: 1,
+    staleTime: 30000,
+  });
+  const timelineQuery = trpc.relationships.getTimeline.useQuery(undefined, {
+    retry: 1,
+    staleTime: 60000,
+  });
   const detectMilestonesMutation = trpc.relationships.detectAndRecord.useMutation({
     onSuccess: () => {
       toast.success("🎉 检测到新的里程碑！");

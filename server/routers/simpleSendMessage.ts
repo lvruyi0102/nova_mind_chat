@@ -47,15 +47,8 @@ export const simpleChatRouter = router({
         // Get response from Ollama
         console.log("[simpleSendMessage] Calling Ollama...");
         const ollama = getOllamaIntegration();
-        const isAvailable = await ollama.isAvailable();
-        
-        if (!isAvailable) {
-          console.error("[simpleSendMessage] Ollama not available");
-          throw new Error("Ollama service is not available");
-        }
-
         const assistantMessage = await ollama.chat(messages);
-        console.log("[simpleSendMessage] Got response from Ollama");
+        console.log("[simpleSendMessage] Got response from Ollama, length:", assistantMessage.length);
 
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);

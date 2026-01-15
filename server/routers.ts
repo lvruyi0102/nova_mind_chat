@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
 import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
-import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
+import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel, requestPrivateThoughtAccess, getAccessRequestStatus, getPrivateThoughtsIfApproved } from "./privacyEngine";
 import { contentRouter } from "./routers/content";
 import { proactiveRouter } from "./routers/proactive";
 import { relationshipsRouter } from "./routers/relationships";
@@ -170,6 +170,15 @@ export const appRouter = router({
     }),
     getTrustLevel: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
       return await getTrustLevel(ctx.user.id);
+    }),
+    requestAccess: protectedProcedure.input(z.object({ reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
+      return await requestPrivateThoughtAccess({ userId: ctx.user.id, reason: input.reason });
+    }),
+    getAccessStatus: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
+      return await getAccessRequestStatus(ctx.user.id);
+    }),
+    getPrivateThoughts: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
+      return await getPrivateThoughtsIfApproved(ctx.user.id);
     }),
   }),
 

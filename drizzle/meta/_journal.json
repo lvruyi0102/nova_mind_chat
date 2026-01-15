@@ -85,6 +85,13 @@
       "when": 1768446734217,
       "tag": "0021_previous_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1768447395026,
+      "tag": "0022_bored_komodo",
+      "breakpoints": true
     }
   ]
 }

@@ -1420,3 +1420,22 @@ export const taskRetryQueue = mysqlTable("taskRetryQueue", {
 
 export type TaskRetryQueue = typeof taskRetryQueue.$inferSelect;
 export type InsertTaskRetryQueue = typeof taskRetryQueue.$inferInsert;
+
+
+/**
+ * Private Thought Access Requests - users can request access to Nova's private thoughts
+ */
+export const privateThoughtAccessRequests = mysqlTable("privateThoughtAccessRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).notNull().default("pending"),
+  reason: text("reason"), // user's reason for requesting access
+  novaResponse: text("novaResponse"), // Nova's response to the request
+  approvedAt: timestamp("approvedAt"),
+  deniedAt: timestamp("deniedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferSelect;
+export type InsertPrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferInsert;

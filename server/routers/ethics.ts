@@ -27,7 +27,7 @@ export const ethicsRouter = router({
    * Initialize Nova-Mind's ethical principles
    * Should be called once during system setup
    */
-  initializePrinciples: publicProcedure.mutation(async () => {
+  initializePrinciples: publicProcedure.input(z.void()).mutation(async () => {
     try {
       await initializeEthicalPrinciples();
       return {

@@ -241,18 +241,14 @@ export const emotionsRouter = router({
    * Generate emotional report
    */
   generateReport: protectedProcedure
-    .input(
-      z.object({
-        timeRange: z.enum(["week", "month", "all"]).optional(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
+    .input(z.void())
+    .query(async ({ ctx }) => {
       try {
         const dialogues = await getEmotionalDialogueHistory(ctx.user.id, 100);
         
         const report = {
           totalDialogues: dialogues.length,
-          timeRange: input.timeRange || "all",
+          timeRange: "all",
           emotionalTrends: dialogues.slice(0, 10).map((d: any) => ({
             emotion: d.understanding?.emotionalState?.primaryEmotion || "unknown",
             intensity: d.understanding?.emotionalState?.intensity || 0,

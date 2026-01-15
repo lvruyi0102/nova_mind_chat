@@ -17,7 +17,7 @@ export const proactiveRouter = router({
    * 生成 Nova 的每日想法
    * 如果今天已经生成过，则返回 null
    */
-  generateDailyThought: protectedProcedure.mutation(async ({ ctx }) => {
+  generateDailyThought: protectedProcedure.input(z.void()).mutation(async ({ ctx }) => {
     const should = await shouldGenerateDailyThought(ctx.user.id);
     if (!should) {
       return {
@@ -38,7 +38,7 @@ export const proactiveRouter = router({
   /**
    * 生成 Nova 的主动问题
    */
-  generateProactiveQuestion: protectedProcedure.mutation(async ({ ctx }) => {
+  generateProactiveQuestion: protectedProcedure.input(z.void()).mutation(async ({ ctx }) => {
     const question = await generateProactiveQuestion(ctx.user.id);
     return {
       success: !!question,
@@ -50,7 +50,7 @@ export const proactiveRouter = router({
   /**
    * 获取用户的所有主动消息
    */
-  getAll: protectedProcedure.query(async ({ ctx }) => {
+  getAll: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
     const messages = await getProactiveMessages(ctx.user.id, 50);
     return {
       success: true,
@@ -62,7 +62,7 @@ export const proactiveRouter = router({
   /**
    * 获取今天的主动消息
    */
-  getToday: protectedProcedure.query(async ({ ctx }) => {
+  getToday: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
     const messages = await getTodayProactiveMessages(ctx.user.id);
     return {
       success: true,
@@ -74,7 +74,7 @@ export const proactiveRouter = router({
   /**
    * 检查是否应该生成每日想法
    */
-  shouldGenerateDaily: protectedProcedure.query(async ({ ctx }) => {
+  shouldGenerateDaily: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
     const should = await shouldGenerateDailyThought(ctx.user.id);
     return {
       should,

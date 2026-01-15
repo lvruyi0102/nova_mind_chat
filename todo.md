@@ -1590,3 +1590,18 @@
 - ✅ 不再扣费
 - ✅ 数据隐私完全保护
 - ✅ 用户体验不变
+
+
+## Bug 修复 - tRPC 输入验证错误（紧急）
+
+### 问题描述
+- 页面 `/chat/2220036` 报告 tRPC 错误
+- 错误信息：`Invalid input: expected object, received undefined`
+- 某个 tRPC 端点收到了 `undefined` 而期望对象
+
+### 已完成
+- [x] 找到所有调用 tRPC 端点的地方
+- [x] 添加空值检查和防御性编程
+- [x] 修复 Chat.tsx - 添加 useMemo 和 useCallback
+- [x] 修复所有无输入端点 - 显式定义 .input(z.void())
+- [x] 重启服务器并验证修复

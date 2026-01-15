@@ -96,21 +96,27 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    me: publicProcedure
+      .input(z.void())
+      .query(opts => opts.ctx.user),
+    logout: publicProcedure
+      .input(z.void())
+      .mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
-    }),
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        return {
+          success: true,
+        } as const;
+      }),
   }),
 
   chat: router({
     // Get user's conversations
-    listConversations: protectedProcedure.query(async ({ ctx }) => {
-      return getUserConversations(ctx.user.id);
-    }),
+    listConversations: protectedProcedure
+      .input(z.void())
+      .query(async ({ ctx }) => {
+        return getUserConversations(ctx.user.id);
+      }),
 
     // Create a new conversation
     createConversation: protectedProcedure
@@ -217,9 +223,11 @@ export const appRouter = router({
       }),
 
     // Get cognitive state (for monitoring Nova's growth)
-    getCognitiveState: protectedProcedure.query(async () => {
-      return getCognitiveState();
-    }),
+    getCognitiveState: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getCognitiveState();
+      }),
 
     // Trigger reflection manually
     triggerReflection: protectedProcedure
@@ -292,56 +300,74 @@ export const appRouter = router({
       }),
 
     // Get next learning recommendation
-    getNextRecommendation: protectedProcedure.query(async () => {
-      return getNextLearningRecommendation();
-    }),
+    getNextRecommendation: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getNextLearningRecommendation();
+      }),
   }),
 
   // Autonomous system API
   autonomous: router({
-    getState: protectedProcedure.query(async () => {
-      const state = await getCurrentState();
-      return state;
-    }),
-    getStatus: protectedProcedure.query(async () => {
-      return getBackgroundCognitionStatus();
-    }),
+    getState: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        const state = await getCurrentState();
+        return state;
+      }),
+    getStatus: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getBackgroundCognitionStatus();
+      }),
     updateAutonomyLevel: protectedProcedure
       .input(z.object({ level: z.number().min(1).max(10) }))
       .mutation(async ({ input }) => {
         await updateState({ autonomyLevel: input.level });
         return { success: true };
       }),
-    startCognition: protectedProcedure.mutation(async () => {
-      startBackgroundCognition();
-      return { success: true, message: "后台认知进程已启动" };
-    }),
-    stopCognition: protectedProcedure.mutation(async () => {
-      stopBackgroundCognition();
-      return { success: true, message: "后台认知进程已停止" };
-    }),
+    startCognition: protectedProcedure
+      .input(z.void())
+      .mutation(async () => {
+        startBackgroundCognition();
+        return { success: true, message: "后台认知进程已启动" };
+      }),
+    stopCognition: protectedProcedure
+      .input(z.void())
+      .mutation(async () => {
+        stopBackgroundCognition();
+        return { success: true, message: "后台认知进程已停止" };
+      }),
   }),
 
   // Performance monitoring API
   performance: router({
-    getCurrentMetrics: protectedProcedure.query(async () => {
-      return getCurrentMetrics();
-    }),
-    getMetricsHistory: protectedProcedure.query(async () => {
-      return getMetricsHistory();
-    }),
+    getCurrentMetrics: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getCurrentMetrics();
+      }),
+    getMetricsHistory: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getMetricsHistory();
+      }),
     getRecentAlerts: protectedProcedure
       .input(z.object({ limit: z.number().optional() }))
       .query(async ({ input }) => {
         return getRecentAlerts(input.limit);
       }),
-    getHealthStatus: protectedProcedure.query(async () => {
-      return getHealthStatus();
-    }),
-    forceGarbageCollection: protectedProcedure.mutation(async () => {
-      const success = forceGarbageCollection();
-      return { success };
-    }),
+    getHealthStatus: protectedProcedure
+      .input(z.void())
+      .query(async () => {
+        return getHealthStatus();
+      }),
+    forceGarbageCollection: protectedProcedure
+      .input(z.void())
+      .mutation(async () => {
+        const success = forceGarbageCollection();
+        return { success };
+      }),
   }),
 
   // Creative Studio - Nova's personal creative space

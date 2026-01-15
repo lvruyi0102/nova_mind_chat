@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Send, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, useParams } from "wouter";
 import { Streamdown } from "streamdown";
 import ChatMessageActions from "@/components/ChatMessageActions";
@@ -24,17 +24,29 @@ export default function Chat() {
 
   const utils = trpc.useUtils();
 
+  // Memoize query parameters to prevent unnecessary re-renders
+  const queryParams = useMemo(
+    () => ({ conversationId: currentConversationId! }),
+    [currentConversationId]
+  );
+
   // Get messages for current conversation
   const { data: messages = [], isLoading: messagesLoading } = trpc.chat.getMessages.useQuery(
-    { conversationId: currentConversationId! },
+    queryParams,
     { enabled: !!currentConversationId }
   );
 
-  // Send message mutation
+  // Send message mutation with proper error handling
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: () => {
-      utils.chat.getMessages.invalidate({ conversationId: currentConversationId! });
+      // Use the current value of currentConversationId at the time of success
+      if (currentConversationId) {
+        utils.chat.getMessages.invalidate({ conversationId: currentConversationId });
+      }
       setInputMessage(""); // Auto-clear input after sending
+    },
+    onError: (error) => {
+      console.error("Failed to send message:", error);
     },
   });
 
@@ -43,6 +55,9 @@ export default function Chat() {
     onSuccess: (data) => {
       setCurrentConversationId(data.conversationId);
       setLocation(`/chat/${data.conversationId}`);
+    },
+    onError: (error) => {
+      console.error("Failed to create conversation:", error);
     },
   });
 
@@ -58,16 +73,16 @@ export default function Chat() {
     if (isAuthenticated && !currentConversationId && !params.id) {
       createConversationMutation.mutate({ title: "与 Nova-Mind 的对话" });
     }
-  }, [isAuthenticated, currentConversationId, params.id]);
+  }, [isAuthenticated, currentConversationId, params.id, createConversationMutation]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (!inputMessage.trim() || !currentConversationId) return;
 
     sendMessageMutation.mutate({
       conversationId: currentConversationId,
       content: inputMessage.trim(),
     });
-  };
+  }, [inputMessage, currentConversationId, sendMessageMutation]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -205,10 +220,17 @@ export default function Chat() {
               )}
             </Button>
           </div>
+
+          {/* Error Display */}
+          {sendMessageMutation.isError && (
+            <div className="mt-2 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              {sendMessageMutation.error?.message || "发送消息失败，请重试"}
+            </div>
+          )}
         </div>
 
-        {/* Growth Dashboard Sidebar */}
-        <div className="w-80 hidden lg:block border-l pl-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+        {/* Sidebar - Nova Growth Dashboard */}
+        <div className="w-80 hidden lg:block">
           <NovaGrowthDashboard />
         </div>
       </div>

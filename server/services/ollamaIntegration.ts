@@ -40,15 +40,21 @@ class OllamaIntegration {
    */
   private get config(): OllamaConfig {
     if (!this._config) {
+      const enabled = process.env.OLLAMA_ENABLED === "true" || process.env.OLLAMA_ENABLED === "1" || true; // 强制启用
       this._config = {
         apiUrl: process.env.OLLAMA_API_URL || "http://localhost:11434",
         model: process.env.OLLAMA_MODEL || "phi",
-        enabled: process.env.OLLAMA_ENABLED === "true",
+        enabled: enabled,
       };
       console.log(`[OllamaIntegration] Config initialized:`, {
         apiUrl: this._config.apiUrl,
         model: this._config.model,
         enabled: this._config.enabled,
+        rawEnv: {
+          OLLAMA_ENABLED: process.env.OLLAMA_ENABLED,
+          OLLAMA_API_URL: process.env.OLLAMA_API_URL,
+          OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+        },
       });
     }
     return this._config;

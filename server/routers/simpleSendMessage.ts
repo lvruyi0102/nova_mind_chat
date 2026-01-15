@@ -18,13 +18,16 @@ export const simpleChatRouter = router({
       
       try {
         // Verify conversation ownership
+        console.log("[simpleSendMessage] Getting conversation:", input.conversationId);
         const conversation = await getConversation(input.conversationId);
+        console.log("[simpleSendMessage] Conversation:", conversation);
         if (!conversation || conversation.userId !== ctx.user.id) {
           throw new Error("Conversation not found or unauthorized");
         }
         console.log("[simpleSendMessage] Conversation verified");
 
         // Save user message
+        console.log("[simpleSendMessage] Saving user message...");
         await createMessage(input.conversationId, "user", input.content);
         console.log("[simpleSendMessage] User message saved");
 
@@ -60,7 +63,8 @@ export const simpleChatRouter = router({
 
         return { content: assistantMessage };
       } catch (error) {
-        console.error("[simpleSendMessage] Error:", error);
+        console.error("[simpleSendMessage] Error:", error instanceof Error ? error.message : String(error));
+        console.error("[simpleSendMessage] Stack:", error instanceof Error ? error.stack : "");
         throw error;
       }
     }),

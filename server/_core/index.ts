@@ -1,4 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+
+// 加载环境变量（优先加载 .env.local）
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config(); // 然后加载 .env 作为默认值
 import express from "express";
 import { createServer } from "http";
 import net from "net";

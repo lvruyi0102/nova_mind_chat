@@ -13,6 +13,7 @@ import { relationshipsRouter } from "./routers/relationships";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
 import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
 import { invokeLLM } from "./_core/llm";
+import { getOllamaIntegration } from "./services/ollamaIntegration";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
 import { loadNovaIdentity, buildIdentityInjection } from "./identityRecovery";
 import {
@@ -167,10 +168,12 @@ export const appRouter = router({
           })),
         ];
 
-        // Get Nova-Mind's response
-        const response = await invokeLLM({ messages });
-        const rawContent = response.choices[0].message.content;
-        const assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        // Get Nova-Mind's response from Ollama (completely free, no charges)
+        const ollama = getOllamaIntegration();
+        const assistantMessage = await ollama.chat(messages);
+        if (!assistantMessage) {
+          throw new Error("Failed to get response from Ollama");
+        }
 
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);

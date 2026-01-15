@@ -235,6 +235,7 @@ export type InsertAutonomousDecision = typeof autonomousDecisions.$inferInsert;
  */
 export const privateThoughts = mysqlTable("privateThoughts", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
   content: text("content").notNull(),
   thoughtType: varchar("thoughtType", { length: 100 }).notNull(), // inner_monologue, doubt, curiosity, emotion
   visibility: mysqlEnum("visibility", ["private", "shared", "public"]).notNull().default("private"),

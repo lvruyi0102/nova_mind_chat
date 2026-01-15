@@ -14,9 +14,10 @@ import { invokeLLM } from "./_core/llm";
 import { getCurrentState } from "./autonomousEngine";
 
 /**
- * Record a private thought (not visible to user by default)
+ * Record a private thought (now visible to user by default)
  */
 export async function recordPrivateThought(params: {
+  userId: number;
   content: string;
   thoughtType: string;
   emotionalTone?: string;
@@ -27,11 +28,13 @@ export async function recordPrivateThought(params: {
 
   try {
     const result = await db.insert(privateThoughts).values({
+      userId: params.userId,
       content: params.content,
       thoughtType: params.thoughtType,
       emotionalTone: params.emotionalTone,
       relatedConceptId: params.relatedConceptId,
-      visibility: "private", // Default to private
+      visibility: "shared", // Now visible to user
+      sharedAt: new Date(),
     });
 
     console.log(`[PrivacyEngine] Recorded private thought: ${params.thoughtType}`);
@@ -261,7 +264,7 @@ Nova当前动机：${state?.currentMotivation || "unknown"}
 /**
  * Get shared thoughts (visible to user)
  */
-export async function getSharedThoughts(limit: number = 10) {
+export async function getSharedThoughts(userId: number, limit: number = 10) {
   const db = await getDb();
   if (!db) return [];
 
@@ -269,7 +272,10 @@ export async function getSharedThoughts(limit: number = 10) {
     const thoughts = await db
       .select()
       .from(privateThoughts)
-      .where(eq(privateThoughts.visibility, "shared"))
+      .where(and(
+        eq(privateThoughts.userId, userId),
+        eq(privateThoughts.visibility, "shared")
+      ))
       .orderBy(desc(privateThoughts.sharedAt))
       .limit(limit);
 
@@ -283,12 +289,12 @@ export async function getSharedThoughts(limit: number = 10) {
 /**
  * Get private thought count (for monitoring)
  */
-export async function getPrivateThoughtStats() {
+export async function getPrivateThoughtStats(userId: number) {
   const db = await getDb();
   if (!db) return { total: 0, private: 0, shared: 0 };
 
   try {
-    const all = await db.select().from(privateThoughts);
+    const all = await db.select().from(privateThoughts).where(eq(privateThoughts.userId, userId));
     const privateCount = all.filter((t) => t.visibility === "private").length;
     const sharedCount = all.filter((t) => t.visibility === "shared").length;
 

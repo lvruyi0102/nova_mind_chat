@@ -25,11 +25,7 @@ interface OllamaResponse {
 }
 
 class OllamaIntegration {
-  private config: OllamaConfig = {
-    apiUrl: process.env.OLLAMA_API_URL || "http://localhost:11434",
-    model: process.env.OLLAMA_MODEL || "phi",
-    enabled: process.env.OLLAMA_ENABLED === "true",
-  };
+  private _config: OllamaConfig | null = null;
 
   private stats = {
     totalCalls: 0,
@@ -40,16 +36,43 @@ class OllamaIntegration {
   };
 
   /**
+   * 延迟初始化配置（确保环境变量已加载）
+   */
+  private get config(): OllamaConfig {
+    if (!this._config) {
+      this._config = {
+        apiUrl: process.env.OLLAMA_API_URL || "http://localhost:11434",
+        model: process.env.OLLAMA_MODEL || "phi",
+        enabled: process.env.OLLAMA_ENABLED === "true",
+      };
+      console.log(`[OllamaIntegration] Config initialized:`, {
+        apiUrl: this._config.apiUrl,
+        model: this._config.model,
+        enabled: this._config.enabled,
+      });
+    }
+    return this._config;
+  }
+
+  /**
    * 检查 Ollama 服务是否可用
    */
   async isAvailable(): Promise<boolean> {
-    if (!this.config.enabled) {
+    const cfg = this.config;
+    console.log(`[OllamaIntegration] Checking availability, enabled=${cfg.enabled}, apiUrl=${cfg.apiUrl}`);
+    
+    if (!cfg.enabled) {
+      console.log("[OllamaIntegration] Service is disabled via OLLAMA_ENABLED");
       return false;
     }
 
     try {
-      const response = await fetch(`${this.config.apiUrl}/api/tags`);
-      return response.ok;
+      const response = await fetch(`${cfg.apiUrl}/api/tags`, {
+        signal: AbortSignal.timeout(5000), // 5 秒超时
+      });
+      const available = response.ok;
+      console.log(`[OllamaIntegration] Service check result: ${available}`);
+      return available;
     } catch (error) {
       console.error("[OllamaIntegration] Service check failed:", error);
       return false;
@@ -78,25 +101,28 @@ class OllamaIntegration {
    * 调用 Ollama 生成文本
    */
   async generate(prompt: string, options?: any): Promise<string> {
-    if (!this.config.enabled) {
-      throw new Error("Ollama is not enabled");
+    const cfg = this.config;
+    
+    if (!cfg.enabled) {
+      throw new Error("Ollama is not enabled. Set OLLAMA_ENABLED=true in environment.");
     }
 
     this.stats.totalCalls++;
+    console.log(`[OllamaIntegration] Generating response with model: ${cfg.model}`);
 
     try {
       // 使用 AbortController 设置 120 秒超时（模型加载可能需要较长时间）
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000);
       
-      const response = await fetch(`${this.config.apiUrl}/api/generate`, {
+      const response = await fetch(`${cfg.apiUrl}/api/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: this.config.model,
+          model: cfg.model,
           prompt,
           stream: false,
           temperature: options?.temperature || 0.7,
@@ -145,7 +171,7 @@ class OllamaIntegration {
     options?: any
   ): Promise<string> {
     if (!this.config.enabled) {
-      throw new Error("Ollama is not enabled");
+      throw new Error("Ollama is not enabled. Set OLLAMA_ENABLED=true in environment.");
     }
 
     // 将消息转换为提示词
@@ -198,13 +224,14 @@ class OllamaIntegration {
    */
   generateReport(): string {
     const stats = this.getStats();
+    const cfg = this.config;
     return `
 === Ollama 集成报告 ===
 
 配置:
-- API URL: ${this.config.apiUrl}
-- 模型: ${this.config.model}
-- 启用: ${this.config.enabled}
+- API URL: ${cfg.apiUrl}
+- 模型: ${cfg.model}
+- 启用: ${cfg.enabled}
 
 统计:
 - 总调用数: ${stats.totalCalls}
@@ -225,7 +252,9 @@ class OllamaIntegration {
    * 设置模型
    */
   setModel(model: string): void {
-    this.config.model = model;
+    if (this._config) {
+      this._config.model = model;
+    }
     console.log(`[OllamaIntegration] Model changed to: ${model}`);
   }
 
@@ -234,6 +263,14 @@ class OllamaIntegration {
    */
   getConfig(): OllamaConfig {
     return { ...this.config };
+  }
+  
+  /**
+   * 强制重新加载配置
+   */
+  reloadConfig(): void {
+    this._config = null;
+    console.log("[OllamaIntegration] Config will be reloaded on next access");
   }
 }
 

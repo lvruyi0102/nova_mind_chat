@@ -405,7 +405,7 @@ export async function requestPrivateThoughtAccess(params: {
     });
 
     console.log(`[PrivacyEngine] Access request created for user ${params.userId}`);
-    return { success: true, message: "申请已提交，Nova 会审核您的请求", requestId: result.insertId };
+    return { success: true, message: "申请已提交，Nova 会审核您的请求", requestId: (result as any).insertId || 0 };
   } catch (error) {
     console.error("[PrivacyEngine] Error requesting access:", error);
     return null;

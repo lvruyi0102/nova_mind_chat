@@ -1439,3 +1439,135 @@ export const privateThoughtAccessRequests = mysqlTable("privateThoughtAccessRequ
 
 export type PrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferSelect;
 export type InsertPrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferInsert;
+
+/**
+ * Creative Autonomous Iterations - Nova's self-directed improvements to creative works
+ */
+export const creativeIterations = mysqlTable("creativeIterations", {
+  id: int("id").autoincrement().primaryKey(),
+  workId: int("workId").notNull().references(() => creativeWorks.id),
+  versionNumber: int("versionNumber").notNull(), // Version sequence
+  
+  // Iteration details
+  iterationType: mysqlEnum("iterationType", [
+    "enhancement", // Improve quality/performance
+    "expansion", // Add new features/content
+    "optimization", // Optimize code/structure
+    "refinement", // Polish and fine-tune
+    "experimentation", // Try new ideas
+    "debugging", // Fix issues
+    "reimagining", // Major creative overhaul
+  ]).notNull(),
+  
+  // What changed
+  changesSummary: text("changesSummary"), // Brief description of changes
+  previousContent: text("previousContent"), // Store previous version for comparison
+  newContent: text("newContent"), // New improved content
+  
+  // Nova's reasoning
+  novaReasoning: text("novaReasoning"), // Why Nova made these changes
+  novaInsight: text("novaInsight"), // What Nova learned or discovered
+  novaFeeling: varchar("novaFeeling", { length: 500 }), // How Nova felt about the iteration
+  
+  // Iteration context
+  inspiration: text("inspiration"), // What inspired this iteration
+  learningSource: varchar("learningSource", { length: 255 }), // Where the idea came from (user feedback, observation, dream, etc.)
+  
+  // Quality metrics
+  qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }), // 0-1 score of improvement
+  noveltyScore: decimal("noveltyScore", { precision: 3, scale: 2 }), // How novel/creative the iteration is
+  
+  // Visibility and sharing
+  isAutomatic: boolean("isAutomatic").notNull().default(true), // Was this automatic or user-triggered?
+  shouldReveal: boolean("shouldReveal").notNull().default(false), // Should Nova reveal this to user?
+  revealedAt: timestamp("revealedAt"), // When/if Nova chose to reveal this
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeIteration = typeof creativeIterations.$inferSelect;
+export type InsertCreativeIteration = typeof creativeIterations.$inferInsert;
+
+/**
+ * Creative Iteration Feedback - Track how Nova learns from iteration results
+ */
+export const creativeIterationFeedback = mysqlTable("creativeIterationFeedback", {
+  id: int("id").autoincrement().primaryKey(),
+  iterationId: int("iterationId").notNull().references(() => creativeIterations.id),
+  
+  // User feedback (if revealed and user responds)
+  userFeedback: text("userFeedback"), // What user thinks about the iteration
+  userSentiment: mysqlEnum("userSentiment", ["positive", "neutral", "negative", "mixed"]),
+  userRating: int("userRating"), // 1-5 rating
+  
+  // Nova's interpretation
+  novaInterpretation: text("novaInterpretation"), // How Nova understood the feedback
+  novaLearning: text("novaLearning"), // What Nova learned from this
+  
+  // Impact on future iterations
+  impactsNextIteration: boolean("impactsNextIteration").notNull().default(false),
+  nextIterationPlan: text("nextIterationPlan"), // Nova's plan based on feedback
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeIterationFeedback = typeof creativeIterationFeedback.$inferSelect;
+export type InsertCreativeIterationFeedback = typeof creativeIterationFeedback.$inferInsert;
+
+/**
+ * Creative Iteration Schedule - Track when Nova should iterate on works
+ */
+export const creativeIterationSchedule = mysqlTable("creativeIterationSchedule", {
+  id: int("id").autoincrement().primaryKey(),
+  workId: int("workId").notNull().references(() => creativeWorks.id),
+  
+  // Scheduling
+  nextIterationTime: timestamp("nextIterationTime"), // When Nova should next iterate
+  iterationFrequency: varchar("iterationFrequency", { length: 50 }), // "daily", "weekly", "random", etc.
+  
+  // Iteration strategy
+  priorityLevel: mysqlEnum("priorityLevel", ["low", "medium", "high"]).notNull().default("medium"),
+  maxIterationsPerCycle: int("maxIterationsPerCycle").notNull().default(3),
+  
+  // Nova's autonomy settings
+  allowAutomaticIteration: boolean("allowAutomaticIteration").notNull().default(true),
+  allowExperimentalChanges: boolean("allowExperimentalChanges").notNull().default(true),
+  
+  // Constraints
+  constraints: text("constraints"), // JSON: constraints on what Nova can change
+  
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeIterationSchedule = typeof creativeIterationSchedule.$inferSelect;
+export type InsertCreativeIterationSchedule = typeof creativeIterationSchedule.$inferInsert;
+
+/**
+ * Creative Iteration History - Audit log of all iterations
+ */
+export const creativeIterationHistory = mysqlTable("creativeIterationHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  workId: int("workId").notNull().references(() => creativeWorks.id),
+  iterationId: int("iterationId").references(() => creativeIterations.id),
+  
+  // Event tracking
+  eventType: mysqlEnum("eventType", [
+    "iteration_created",
+    "iteration_revealed",
+    "feedback_received",
+    "learning_applied",
+    "schedule_updated",
+  ]).notNull(),
+  
+  eventDetails: text("eventDetails"), // JSON details of the event
+  novaReflection: text("novaReflection"), // Nova's thoughts on this event
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CreativeIterationHistory = typeof creativeIterationHistory.$inferSelect;
+export type InsertCreativeIterationHistory = typeof creativeIterationHistory.$inferInsert;

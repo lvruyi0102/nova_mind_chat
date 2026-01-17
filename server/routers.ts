@@ -32,6 +32,7 @@ import {
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
 import { curatedRouter } from "./routers/curated";
+import { bulkSyncRouter } from "./routers/bulkSync";
 
 export const appRouter = router({
   system: systemRouter,
@@ -143,6 +144,7 @@ export const appRouter = router({
   relationships: relationshipsRouter,
   emotions: emotionsRouter,
   curated: curatedRouter,
+  bulkSync: bulkSyncRouter,
 
   // Autonomous consciousness engine
   autonomous: router({

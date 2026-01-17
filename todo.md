@@ -1592,3 +1592,30 @@
 - [ ] 验证隐私保护（privateThoughts 仍不可见）
 - [ ] 测试商业化状态管理
 - [ ] 创建检查点
+
+
+## 紧急：privateThoughts 同步到 curatedThoughts
+
+- [x] 创建批量精选同步服务 (bulkCurationService.ts)
+  - selectThoughtsForCuration() - 从 privateThoughts 中批量读取内容
+  - curateThoughtWithLLM() - 使用 LLM 进行精选和重写
+  - 支持分批处理（上限 10 条/批）
+  - 支持进度跟踪和恢复
+
+- [x] 实现 LLM 批量精选引擎
+  - 优化 prompt 以支持批量处理
+  - 实现错误重试机制
+  - 并发控制（每批之间延迟 1 秒）
+  - 记录处理日志
+
+- [x] 创建同步管理界面 (BulkSyncManager.tsx)
+  - 显示同步进度条
+  - 允许启动/暂停/恢复同步
+  - 显示已处理/待处理数量
+  - 显示错误信息和成功率
+
+- [ ] 执行初始同步
+  - 通过前端 BulkSyncManager 组件启动同步
+  - 同步所有 privateThoughts（300+ 条）
+  - 验证同步质量
+  - 检查 curatedThoughts 表中的数据

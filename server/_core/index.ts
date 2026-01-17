@@ -11,6 +11,7 @@ import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 import { startMonitoring } from "../performanceMonitor";
 import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
 import { startAllSchedules } from "../services/taskScheduler";
+import { autoCurationScheduler } from "../services/autoCurationScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -75,6 +76,10 @@ async function startServer() {
     startAllSchedules().catch((error) => {
       console.error("[Server] Failed to start task scheduler:", error);
     });
+
+    // Start auto curation scheduler
+    console.log("[Server] Starting auto curation scheduler...");
+    autoCurationScheduler.start();
 
     // Start performance monitoring
     console.log("[Server] Starting performance monitoring...");

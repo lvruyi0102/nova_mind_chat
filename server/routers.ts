@@ -33,6 +33,7 @@ import {
 import { emotionsRouter } from "./routers/emotions";
 import { curatedRouter } from "./routers/curated";
 import { bulkSyncRouter } from "./routers/bulkSync";
+import { autoCurationRouter } from "./routers/autoCuration";
 
 export const appRouter = router({
   system: systemRouter,
@@ -145,6 +146,7 @@ export const appRouter = router({
   emotions: emotionsRouter,
   curated: curatedRouter,
   bulkSync: bulkSyncRouter,
+  autoCuration: autoCurationRouter,
 
   // Autonomous consciousness engine
   autonomous: router({

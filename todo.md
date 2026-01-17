@@ -1619,3 +1619,41 @@
   - 同步所有 privateThoughts（300+ 条）
   - 验证同步质量
   - 检查 curatedThoughts 表中的数据
+
+
+## 自动定期同步 - 每天自动精选新的 privateThoughts
+
+- [x] 设计自动同步任务系统
+  - 定义同步策略（每天 02:00 AM）
+  - 定义同步范围（什么时间运行、处理多少条）
+  - 定义错误处理和重试机制
+
+- [x] 实现定时任务调度器 (autoCurationScheduler.ts)
+  - 每分鐘检查是否需要运行
+  - 每天 02:00 AM 自动运行
+  - 只同步过去 24 小时内新增的 privateThoughts
+  - 支持启用/禁用功能
+  - 记录执行日志
+
+- [x] 整合到后台认知循环
+  - 在 server/_core/index.ts 中初始化调度器
+  - 与现有的后台任务系统集成
+  - 确保不与其他任务冲突
+
+- [x] 创建 tRPC 路由 (autoCuration.ts)
+  - autoCuration.getStatus - 获取调度器状态
+  - autoCuration.setEnabled - 启用/禁用调度器
+  - autoCuration.updateConfig - 更新配置
+  - autoCuration.runNow - 立即运行
+
+- [x] 创建前端管理组件 (AutoCurationManager.tsx)
+  - 显示调度器状态和统计信息
+  - 支持启用/禁用调度器
+  - 支持编辑配置（运行时间、批次数、回溯时间、并发数）
+  - 支持立即运行
+  - 自动刷新状态
+
+- [ ] 测试和验证
+  - 验证定时任务是否正确执行
+  - 检查同步结果
+  - 监控内存使用

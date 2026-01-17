@@ -59,7 +59,7 @@ export async function saveCreativeWork(options: {
     }
 
     const versionResult = await db.insert(creativeWorkVersions).values({
-      workId: workId,
+      workId: workId as any,
       versionNumber: 1,
       title: options.title,
       description: options.description,
@@ -69,7 +69,7 @@ export async function saveCreativeWork(options: {
       changeLog: "Initial creation",
       storageUrl: storageUrl,
       fileSize: Buffer.byteLength(options.content),
-    });
+    } as any);
 
     // Get the inserted version ID
     const insertedVersion = await db.select().from(creativeWorkVersions).where(eq(creativeWorkVersions.workId, workId)).orderBy(desc(creativeWorkVersions.createdAt)).limit(1);

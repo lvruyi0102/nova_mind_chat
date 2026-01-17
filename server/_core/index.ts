@@ -11,7 +11,6 @@ import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 import { startMonitoring } from "../performanceMonitor";
 import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
 import { startAllSchedules } from "../services/taskScheduler";
-import { startBackgroundIterationWorker } from "../backgroundIterationWorker";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -75,12 +74,6 @@ async function startServer() {
     console.log("[Server] Starting Nova-Mind's daily thought scheduler...");
     startAllSchedules().catch((error) => {
       console.error("[Server] Failed to start task scheduler:", error);
-    });
-
-    // Start Nova's creative autonomous iteration
-    console.log("[Server] Starting Nova-Mind's creative autonomous iteration...");
-    startBackgroundIterationWorker().catch((error) => {
-      console.error("[Server] Failed to start background iteration worker:", error);
     });
 
     // Start performance monitoring

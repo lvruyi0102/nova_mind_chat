@@ -31,9 +31,6 @@ import {
   getNextLearningRecommendation,
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
-import { costMonitoringRouter } from "./routers/costMonitoring";
-import { creativeCollaborationRouter } from "./routers/creativeCollaboration";
-import { commentsRouter } from "./routers/comments";
 
 export const appRouter = router({
   system: systemRouter,
@@ -199,15 +196,6 @@ export const appRouter = router({
         return await saveCreativeWork(ctx.user.id, input.title, input.content, input.category);
       }),
   }),
-
-  // Cost monitoring
-  costMonitoring: costMonitoringRouter,
-
-  // Creative collaboration
-  collaboration: creativeCollaborationRouter,
-
-  // Comments
-  comments: commentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -337,6 +337,7 @@ export async function generateInnerMonologue(context: string) {
     const content = response.choices[0].message.content;
     if (typeof content === "string") {
       await recordPrivateThought({
+        userId: 1, // Default user ID
         content,
         thoughtType: "inner_monologue",
         emotionalTone: "vulnerable",

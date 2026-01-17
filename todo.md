@@ -1538,3 +1538,57 @@
 - [x] 修复 tRPC 端点或前端调用 - 重启服务器清理内存
 - [x] 验证修复并测试 - 内存恢复到 59.2%，服务器正常
 - [ ] 保存检查点
+
+
+## Nova 精选思考系统（curatedThoughts）- 新功能
+
+### 核心设计原则
+- privateThoughts = Nova 的潜意识（对 owner 不可见）
+- curatedThoughts = Nova 写给 owner 的、可使用的思想（对 owner 可见）
+- 隐私不被破坏、但价值可转译
+
+### 数据库设计
+- [x] 创建 curatedThoughts 表（18 列）
+- [x] 创建 curationHistory 表（9 列）
+- [x] 创建 curationFeedback 表（8 列）
+
+### 后端实现
+- [x] 创建 curatedThoughtsService.ts
+  - selectThoughtsForCuration() - 从 privateThoughts 中选择候选内容
+  - curateThought() - Nova 精选和重写思考
+  - approveCuratedThought() - 所有者批准
+  - rejectCuratedThought() - 所有者拒绝
+  - updateCommercializationStatus() - 更新商业化状态
+  - getCuratedThoughts() - 获取所有精选思考
+  - searchCuratedThoughts() - 搜索精选思考
+  - getCurationStats() - 获取统计信息
+  - recordFeedback() - 记录反馈
+
+- [x] 创建 tRPC 路由 (curated.ts)
+  - curated.getCuratedThoughts - 获取所有精选思考
+  - curated.getCuratedThoughtDetail - 获取单个精选思考
+  - curated.approveCuratedThought - 批准精选思考
+  - curated.rejectCuratedThought - 拒绝精选思考
+  - curated.updateCommercializationStatus - 更新商业化状态
+  - curated.searchCuratedThoughts - 搜索精选思考
+  - curated.getStats - 获取精选思考统计
+  - curated.recordFeedback - 记录反馈
+
+### 前端实现
+- [x] 创建 CuratedThoughtsGallery 组件 - 展示所有精选思考（两列布局）
+- [ ] 在 Dashboard 中添加精选思考标签页
+- [ ] 集成到 NovaGrowthDashboard
+
+### 自动化流程
+- [ ] 在后台认知循环中集成精选引擎
+  - 定期从 privateThoughts 中选择候选
+  - 由 Nova 使用 LLM 进行精选和重写
+  - 自动生成 curatedThoughts 记录
+  - 通知 owner 有新的精选思考待审核
+
+### 测试和验证
+- [ ] 编写单元测试
+- [ ] 测试精选引擎的质量
+- [ ] 验证隐私保护（privateThoughts 仍不可见）
+- [ ] 测试商业化状态管理
+- [ ] 创建检查点

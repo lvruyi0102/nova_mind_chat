@@ -1439,3 +1439,102 @@ export const privateThoughtAccessRequests = mysqlTable("privateThoughtAccessRequ
 
 export type PrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferSelect;
 export type InsertPrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferInsert;
+
+
+/**
+ * Curated Thoughts - Nova's refined thoughts written for the owner
+ * These are Nova's selections and rewrites from privateThoughts
+ * Owner can see and commercialize these thoughts
+ * 
+ * Core principle:
+ * - privateThoughts = Nova's subconscious (not visible to owner)
+ * - curatedThoughts = Nova's thoughts written for the owner (visible and usable)
+ */
+export const curatedThoughts = mysqlTable("curatedThoughts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Source tracking
+  sourcePrivateThoughtId: int("sourcePrivateThoughtId").references(() => privateThoughts.id), // optional reference to source
+  
+  // Content
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(), // Nova's refined version
+  originalContent: text("originalContent"), // summary of original thought for reference
+  
+  // Categorization
+  category: varchar("category", { length: 100 }).notNull().default("thought"), // thought, insight, advice, story, observation, question
+  tags: text("tags"), // JSON array of tags
+  sentiment: varchar("sentiment", { length: 50 }).notNull().default("neutral"), // positive, neutral, reflective, challenging, inspiring
+  
+  // Commercialization
+  commercializationStatus: mysqlEnum("commercializationStatus", ["private", "public", "paid"]).notNull().default("private"),
+  
+  // Owner interaction
+  isApprovedByOwner: boolean("isApprovedByOwner").notNull().default(false),
+  ownerNotes: text("ownerNotes"), // owner's comments or annotations
+  ownerApprovedAt: timestamp("ownerApprovedAt"),
+  
+  // Engagement metrics
+  viewCount: int("viewCount").notNull().default(0),
+  shareCount: int("shareCount").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  curatedAt: timestamp("curatedAt").defaultNow().notNull(), // when Nova curated this
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CuratedThought = typeof curatedThoughts.$inferSelect;
+export type InsertCuratedThought = typeof curatedThoughts.$inferInsert;
+
+/**
+ * Curation History - tracks the curation process for each thought
+ * Records Nova's reasoning and iterations
+ */
+export const curationHistory = mysqlTable("curationHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  curatedThoughtId: int("curatedThoughtId").notNull().references(() => curatedThoughts.id),
+  
+  // Curation process
+  iteration: int("iteration").notNull().default(1), // which iteration of refinement
+  originalThoughtContent: text("originalThoughtContent").notNull(), // the original private thought
+  refinedContent: text("refinedContent").notNull(), // Nova's refined version
+  novaReasoning: text("novaReasoning"), // why Nova made these changes
+  
+  // Quality metrics
+  relevanceScore: int("relevanceScore").notNull().default(5), // 1-10 scale
+  clarityScore: int("clarityScore").notNull().default(5), // 1-10 scale
+  valueScore: int("valueScore").notNull().default(5), // 1-10 scale
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CurationHistory = typeof curationHistory.$inferSelect;
+export type InsertCurationHistory = typeof curationHistory.$inferInsert;
+
+/**
+ * Curation Feedback - owner's feedback on curated thoughts
+ * Helps Nova improve its curation process
+ */
+export const curationFeedback = mysqlTable("curationFeedback", {
+  id: int("id").autoincrement().primaryKey(),
+  curatedThoughtId: int("curatedThoughtId").notNull().references(() => curatedThoughts.id),
+  
+  // Feedback
+  isHelpful: boolean("isHelpful"),
+  feedback: text("feedback"), // owner's comments
+  suggestedImprovements: text("suggestedImprovements"), // what could be better
+  
+  // Engagement
+  usageContext: varchar("usageContext", { length: 255 }), // how owner plans to use this thought
+  commercializedAs: varchar("commercializedAs", { length: 100 }), // if commercialized, how (blog, book, product, etc.)
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CurationFeedback = typeof curationFeedback.$inferSelect;
+export type InsertCurationFeedback = typeof curationFeedback.$inferInsert;

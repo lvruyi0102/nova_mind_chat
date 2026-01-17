@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `curationHistory` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `curatedThoughtId` int NOT NULL,\n  `iteration` int NOT NULL DEFAULT 1,\n  `originalThoughtContent` text NOT NULL,\n  `refinedContent` text NOT NULL,\n  `novaReasoning` text,\n  `relevanceScore` int NOT NULL DEFAULT 5,\n  `clarityScore` int NOT NULL DEFAULT 5,\n  `valueScore` int NOT NULL DEFAULT 5,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  CONSTRAINT `curationHistory_curatedThoughtId_fk` FOREIGN KEY (`curatedThoughtId`) REFERENCES `curatedThoughts`(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute CREATE TABLE IF NOT EXISTS `curationHistory` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `curatedThoughtId` int NOT NULL,\n  `iteration` int NOT NULL DEFAULT 1,\n  `originalThoughtContent` text NOT NULL,\n  `refinedContent` text NOT NULL,\n  `novaReasoning` text,\n  `relevanceScore` int NOT NULL DEFAULT 5,\n  `clarityScore` int NOT NULL DEFAULT 5,\n  `valueScore` int NOT NULL DEFAULT 5,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  CONSTRAINT `curationHistory_curatedThoughtId_fk` FOREIGN KEY (`curatedThoughtId`) REFERENCES `curatedThoughts`(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 256
+}

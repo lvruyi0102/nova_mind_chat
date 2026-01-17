@@ -31,6 +31,7 @@ import {
   getNextLearningRecommendation,
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
+import { curatedRouter } from "./routers/curated";
 
 export const appRouter = router({
   system: systemRouter,
@@ -141,6 +142,7 @@ export const appRouter = router({
   proactive: proactiveRouter,
   relationships: relationshipsRouter,
   emotions: emotionsRouter,
+  curated: curatedRouter,
 
   // Autonomous consciousness engine
   autonomous: router({

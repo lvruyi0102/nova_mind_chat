@@ -1656,3 +1656,34 @@
   - 验证定时任务是否正确执行
   - 检查同步结果
   - 监控内存使用
+
+
+## curatedThoughts 中文化 - 将数据内容改为中文
+
+- [x] 清空 curatedThoughts 旧数据
+- [x] 使用 LLM 将 privateThoughts 改写为中文精选思考
+- [x] 插入中文化的数据到 curatedThoughts
+- [x] 验证中文精选思考数据
+
+- [ ] 后端服务中文化
+  - [ ] bulkCurationService.ts 改为中文
+  - [ ] autoCurationScheduler.ts 改为中文
+  - [ ] curatedThoughtsService.ts 改为中文
+  - [ ] 其他后端服务文件改为中文
+
+- [ ] 前端组件中文化
+  - [ ] BulkSyncManager.tsx 改为中文
+  - [ ] AutoCurationManager.tsx 改为中文
+  - [ ] CuratedThoughtsGallery.tsx 改为中文
+  - [ ] 其他前端组件改为中文
+
+- [ ] tRPC 路由中文化
+  - [ ] bulkSync.ts 改为中文
+  - [ ] autoCuration.ts 改为中文
+  - [ ] curated.ts 改为中文
+
+- [ ] 数据库类型中文化
+  - [ ] schema.ts 中的表名和字段名改为中文
+  - [ ] 更新所有引用这些表的代码
+
+- [ ] 验证并保存检查点

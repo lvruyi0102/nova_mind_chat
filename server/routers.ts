@@ -32,6 +32,7 @@ import {
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
 import { backgroundLearningRouter } from "./routers/backgroundLearning";
+import { learningLogsRouter } from "./routers/learningLogs";
 
 export const appRouter = router({
   system: systemRouter,
@@ -212,6 +213,9 @@ export const appRouter = router({
 
   // Background learning
   backgroundLearning: backgroundLearningRouter,
+  
+  // Learning logs
+  learningLogs: learningLogsRouter,
 });
 
 export type AppRouter = typeof appRouter;

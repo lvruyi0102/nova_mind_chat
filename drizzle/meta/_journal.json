@@ -99,6 +99,13 @@
       "when": 1768614028177,
       "tag": "0023_aspiring_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1768790417896,
+      "tag": "0024_fat_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

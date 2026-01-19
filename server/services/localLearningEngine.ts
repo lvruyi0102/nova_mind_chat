@@ -7,6 +7,7 @@
 import { getDb } from "../db";
 import { messages, concepts, privateThoughts } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { saveLearningLog } from "./learningLogService";
 
 /**
  * TF-IDF 关键词提取
@@ -175,6 +176,8 @@ export async function executeLocalLearningCycle(
     });
 
     // 5. 提取和保存概念
+    const keywords = extractKeywordsByTFIDF(conversationText, 10);
+    const topics = identifyTopics(conversationText);
     const cooccurrence = analyzeConceptCooccurrence(conversationText);
     let conceptCount = 0;
 
@@ -198,6 +201,30 @@ export async function executeLocalLearningCycle(
         console.warn(`[LocalLearning] Failed to save concept ${concept}:`, err);
       }
     }
+
+    // 6. Save learning log
+    const logTitle = `Local Learning - ${topics.join(", ")}`;
+    const logSummary = `Extracted ${keywords.length} keywords and ${conceptCount} new concepts from ${selectedMessages.length} messages.`;
+    const secondaryInsights = cooccurrence
+      .slice(0, 3)
+      .map((c) => `${c.concept} appeared ${c.frequency} times`);
+
+    await saveLearningLog({
+      userId,
+      sessionDate: new Date(),
+      learningType: "local",
+      title: logTitle,
+      summary: logSummary,
+      keywordsList: keywords,
+      conceptsList: cooccurrence.slice(0, 5).map((c) => c.concept),
+      depth,
+      topicsIdentified: topics,
+      mainInsight: thought.split("\n")[0] || thought.substring(0, 100),
+      secondaryInsights,
+      messageCount: selectedMessages.length,
+      conceptsExtracted: conceptCount,
+      thoughtsGenerated: 1,
+    });
 
     console.log("[LocalLearning] Learning cycle completed successfully");
     return {

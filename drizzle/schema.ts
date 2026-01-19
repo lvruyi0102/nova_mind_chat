@@ -1538,3 +1538,44 @@ export const curationFeedback = mysqlTable("curationFeedback", {
 
 export type CurationFeedback = typeof curationFeedback.$inferSelect;
 export type InsertCurationFeedback = typeof curationFeedback.$inferInsert;
+
+
+/**
+ * Learning Logs - Records of Nova's local learning sessions
+ * Stores structured information about what Nova learned from conversations
+ */
+export const learningLogs = mysqlTable("learningLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Learning session metadata
+  sessionDate: timestamp("sessionDate").notNull(), // When the learning session occurred
+  learningType: varchar("learningType", { length: 50 }).notNull(), // "local", "monthly_llm"
+  
+  // Learning content
+  title: varchar("title", { length: 255 }).notNull(), // Summary title of what was learned
+  summary: text("summary").notNull(), // Brief summary of learning
+  keywordsList: text("keywordsList"), // JSON array of keywords extracted
+  conceptsList: text("conceptsList"), // JSON array of concepts identified
+  
+  // Learning details
+  depth: mysqlEnum("depth", ["shallow", "medium", "deep"]).notNull().default("medium"),
+  topicsIdentified: text("topicsIdentified"), // JSON array of topics
+  
+  // Learning insights
+  mainInsight: text("mainInsight"), // Primary learning insight
+  secondaryInsights: text("secondaryInsights"), // JSON array of secondary insights
+  connections: text("connections"), // Connections to previous knowledge
+  
+  // Metadata
+  messageCount: int("messageCount").notNull().default(0), // Number of messages analyzed
+  conceptsExtracted: int("conceptsExtracted").notNull().default(0), // Number of new concepts
+  thoughtsGenerated: int("thoughtsGenerated").notNull().default(1), // Number of thoughts created
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LearningLog = typeof learningLogs.$inferSelect;
+export type InsertLearningLog = typeof learningLogs.$inferInsert;

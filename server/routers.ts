@@ -124,6 +124,18 @@ export const appRouter = router({
           // Save assistant message
           await createMessage(input.conversationId, "assistant", assistantMessage);
 
+          // Process message cognitively to update Nova's knowledge graph
+          // Run in background without blocking response
+          processMessageCognitively(
+            input.conversationId,
+            input.content,
+            "user",
+            ctx.user.id,
+            assistantMessage
+          ).catch((err) => {
+            console.error("[sendMessage] Failed to process message cognitively:", err);
+          });
+
           return { content: assistantMessage };
         } catch (error) {
           console.error("[sendMessage] Error:", error);

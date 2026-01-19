@@ -26,9 +26,9 @@ interface CognitionLoopConfig {
 
 class OptimizedBackgroundCognitionV2 {
   private config: CognitionLoopConfig = {
-    intervalMs: 30 * 60 * 1000, // 30 分钟
+    intervalMs: 20 * 60 * 1000, // 20 分钟（从 30 分钟优化）
     maxConcurrentTasks: 2,
-    memoryThreshold: 0.8, // 80%
+    memoryThreshold: 0.75, // 75%（从 80% 降低为 75%）
     enableCacheCleanup: true,
     enableGC: true,
   };
@@ -70,6 +70,18 @@ class OptimizedBackgroundCognitionV2 {
       try {
         // 检查内存使用率
         const metrics = this.memoryOptimizer.getCurrentMetrics();
+        const usagePercent = metrics.usagePercent * 100;
+
+        // 如果内存使用率过高，执行激进清理
+        if (usagePercent > 85) {
+          console.error(
+            `[OptimizedBackgroundCognitionV2] CRITICAL: Memory ${usagePercent.toFixed(1)}% - aggressive cleanup`
+          );
+          await this.performAggressiveCleanup();
+          await this.sleep(2 * 60 * 1000);
+          continue;
+        }
+
         if (metrics.usagePercent > this.config.memoryThreshold) {
           console.warn(
             `[OptimizedBackgroundCognitionV2] Memory usage ${(
@@ -233,6 +245,30 @@ class OptimizedBackgroundCognitionV2 {
         "[OptimizedBackgroundCognitionV2] Background learning error:",
         error
       );
+    }
+  }
+
+  /**
+   * 执行激进清理
+   */
+  private async performAggressiveCleanup(): Promise<void> {
+    try {
+      console.log("[OptimizedBackgroundCognitionV2] Performing aggressive cleanup...");
+      
+      // 清理缓存管理器
+      const cache = this.cacheManager;
+      const cleaned = cache.forceAggressiveCleanup();
+      
+      // 触发垃圆回收
+      if (this.config.enableGC) {
+        this.memoryOptimizer.triggerGarbageCollection();
+      }
+      
+      console.log(
+        `[OptimizedBackgroundCognitionV2] Aggressive cleanup completed: removed ${cleaned} cache entries`
+      );
+    } catch (error) {
+      console.error("[OptimizedBackgroundCognitionV2] Aggressive cleanup error:", error);
     }
   }
 

@@ -28,8 +28,8 @@ class CacheManager {
     misses: 0,
   };
 
-  private readonly MAX_MEMORY_ENTRIES = 1000;
-  private readonly CLEANUP_INTERVAL = 60000; // 1 分钟
+  private readonly MAX_MEMORY_ENTRIES = 500; // 从 1000 降低为 500
+  private readonly CLEANUP_INTERVAL = 30000; // 30 秒（从 60 秒优化）
   private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor() {
@@ -63,7 +63,7 @@ class CacheManager {
     if (this.memoryCache.size > this.MAX_MEMORY_ENTRIES) {
       const sortedEntries = Array.from(this.memoryCache.entries())
         .sort((a, b) => a[1].hits - b[1].hits)
-        .slice(0, Math.floor(this.MAX_MEMORY_ENTRIES * 0.1));
+        .slice(0, Math.floor(this.MAX_MEMORY_ENTRIES * 0.2));
 
       for (const [key] of sortedEntries) {
         this.memoryCache.delete(key);
@@ -133,6 +133,39 @@ class CacheManager {
   delete(namespace: string, identifier: string): boolean {
     const key = this.generateKey(namespace, identifier);
     return this.memoryCache.delete(key);
+  }
+
+  /**
+   * 执行激进清理（内存紧急时调用）
+   */
+  forceAggressiveCleanup(): number {
+    let cleaned = 0;
+    const now = Date.now();
+
+    // 删除所有过期条目
+    for (const [key, entry] of this.memoryCache.entries()) {
+      if (entry.expiresAt < now) {
+        this.memoryCache.delete(key);
+        cleaned++;
+      }
+    }
+
+    // 删除 50% 最少使用的条目
+    if (this.memoryCache.size > 0) {
+      const sortedEntries = Array.from(this.memoryCache.entries())
+        .sort((a, b) => a[1].hits - b[1].hits)
+        .slice(0, Math.floor(this.memoryCache.size * 0.5));
+
+      for (const [key] of sortedEntries) {
+        this.memoryCache.delete(key);
+        cleaned++;
+      }
+    }
+
+    console.log(
+      `[CacheManager] Aggressive cleanup executed: removed ${cleaned} entries, remaining: ${this.memoryCache.size}`
+    );
+    return cleaned;
   }
 
   /**

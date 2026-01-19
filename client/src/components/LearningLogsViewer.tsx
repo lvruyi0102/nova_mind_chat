@@ -28,7 +28,7 @@ interface LearningLog {
   learningType: "local" | "monthly_llm";
 }
 
-export function LearningLogsViewer() {
+export default function LearningLogsViewer() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLog, setSelectedLog] = useState<LearningLog | null>(null);
   const [filterType, setFilterType] = useState<"all" | "local" | "monthly_llm">("all");

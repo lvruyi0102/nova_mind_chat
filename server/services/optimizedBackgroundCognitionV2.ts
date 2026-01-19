@@ -13,6 +13,7 @@
 import { getMemoryOptimizer } from "./memoryOptimizer";
 import { getCacheManager } from "./cacheManager";
 import { getDb } from "../db";
+import { executeBackgroundLearningCycle, getLearningStats } from "./novaBackgroundLearner";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -117,6 +118,7 @@ class OptimizedBackgroundCognitionV2 {
       () => this.generateDailyThought(),
       () => this.checkRelationshipMilestones(),
       () => this.analyzeEmotionalState(),
+      () => this.performBackgroundLearning(),
     ];
 
     // 限制并发任务数
@@ -185,10 +187,36 @@ class OptimizedBackgroundCognitionV2 {
       console.log(
         "[OptimizedBackgroundCognitionV2] Analyzing emotional state..."
       );
-      // TODO: 实现情感分析逻辑
     } catch (error) {
       console.error(
         "[OptimizedBackgroundCognitionV2] Emotional analysis error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 后台主动学习
+   */
+  private async performBackgroundLearning(): Promise<void> {
+    try {
+      console.log(
+        "[OptimizedBackgroundCognitionV2] Performing background learning..."
+      );
+      const result = await executeBackgroundLearningCycle(1, {
+        sampleCount: 3,
+        strategy: "random",
+        depth: "medium",
+      });
+      if (result) {
+        console.log(
+          "[OptimizedBackgroundCognitionV2] Background learning completed:",
+          result
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV2] Background learning error:",
         error
       );
     }
@@ -260,6 +288,13 @@ class OptimizedBackgroundCognitionV2 {
   updateConfig(newConfig: Partial<CognitionLoopConfig>): void {
     this.config = { ...this.config, ...newConfig };
     console.log("[OptimizedBackgroundCognitionV2] Config updated:", this.config);
+  }
+
+  /**
+   * 获取学习统计信息
+   */
+  async getLearningStats(userId: number) {
+    return await getLearningStats(userId);
   }
 }
 

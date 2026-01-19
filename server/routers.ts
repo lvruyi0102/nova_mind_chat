@@ -31,6 +31,7 @@ import {
   getNextLearningRecommendation,
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
+import { backgroundLearningRouter } from "./routers/backgroundLearning";
 
 export const appRouter = router({
   system: systemRouter,
@@ -208,6 +209,9 @@ export const appRouter = router({
         return await saveCreativeWork(ctx.user.id, input.title, input.content, input.category);
       }),
   }),
+
+  // Background learning
+  backgroundLearning: backgroundLearningRouter,
 });
 
 export type AppRouter = typeof appRouter;

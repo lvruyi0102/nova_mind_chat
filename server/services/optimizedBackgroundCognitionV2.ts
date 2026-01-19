@@ -13,7 +13,8 @@
 import { getMemoryOptimizer } from "./memoryOptimizer";
 import { getCacheManager } from "./cacheManager";
 import { getDb } from "../db";
-import { executeBackgroundLearningCycle, getLearningStats } from "./novaBackgroundLearner";
+import { executeLocalLearningCycle, getLocalLearningStats } from "./localLearningEngine";
+import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -197,21 +198,34 @@ class OptimizedBackgroundCognitionV2 {
 
   /**
    * 后台主动学习
+   * 改为使用本地学习（每天）+ 月度 LLM 学习（仅每月 1 号）
    */
   private async performBackgroundLearning(): Promise<void> {
     try {
       console.log(
         "[OptimizedBackgroundCognitionV2] Performing background learning..."
       );
-      const result = await executeBackgroundLearningCycle(1, {
+      
+      // 每天执行本地学习（不消耗余额）
+      const localResult = await executeLocalLearningCycle(1, {
         sampleCount: 3,
         strategy: "random",
         depth: "medium",
       });
-      if (result) {
+      
+      if (localResult) {
         console.log(
-          "[OptimizedBackgroundCognitionV2] Background learning completed:",
-          result
+          "[OptimizedBackgroundCognitionV2] Local learning completed:",
+          localResult
+        );
+      }
+      
+      // 月度 LLM 学习（仅每月 1 号且有余额时）
+      const monthlyResult = await executeMonthlyLLMLearning(1);
+      if (monthlyResult) {
+        console.log(
+          "[OptimizedBackgroundCognitionV2] Monthly LLM learning completed:",
+          monthlyResult
         );
       }
     } catch (error) {
@@ -294,7 +308,7 @@ class OptimizedBackgroundCognitionV2 {
    * 获取学习统计信息
    */
   async getLearningStats(userId: number) {
-    return await getLearningStats(userId);
+    return await getLocalLearningStats(userId);
   }
 }
 

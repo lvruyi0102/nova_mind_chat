@@ -46,7 +46,7 @@ export function CostOptimizedLearningMonitor() {
   });
 
   useEffect(() => {
-    if (statsData?.success && statsData.data) {
+    if (statsData && 'data' in statsData && statsData.data) {
       setStats(statsData.data);
     }
   }, [statsData]);

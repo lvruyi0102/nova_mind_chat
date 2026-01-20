@@ -72,7 +72,7 @@ export async function saveCreativeWork(options: {
     } as any);
 
     // Get the inserted version ID
-    const insertedVersion = await db.select().from(creativeWorkVersions).where(eq(creativeWorkVersions.workId, workId)).orderBy(desc(creativeWorkVersions.createdAt)).limit(1);
+    const insertedVersion = await db.select().from(creativeWorkVersions).where(eq(creativeWorkVersions.workId, workId as number)).orderBy(desc(creativeWorkVersions.createdAt)).limit(1);
     const versionId = insertedVersion[0]?.id;
     if (!versionId) {
       throw new Error("Failed to get inserted version ID");
@@ -101,7 +101,7 @@ export async function getCreativeWorkVersions(workId: number) {
     const versions = await db
       .select()
       .from(creativeWorkVersions)
-      .where(eq(creativeWorkVersions.workId, workId))
+      .where(eq(creativeWorkVersions.workId, workId as number))
       .orderBy(creativeWorkVersions.versionNumber);
 
     return versions;
@@ -121,7 +121,7 @@ export async function getLatestVersion(workId: number) {
     const versions = await db
       .select()
       .from(creativeWorkVersions)
-      .where(eq(creativeWorkVersions.workId, workId))
+      .where(eq(creativeWorkVersions.workId, workId as number))
       .orderBy(creativeWorkVersions.versionNumber);
 
     return versions[versions.length - 1] || null;

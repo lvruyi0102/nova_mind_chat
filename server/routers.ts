@@ -131,7 +131,7 @@ export const appRouter = router({
           // Run in background without blocking response
           processMessageCognitively(
             input.conversationId,
-            input.content,
+            typeof input.content === 'string' ? input.content : JSON.stringify(input.content),
             "user",
             ctx.user.id,
             assistantMessage
@@ -208,7 +208,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        return await saveCreativeWork(ctx.user.id, input.title, input.content, input.category);
+        return await saveCreativeWork({
+          userId: ctx.user.id,
+          title: input.title,
+          content: input.content,
+          type: 'other',
+          contentType: 'text',
+        });
       }),
   }),
 

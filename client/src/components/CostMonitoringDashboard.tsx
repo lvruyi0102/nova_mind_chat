@@ -12,14 +12,14 @@ export function CostMonitoringDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   // 获取统计数据
-  const statsQuery = trpc.costMonitoring.getStats.useQuery();
-  const dailySummariesQuery = trpc.costMonitoring.getDailySummaries.useQuery({ days: 30 });
-  const cacheEfficiencyQuery = trpc.costMonitoring.getCacheEfficiency.useQuery();
-  const serviceBreakdownQuery = trpc.costMonitoring.getServiceCostBreakdown.useQuery();
-  const llmMetricsQuery = trpc.costMonitoring.getLLMMetrics.useQuery();
-  const queryMetricsQuery = trpc.costMonitoring.getQueryMetrics.useQuery();
-  const recommendationsQuery = trpc.costMonitoring.getOptimizationRecommendations.useQuery();
-  const predictQuery = trpc.costMonitoring.predictMonthlyCost.useQuery();
+  const statsQuery = trpc.monitoring.getStats.useQuery();
+  const dailySummariesQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const cacheEfficiencyQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const serviceBreakdownQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const llmMetricsQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const queryMetricsQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const recommendationsQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const predictQuery = trpc.monitoring.getSystemMetrics.useQuery();
 
   const stats = statsQuery.data;
   const dailySummaries = dailySummariesQuery.data || [];

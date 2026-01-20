@@ -8,6 +8,7 @@ import { getDb } from "../db";
 import { messages, concepts, privateThoughts } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { saveLearningLog } from "./learningLogService";
+import { performIntegratedLearning } from "./integratedLearningService";
 
 /**
  * TF-IDF 关键词提取

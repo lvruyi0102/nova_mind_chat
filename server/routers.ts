@@ -33,6 +33,7 @@ import {
 import { emotionsRouter } from "./routers/emotions";
 import { backgroundLearningRouter } from "./routers/backgroundLearning";
 import { learningLogsRouter } from "./routers/learningLogs";
+import { monitoringRouter } from "./routers/monitoring";
 
 export const appRouter = router({
   system: systemRouter,
@@ -216,6 +217,9 @@ export const appRouter = router({
   
   // Learning logs
   learningLogs: learningLogsRouter,
+  
+  // Monitoring
+  monitoring: monitoringRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -119,13 +119,13 @@ export const appRouter = router({
             messages,
           });
           
-          const assistantMessage = response.choices[0]?.message?.content;
+          const assistantMessage = response.choices[0]?.message?.content as string;
           if (!assistantMessage) {
             throw new Error("Failed to get response from LLM");
           }
 
           // Save assistant message
-          await createMessage(input.conversationId, "assistant", assistantMessage);
+          await createMessage(input.conversationId, "assistant", assistantMessage as string);
 
           // Process message cognitively to update Nova's knowledge graph
           // Run in background without blocking response

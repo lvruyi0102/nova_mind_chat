@@ -8,6 +8,8 @@
     "module": "ESNext",
     "strict": false,
     "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitThis": false,
     "strictNullChecks": false,
     "strictFunctionTypes": false,

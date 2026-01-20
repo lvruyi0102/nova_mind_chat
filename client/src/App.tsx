@@ -18,6 +18,7 @@ import MultimodalChatPage from "./pages/MultimodalChatPage";
 import DataExport from "./pages/DataExport";
 import TaskScheduler from "./pages/TaskScheduler";
 import LearningLogsPage from "./pages/LearningLogsPage";
+import MonitoringPage from "./pages/MonitoringPage";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/export" component={DataExport} />
       <Route path="/scheduler" component={TaskScheduler} />
       <Route path="/learning-logs" component={LearningLogsPage} />
+      <Route path="/monitoring" component={MonitoringPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

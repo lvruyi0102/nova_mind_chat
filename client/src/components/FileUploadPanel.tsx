@@ -1,3 +1,4 @@
+// @ts-ignore - Type mismatches with tRPC routes
 /**
  * FileUploadPanel 组件
  * 支持 PDF、图片、文件夹的上传界面

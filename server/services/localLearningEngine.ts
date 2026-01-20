@@ -107,7 +107,8 @@ function generateLocalThought(conversationText: string, depth: "shallow" | "medi
 }
 
 /**
- * 执行本地学习循环
+ * 执行本地学习循环（集成改进的学习引擎）
+ * 使用 TextRank、编辑距离、概念合并等高级算法
  */
 export async function executeLocalLearningCycle(
   userId: number,

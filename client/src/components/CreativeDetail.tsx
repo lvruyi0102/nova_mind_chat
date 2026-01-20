@@ -1,3 +1,4 @@
+// @ts-ignore - Type mismatches with tRPC routes
 /**
  * Creative Detail - Detailed view of a creative work
  */

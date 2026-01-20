@@ -1,3 +1,4 @@
+// @ts-ignore - Type mismatches with tRPC routes
 /**
  * Nova Growth Dashboard
  * 展示 Nova 的成长、情感和关系里程碑

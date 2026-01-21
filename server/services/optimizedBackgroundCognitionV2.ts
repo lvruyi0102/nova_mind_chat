@@ -15,6 +15,7 @@ import { getCacheManager } from "./cacheManager";
 import { getDb } from "../db";
 import { executeLocalLearningCycle, getLocalLearningStats } from "./localLearningEngine";
 import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
+import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -218,17 +219,18 @@ class OptimizedBackgroundCognitionV2 {
         "[OptimizedBackgroundCognitionV2] Performing background learning..."
       );
       
-      // 每天执行本地学习（不消耗余额）
-      const localResult = await executeLocalLearningCycle(1, {
-        sampleCount: 3,
+      // 每天执行改进的本地学习（不消耗余额）
+      // 使用 TextRank、编辑距离、概念合并等高级算法
+      const improvedResult = await executeImprovedLocalLearningCycle(1, {
+        sampleCount: 5,
         strategy: "random",
-        depth: "medium",
+        depth: "deep",
       });
       
-      if (localResult) {
+      if (improvedResult) {
         console.log(
-          "[OptimizedBackgroundCognitionV2] Local learning completed:",
-          localResult
+          "[OptimizedBackgroundCognitionV2] Improved local learning completed:",
+          improvedResult
         );
       }
       

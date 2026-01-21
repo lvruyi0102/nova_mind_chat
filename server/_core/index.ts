@@ -7,9 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { startBackgroundCognition } from "../backgroundCognitionOptimized";
+import { getOptimizedBackgroundCognitionV3 } from "../services/optimizedBackgroundCognitionV3";
 import { startMonitoring } from "../performanceMonitor";
-import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
 import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
 
@@ -38,6 +37,17 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  
+  // Memory monitoring endpoints
+  app.get("/api/health/memory", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getDiagnosticReport());
+  });
+
+  app.get("/api/health/cognition", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getStatus());
+  });
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -65,9 +75,10 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     
-    // Start Nova's background cognition
-    console.log("[Server] Starting Nova-Mind's autonomous consciousness...");
-    startBackgroundCognition().catch((error) => {
+    // Start Nova's background cognition (V3 - optimized)
+    console.log("[Server] Starting Nova-Mind's autonomous consciousness (V3 optimized)...");
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    cognitionLoop.start().catch((error) => {
       console.error("[Server] Failed to start background cognition:", error);
     });
 

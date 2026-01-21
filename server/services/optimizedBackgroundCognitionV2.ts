@@ -224,7 +224,6 @@ class OptimizedBackgroundCognitionV2 {
       const improvedResult = await executeImprovedLocalLearningCycle(1, {
         sampleCount: 5,
         strategy: "random",
-        depth: "deep",
       });
       
       if (improvedResult) {

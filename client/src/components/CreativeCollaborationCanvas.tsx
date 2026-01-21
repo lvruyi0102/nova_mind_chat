@@ -1,3 +1,4 @@
+// @ts-ignore
 // @ts-ignore - Type mismatches with tRPC routes
 import { useState } from "react";
 import { Button } from "@/components/ui/button";

@@ -16,6 +16,7 @@ import { getDb } from "../db";
 import { executeLocalLearningCycle, getLocalLearningStats } from "./localLearningEngine";
 import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
 import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration";
+import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -133,6 +134,7 @@ class OptimizedBackgroundCognitionV2 {
       () => this.checkRelationshipMilestones(),
       () => this.analyzeEmotionalState(),
       () => this.performBackgroundLearning(),
+      () => this.generateCuratedThoughts(),
     ];
 
     // 限制并发任务数
@@ -204,6 +206,35 @@ class OptimizedBackgroundCognitionV2 {
     } catch (error) {
       console.error(
         "[OptimizedBackgroundCognitionV2] Emotional analysis error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 生成精选思想
+   * 每天自动从私密思想中精选可分享的内容
+   */
+  private async generateCuratedThoughts(): Promise<void> {
+    try {
+      console.log(
+        "[OptimizedBackgroundCognitionV2] Generating curated thoughts..."
+      );
+      
+      const result = await runDailyCurationCycle();
+      
+      if (result.success) {
+        console.log(
+          `[OptimizedBackgroundCognitionV2] Curated ${result.totalCurated} thoughts across ${result.usersProcessed} users`
+        );
+      } else {
+        console.warn(
+          "[OptimizedBackgroundCognitionV2] Daily curation cycle failed"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV2] Curated thoughts generation error:",
         error
       );
     }

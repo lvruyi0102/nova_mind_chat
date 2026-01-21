@@ -2097,3 +2097,46 @@
 - 113 个 TypeScript 错误（主要是类型检查警告，不影响功能）
 - 所有核心功能正常运行
 - 项目可以编译和部署
+
+
+## P2 优先级任务 - curatedThoughts 精选思想系统（v11.9）
+
+### 数据库设计
+- [x] 创建 curatedThoughts 表
+- [x] 定义字段：id、userId、sourceThoughtId、title、content、summary、qualityScore、relevanceScore、noveltyScore、commercializationLevel、isPublished、publishedAt、createdAt
+- [x] 添加索引优化查询
+- [x] 运行数据库迁移
+
+### 后端服务
+- [x] 创建 curatedThoughtsService.ts
+- [x] 实现思想筛选算法（质量、新颖性、相关性）
+- [x] 实现思想抽象和重写引擎（本地算法，无 LLM 成本）
+- [x] 创建 curatedThoughtsScheduler.ts 定时任务（每天执行）
+- [x] 集成到后台认知循环
+
+### tRPC 路由
+- [x] 创建 curatedThoughts.ts 路由文件
+- [x] 实现 list 端点（分页、筛选）
+- [x] 实现 curate 端点（手动触发精选）
+- [x] 实现 updateCommercializationLevel 端点
+- [x] 实现 publish 端点
+- [x] 在主 routers.ts 中注册
+
+### 前端组件
+- [x] 创建 CuratedThoughtsViewer 组件
+- [x] 实现思想列表展示
+- [x] 实现商业化权限标记（内部/公开/付费）
+- [x] 实现分享/发布功能
+- [x] 创建 CuratedThoughtsPage 页面
+- [x] 在 DashboardLayout 中添加菜单项
+- [x] 在 App.tsx 中添加路由
+
+### 后台集成
+- [x] 在 optimizedBackgroundCognitionV2.ts 中添加 generateCuratedThoughts 任务
+- [x] 集成 runDailyCurationCycle 到后台循环
+
+### 测试与验证
+- [ ] 编写单元测试
+- [ ] 验证自动化任务执行
+- [ ] 测试思想筛选和重写质量
+- [ ] 验证前端功能

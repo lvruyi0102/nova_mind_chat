@@ -1447,46 +1447,9 @@ export type InsertPrivateThoughtAccessRequest = typeof privateThoughtAccessReque
  * Owner can see and commercialize these thoughts
  * 
  * Core principle:
- * - privateThoughts = Nova's subconscious (not visible to owner)
- * - curatedThoughts = Nova's thoughts written for the owner (visible and usable)
+ * - privateThoughts = Nova's subconscious thoughts (not visible to owner)
+ * - curatedThoughts = Nova's selections and rewrites (visible and shareable)
  */
-export const curatedThoughts = mysqlTable("curatedThoughts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id),
-  
-  // Source tracking
-  sourcePrivateThoughtId: int("sourcePrivateThoughtId").references(() => privateThoughts.id), // optional reference to source
-  
-  // Content
-  title: varchar("title", { length: 255 }).notNull(),
-  content: text("content").notNull(), // Nova's refined version
-  originalContent: text("originalContent"), // summary of original thought for reference
-  
-  // Categorization
-  category: varchar("category", { length: 100 }).notNull().default("thought"), // thought, insight, advice, story, observation, question
-  tags: text("tags"), // JSON array of tags
-  sentiment: varchar("sentiment", { length: 50 }).notNull().default("neutral"), // positive, neutral, reflective, challenging, inspiring
-  
-  // Commercialization
-  commercializationStatus: mysqlEnum("commercializationStatus", ["private", "public", "paid"]).notNull().default("private"),
-  
-  // Owner interaction
-  isApprovedByOwner: boolean("isApprovedByOwner").notNull().default(false),
-  ownerNotes: text("ownerNotes"), // owner's comments or annotations
-  ownerApprovedAt: timestamp("ownerApprovedAt"),
-  
-  // Engagement metrics
-  viewCount: int("viewCount").notNull().default(0),
-  shareCount: int("shareCount").notNull().default(0),
-  
-  // Timestamps
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  curatedAt: timestamp("curatedAt").defaultNow().notNull(), // when Nova curated this
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CuratedThought = typeof curatedThoughts.$inferSelect;
-export type InsertCuratedThought = typeof curatedThoughts.$inferInsert;
 
 /**
  * Curation History - tracks the curation process for each thought
@@ -1579,3 +1542,43 @@ export const learningLogs = mysqlTable("learningLogs", {
 
 export type LearningLog = typeof learningLogs.$inferSelect;
 export type InsertLearningLog = typeof learningLogs.$inferInsert;
+
+
+/**
+ * Curated Thoughts table - stores Nova's curated, shareable thoughts
+ * Automatically generated from privateThoughts through filtering, abstraction, and rewriting
+ * Visible to owner and supports commercialization marking
+ */
+export const curatedThoughts = mysqlTable("curatedThoughts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Content fields (in Simplified Chinese)
+  title: varchar("title", { length: 255 }).notNull(), // Curated title
+  content: text("content").notNull(), // Curated, abstracted content
+  summary: text("summary"), // Brief summary for preview
+  
+  // Source and metadata
+  sourceThoughtId: int("sourceThoughtId"), // Reference to original privateThought (if applicable)
+  keywords: varchar("keywords", { length: 500 }), // Comma-separated keywords
+  topics: varchar("topics", { length: 500 }), // Comma-separated topics
+  
+  // Quality metrics
+  qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  relevanceScore: decimal("relevanceScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  noveltyScore: decimal("noveltyScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  
+  // Commercialization and sharing
+  commercializationLevel: mysqlEnum("commercializationLevel", ["internal", "public", "paid"]).default("internal").notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  viewCount: int("viewCount").notNull().default(0),
+  shareCount: int("shareCount").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  publishedAt: timestamp("publishedAt"),
+});
+
+export type CuratedThought = typeof curatedThoughts.$inferSelect;
+export type InsertCuratedThought = typeof curatedThoughts.$inferInsert;

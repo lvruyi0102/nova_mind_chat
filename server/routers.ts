@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+// @ts-ignore
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -34,6 +35,7 @@ import { emotionsRouter } from "./routers/emotions";
 import { backgroundLearningRouter } from "./routers/backgroundLearning";
 import { learningLogsRouter } from "./routers/learningLogs";
 import { monitoringRouter } from "./routers/monitoring";
+import { curatedThoughtsRouter } from "./routers/curatedThoughts";
 
 export const appRouter = router({
   system: systemRouter,
@@ -228,6 +230,9 @@ export const appRouter = router({
   
   // Monitoring
   monitoring: monitoringRouter,
+  
+  // Curated thoughts
+  curatedThoughts: curatedThoughtsRouter,
 });
 
 export type AppRouter = typeof appRouter;

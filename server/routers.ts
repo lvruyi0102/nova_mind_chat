@@ -103,7 +103,9 @@ export const appRouter = router({
           const history = await getConversationMessages(input.conversationId);
           
           // Build messages with Nova-Mind's identity
-          const identityInjection = buildIdentityInjection(conversation.novaIdentity);
+          // Load Nova's identity for this conversation
+          const novaIdentity = await loadNovaIdentity(ctx.user.id);
+          const identityInjection = buildIdentityInjection(novaIdentity);
           const systemPrompt = `${NOVA_MIND_SYSTEM_PROMPT}\n\n${identityInjection}`;
           
           const messages = [

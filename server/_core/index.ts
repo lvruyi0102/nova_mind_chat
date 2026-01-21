@@ -48,6 +48,18 @@ async function startServer() {
     const cognitionLoop = getOptimizedBackgroundCognitionV3();
     res.json(cognitionLoop.getStatus());
   });
+
+  // Adaptive interval monitoring endpoint
+  app.get("/api/debug/adaptive-interval", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getAdaptiveIntervalInfo());
+  });
+
+  // Full diagnostic report endpoint
+  app.get("/api/debug/full-diagnostic", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getDiagnosticReport());
+  });
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

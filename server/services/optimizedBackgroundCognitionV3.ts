@@ -14,6 +14,7 @@
 
 import { getMemoryOptimizerV2 } from "./memoryOptimizerV2";
 import { getCacheManagerV2 } from "./cacheManagerV2";
+import { getAdaptiveIntervalManager } from "./adaptiveIntervalManager";
 import { getDb } from "../db";
 import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration";
 import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
@@ -40,6 +41,7 @@ class OptimizedBackgroundCognitionV3 {
 
   private memoryOptimizer = getMemoryOptimizerV2();
   private cacheManager = getCacheManagerV2();
+  private adaptiveIntervalManager = getAdaptiveIntervalManager();
   private isRunning = false;
   private currentTask: Promise<void> | null = null;
   private lastSuccessfulCycleTime = Date.now();
@@ -125,11 +127,23 @@ class OptimizedBackgroundCognitionV3 {
         this.lastSuccessfulCycleTime = Date.now();
         this.failedCycleCount = 0;
 
+        // 更新自适应间隔
+        const adjustmentResult = this.adaptiveIntervalManager.updateInterval(
+          metrics.usagePercent
+        );
+        const nextInterval = this.adaptiveIntervalManager.getCurrentInterval();
+
+        if (adjustmentResult.changed) {
+          console.log(
+            `[OptimizedBackgroundCognitionV3] Adaptive interval adjusted: ${adjustmentResult.level}`
+          );
+        }
+
         // 等待下一个循环
         console.log(
-          `[OptimizedBackgroundCognitionV3] Cycle completed. Next cycle in ${(this.config.intervalMs / 60000).toFixed(0)} minutes`
+          `[OptimizedBackgroundCognitionV3] Cycle completed. Next cycle in ${(nextInterval / 60000).toFixed(1)} minutes (${adjustmentResult.level})`
         );
-        await this.sleep(this.config.intervalMs);
+        await this.sleep(nextInterval);
       } catch (error) {
         this.failedCycleCount++;
         console.error(
@@ -268,6 +282,8 @@ class OptimizedBackgroundCognitionV3 {
   getStatus() {
     const metrics = this.memoryOptimizer.getCurrentMetrics();
     const cacheStats = this.cacheManager.getStats();
+    const adaptiveInterval = this.adaptiveIntervalManager.getCurrentInterval();
+    const adaptiveLevel = this.adaptiveIntervalManager.getCurrentLevel();
 
     return {
       isRunning: this.isRunning,
@@ -283,6 +299,11 @@ class OptimizedBackgroundCognitionV3 {
         hitRate: cacheStats.hitRate.toFixed(1),
         memoryMB: cacheStats.totalMemoryMB,
       },
+      adaptiveInterval: {
+        currentIntervalMs: adaptiveInterval,
+        currentIntervalMinutes: (adaptiveInterval / 60000).toFixed(1),
+        memoryLevel: adaptiveLevel,
+      },
       config: this.config,
     };
   }
@@ -291,7 +312,17 @@ class OptimizedBackgroundCognitionV3 {
    * 获取诊断报告
    */
   getDiagnosticReport() {
-    return this.memoryOptimizer.getDiagnosticReport();
+    return {
+      memory: this.memoryOptimizer.getDiagnosticReport(),
+      adaptiveInterval: this.adaptiveIntervalManager.getDiagnosticReport(),
+    };
+  }
+
+  /**
+   * 获取自适应间隔信息
+   */
+  getAdaptiveIntervalInfo() {
+    return this.adaptiveIntervalManager.getDiagnosticReport();
   }
 
   /**

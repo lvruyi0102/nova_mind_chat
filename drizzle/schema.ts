@@ -353,7 +353,7 @@ export type InsertRelationshipPattern = typeof relationshipPatterns.$inferInsert
 /**
  * Creative Works - Nova's creative creations (art, stories, music, code, etc.)
  */
-export const creativeWorks: ReturnType<typeof mysqlTable> = mysqlTable("creativeWorks", {
+export const creativeWorks = mysqlTable("creativeWorks", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "game", "video", "animation", "audio", "other"]).notNull(),
@@ -553,7 +553,7 @@ export type InsertRelationshipTimelineEvent = typeof relationshipTimeline.$infer
 /**
  * Creative Collaborations - Tracks collaborative creative projects between user and Nova
  */
-export const creativeCollaborations: ReturnType<typeof mysqlTable> = mysqlTable("creativeCollaborations", {
+export const creativeCollaborations = mysqlTable("creativeCollaborations", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   

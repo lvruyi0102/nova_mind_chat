@@ -1604,3 +1604,49 @@ export const performanceMetrics = mysqlTable("performanceMetrics", {
 
 export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
 export type InsertPerformanceMetric = typeof performanceMetrics.$inferInsert;
+
+
+/**
+ * Creative Work Content - stores different types of content for creative works
+ * Separates content by type to avoid type mismatches and support rich content
+ */
+export const creativeWorkContent = mysqlTable("creativeWorkContent", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id, { onDelete: "cascade" }),
+  
+  // Content type determines which fields are populated
+  contentType: mysqlEnum("contentType", ["text", "image", "audio", "video", "code", "url", "mixed"]).notNull(),
+  
+  // Text content
+  textContent: text("textContent"), // For stories, poetry, descriptions
+  
+  // Image/Video content
+  imageUrl: varchar("imageUrl", { length: 2048 }), // URL to image
+  videoUrl: varchar("videoUrl", { length: 2048 }), // URL to video
+  thumbnailUrl: varchar("thumbnailUrl", { length: 2048 }), // Thumbnail for media
+  
+  // Audio content
+  audioUrl: varchar("audioUrl", { length: 2048 }), // URL to audio file
+  audioFormat: varchar("audioFormat", { length: 50 }), // mp3, wav, ogg, etc.
+  duration: int("duration"), // Duration in seconds
+  
+  // Code content
+  codeContent: text("codeContent"), // Source code
+  codeLanguage: varchar("codeLanguage", { length: 50 }), // javascript, python, etc.
+  
+  // Generic URL
+  externalUrl: varchar("externalUrl", { length: 2048 }), // Link to external content
+  
+  // Metadata specific to content type
+  metadata: text("metadata"), // JSON: dimensions, format, encoding, etc.
+  
+  // Storage info
+  fileSize: int("fileSize"), // Size in bytes
+  mimeType: varchar("mimeType", { length: 100 }), // Content MIME type
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeWorkContent = typeof creativeWorkContent.$inferSelect;
+export type InsertCreativeWorkContent = typeof creativeWorkContent.$inferInsert;

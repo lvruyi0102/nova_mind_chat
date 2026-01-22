@@ -166,7 +166,7 @@ export async function generateMediaSimple(
       if (db) {
         await db.insert(creativeWorks).values({
           userId,
-          type: "media",
+          type: mediaType === "music" ? "music" : mediaType === "video" ? "video" : "animation",
           title: prompt.substring(0, 100),
           description: `Generated ${mediaType}`,
           content: mediaUrl,

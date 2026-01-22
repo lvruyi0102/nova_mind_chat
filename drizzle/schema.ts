@@ -1582,3 +1582,25 @@ export const curatedThoughts = mysqlTable("curatedThoughts", {
 
 export type CuratedThought = typeof curatedThoughts.$inferSelect;
 export type InsertCuratedThought = typeof curatedThoughts.$inferInsert;
+
+
+/**
+ * Performance Metrics table - stores historical performance data for trend analysis
+ */
+export const performanceMetrics = mysqlTable("performanceMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  timestamp: timestamp("timestamp").notNull(),
+  memoryUsedMB: decimal("memoryUsedMB", { precision: 10, scale: 2 }).notNull(),
+  memoryTotalMB: decimal("memoryTotalMB", { precision: 10, scale: 2 }).notNull(),
+  memoryPercent: decimal("memoryPercent", { precision: 5, scale: 2 }).notNull(),
+  cacheHitRate: decimal("cacheHitRate", { precision: 5, scale: 4 }).notNull(),
+  cacheMissRate: decimal("cacheMissRate", { precision: 5, scale: 4 }).notNull(),
+  cacheSize: decimal("cacheSize", { precision: 10, scale: 2 }).notNull(),
+  adaptiveIntervalMinutes: int("adaptiveIntervalMinutes").notNull(),
+  gcCount: int("gcCount").notNull(),
+  cpuUsagePercent: decimal("cpuUsagePercent", { precision: 5, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
+export type InsertPerformanceMetric = typeof performanceMetrics.$inferInsert;

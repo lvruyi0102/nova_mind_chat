@@ -272,7 +272,7 @@ Return ONLY a valid URL or file path for the generated ${mediaType}.`;
       // Save as creative work
       await db.insert(creativeWorks).values({
         userId,
-        type: "media",
+        type: mediaType === "music" ? "music" : mediaType === "video" ? "video" : "animation",
         title: prompt.substring(0, 100),
         description: `Generated ${mediaType}`,
         content: mediaUrl,

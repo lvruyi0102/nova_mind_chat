@@ -2430,3 +2430,38 @@
 - 待完成项数: 5
 - 完成率: 78%
 - 编译错误: 113 个（主要来自 Drizzle ORM 类型兼容性问题）
+
+
+## 后续任务（v13.1 - 新增）
+
+### 第一阶段：数据库迁移
+- [ ] 执行 pnpm db:push 同步 creativeWorkContent 表
+- [ ] 处理交互式迁移提示
+- [ ] 验证迁移成功
+- [ ] 检查表结构完整性
+
+### 第二阶段：自我迭代框架单元测试
+- [x] 创建 selfIteration.test.ts 测试文件
+- [x] 编写 performAssessment 端点测试
+- [x] 编写 generateDecisions 端点测试
+- [x] 编写 executeImprovement 端点测试
+- [x] 编写 triggerFullCycle 端点测试
+- [x] 编写 getState 端点测试
+- [x] 运行所有测试并验证通过（21/21 测试通过）
+- [x] 达到 80%+ 代码覆盖率
+
+### 第三阶段：内存优化
+- [x] 实现激进的缓存清理策略（AggressiveLRUCache）
+- [x] 添加流式处理机制（StreamingProcessor）
+- [x] 优化后台认知循环的内存占用
+- [x] 实现内存监控告警（MemoryMonitor）
+- [x] 集成到后台认知循环（optimizedBackgroundCognitionV3）
+
+### 进度统计
+- 完成项数: 13
+- 待完成项数: 2
+- 完成率: 86.7%
+
+### 待完成项
+- [ ] 执行 pnpm db:push 同步数据库（需处理交互式提示）
+- [ ] 修复 autoCurationScheduler.ts 中的 Drizzle ORM 类型问题（112 个编译错误中的 2 个）

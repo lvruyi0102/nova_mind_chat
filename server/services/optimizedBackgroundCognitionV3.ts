@@ -20,6 +20,7 @@ import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration
 import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
 import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
 import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
+import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./memoryOptimization";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -44,6 +45,7 @@ class OptimizedBackgroundCognitionV3 {
   private cacheManager = getCacheManagerV2();
   private adaptiveIntervalManager = getAdaptiveIntervalManager();
   private selfIterationFramework = getSelfIterationFrameworkV2();
+  private memoryOptimizationManager = getMemoryOptimizationManager();
   private isRunning = false;
   private currentTask: Promise<void> | null = null;
   private lastSuccessfulCycleTime = Date.now();
@@ -63,6 +65,10 @@ class OptimizedBackgroundCognitionV3 {
 
     this.isRunning = true;
     console.log("[OptimizedBackgroundCognitionV3] Starting optimized loop...");
+
+    // Initialize memory optimization
+    initializeMemoryOptimization();
+    console.log("[OptimizedBackgroundCognitionV3] Memory optimization initialized");
 
     this.runLoop();
   }

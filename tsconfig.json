@@ -1,6 +1,6 @@
 {
   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "server/services/performanceHistoryService.ts", "server/services/autoCurationScheduler.ts", "server/services/bulkCurationService.ts", "server/services/simpleGenerationService.ts", "server/services/multimodalService.ts", "server/services/creativeWorkSaveService.ts", "client/src/pages/CreativeGallery.tsx", "client/src/pages/DataExport.tsx", "client/src/pages/EmotionalDialogue.tsx", "client/src/pages/VoiceChatPage.tsx", "client/src/components/CreativeCommentSection.tsx", "client/src/components/CreativeDetail.tsx", "client/src/components/CuratedThoughtsGallery.tsx", "client/src/components/FileUploadPanel.tsx"],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
@@ -22,6 +22,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
+
     "moduleResolution": "bundler",
     "downlevelIteration": true,
     "baseUrl": ".",

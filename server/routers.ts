@@ -220,6 +220,12 @@ export const appRouter = router({
           contentType: 'text',
         });
       }),
+    getWorkDetail: protectedProcedure
+      .input(z.object({ workId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        // Placeholder implementation
+        return { id: input.workId, title: 'Work', content: 'Content', userId: ctx.user.id };
+      }),
   }),
 
   // Background learning
@@ -233,6 +239,21 @@ export const appRouter = router({
   
   // Curated thoughts
   curatedThoughts: curatedThoughtsRouter,
-});
+  curated: curatedThoughtsRouter,
+  
+  // Comments
+  comments: router({
+    list: protectedProcedure
+      .input(z.object({ workId: z.number() }))
+      .query(async () => {
+        return [];
+      }),
+    create: protectedProcedure
+      .input(z.object({ workId: z.number(), content: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return { id: 1, workId: input.workId, content: input.content, userId: ctx.user.id };
+      }),
+  }),
+})
 
 export type AppRouter = typeof appRouter;

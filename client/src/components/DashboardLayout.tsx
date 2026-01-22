@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, BookOpen, Activity, Sparkles, BarChart3 } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, BookOpen, Activity, Sparkles, BarChart3, Brain } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: Activity, label: "Monitoring", path: "/monitoring" },
   { icon: Sparkles, label: "Curated Thoughts", path: "/curated-thoughts" },
   { icon: BarChart3, label: "Performance", path: "/performance" },
+  { icon: Brain, label: "Self-Iteration", path: "/self-iteration" },
   { icon: Users, label: "Relationships", path: "/relationships" },
 ];
 

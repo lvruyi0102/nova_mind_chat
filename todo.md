@@ -2297,3 +2297,23 @@
 - [ ] 实现租户认证
 - [ ] 配置资源隔离
 - [ ] 编写多租户测试
+
+
+## 当前任务完成记录（2026-01-21）
+
+### 已完成
+- [x] 创建 .github/workflows/build-test.yml（自动化构建和测试）
+- [x] 创建 .github/workflows/deploy.yml（自动化部署）
+- [x] 创建 PerformanceDashboard.tsx 前端组件
+- [x] 添加内存使用率监控卡片
+- [x] 添加自适应间隔可视化
+- [x] 添加缓存命中率卡片
+- [x] 集成 /api/health/memory 接口
+- [x] 集成 /api/debug/adaptive-interval 接口
+- [x] 集成 /api/health/cognition 接口
+- [x] 在 App.tsx 中添加 /performance 路由
+- [x] 在 DashboardLayout 中添加 Performance 菜单项
+
+### 剩余编译错误
+- 115 个编译错误主要来自数据库模式（creativeWorks 表的 type 字段使用了 "media" 类型）
+- 需要修复服务层中的字段映射问题

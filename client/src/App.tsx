@@ -20,6 +20,7 @@ import TaskScheduler from "./pages/TaskScheduler";
 import LearningLogsPage from "./pages/LearningLogsPage";
 import MonitoringPage from "./pages/MonitoringPage";
 import CuratedThoughtsPage from "./pages/CuratedThoughtsPage";
+import PerformanceDashboard from "./pages/PerformanceDashboard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/learning-logs" component={LearningLogsPage} />
       <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
+      <Route path="/performance" component={PerformanceDashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

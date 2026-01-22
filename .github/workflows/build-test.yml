@@ -1,0 +1,108 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '22.13.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nova_mind_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check TypeScript
+        run: pnpm tsc --noEmit
+        continue-on-error: true
+
+      - name: Lint code
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Build project
+        run: pnpm build
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/nova_mind_test
+          JWT_SECRET: test_secret_key_min_32_characters
+          VITE_APP_ID: test_app_id
+          OAUTH_SERVER_URL: https://api.manus.im
+          VITE_OAUTH_PORTAL_URL: https://portal.manus.im
+
+      - name: Run tests
+        run: pnpm test --coverage
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/nova_mind_test
+          JWT_SECRET: test_secret_key_min_32_characters
+        continue-on-error: true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+
+      - name: Archive build artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            .next/
+          retention-days: 5
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true

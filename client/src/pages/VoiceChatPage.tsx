@@ -75,9 +75,8 @@ export default function VoiceChatPage() {
     try {
       // Send message to Nova
       await sendMessageMutation.mutateAsync({
-        userId: user.id,
         content: message,
-        conversationId: 'voice-chat', // Use a special conversation ID for voice
+        conversationId: 0, // Use a special conversation ID for voice (0 for voice chat)
       });
     } catch (err) {
       console.error('Error sending message:', err);

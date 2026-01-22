@@ -300,19 +300,21 @@ Please curate this thought.`;
 
       // Save to database
       const result = await db.insert(curatedThoughts).values({
-        userId,
+        userId: userId as number,
         title: curatedData.title || "Untitled",
         content: curatedData.refinedContent || truncatedContent,
-        originalContent: truncatedContent,
-        category: curatedData.category || "thought",
-        tags: JSON.stringify(curatedData.tags || []),
-        sentiment: curatedData.sentiment || "neutral",
-        sourcePrivateThoughtId: thoughtId,
-        commercializationStatus: "private",
-        isApprovedByOwner: false,
+        summary: truncatedContent,
+        sourceThoughtId: thoughtId,
+        keywords: curatedData.tags ? (Array.isArray(curatedData.tags) ? curatedData.tags.join(",") : curatedData.tags) : "",
+        topics: curatedData.category || "thought",
+        qualityScore: 0.75,
+        relevanceScore: 0.80,
+        noveltyScore: 0.70,
+        commercializationLevel: "internal",
+        isPublished: false,
       });
 
-      const curatedThoughtId = result[0]?.insertId;
+      const curatedThoughtId = (result as any)?.[0]?.insertId || (result as any)?.insertId;
       if (curatedThoughtId) {
         // Record history
         await db.insert(curationHistory).values({

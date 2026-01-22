@@ -19,6 +19,7 @@ import { getDb } from "../db";
 import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration";
 import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
 import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
+import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -42,11 +43,14 @@ class OptimizedBackgroundCognitionV3 {
   private memoryOptimizer = getMemoryOptimizerV2();
   private cacheManager = getCacheManagerV2();
   private adaptiveIntervalManager = getAdaptiveIntervalManager();
+  private selfIterationFramework = getSelfIterationFrameworkV2();
   private isRunning = false;
   private currentTask: Promise<void> | null = null;
   private lastSuccessfulCycleTime = Date.now();
   private failedCycleCount = 0;
   private maxFailedCycles = 3; // 连续失败 3 次后停止
+  private lastSelfIterationTime = 0;
+  private selfIterationIntervalMs = 2 * 60 * 60 * 1000; // 每 2 小时执行一次自我迭代
 
   /**
    * 启动优化的后台认知循环
@@ -174,6 +178,7 @@ class OptimizedBackgroundCognitionV3 {
     const tasks = [
       { name: "Daily Curation", fn: () => this.generateCuratedThoughts() },
       { name: "Local Learning", fn: () => this.performBackgroundLearning() },
+      { name: "Self-Iteration", fn: () => this.performSelfIteration() },
       { name: "Monthly LLM Learning", fn: () => this.performMonthlyLearning() },
     ];
 
@@ -271,6 +276,51 @@ class OptimizedBackgroundCognitionV3 {
     } catch (error) {
       console.error(
         "[OptimizedBackgroundCognitionV3] Monthly learning error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 自我迭代循环
+   * 定期执行自我评估和改进决策
+   */
+  private async performSelfIteration(): Promise<void> {
+    try {
+      const now = Date.now();
+      if (now - this.lastSelfIterationTime < this.selfIterationIntervalMs) {
+        return; // 还未到时间
+      }
+
+      console.log("[OptimizedBackgroundCognitionV3] Starting self-iteration cycle...");
+
+      // 执行自我评估
+      const assessment = await this.selfIterationFramework.performAssessment(1);
+      console.log(
+        "[OptimizedBackgroundCognitionV3] Self-assessment completed:",
+        {
+          learningQuality: assessment.learningQuality,
+          knowledgeQuality: assessment.knowledgeQuality,
+          decisionQuality: assessment.decisionQuality,
+          overallScore: assessment.overallScore,
+        }
+      );
+
+      // 生成改进决策
+      const decisions = await this.selfIterationFramework.generateDecisions(1) || [];
+      if (decisions && Array.isArray(decisions)) {
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Generated",
+          decisions.length,
+          "improvement decisions"
+        );
+      }
+
+      // 记录最后执行时间
+      this.lastSelfIterationTime = now;
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Self-iteration error:",
         error
       );
     }

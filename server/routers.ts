@@ -36,6 +36,7 @@ import { backgroundLearningRouter } from "./routers/backgroundLearning";
 import { learningLogsRouter } from "./routers/learningLogs";
 import { monitoringRouter } from "./routers/monitoring";
 import { curatedThoughtsRouter } from "./routers/curatedThoughts";
+import { selfIterationRouter } from "./routers/selfIteration";
 
 export const appRouter = router({
   system: systemRouter,
@@ -240,6 +241,9 @@ export const appRouter = router({
   // Curated thoughts
   curatedThoughts: curatedThoughtsRouter,
   curated: curatedThoughtsRouter,
+  
+  // Self-iteration framework
+  selfIteration: selfIterationRouter,
   
   // Comments
   comments: router({

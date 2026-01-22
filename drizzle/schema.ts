@@ -359,7 +359,8 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "game", "video", "animation", "audio", "other"]).notNull(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
-  content: text("content"), // Main content (text, URL, or code) - supports large HTML/code
+  // NOTE: Content is now stored in creativeWorkContent table (one-to-many relationship)
+  // This table only stores metadata
   metadata: text("metadata"), // JSON metadata (style, mood, theme, etc.)
   
   // Privacy and sharing controls - Nova decides

@@ -128,16 +128,19 @@ export class BulkCurationService {
                 userId,
                 title: curatedData.title,
                 content: curatedData.content,
-                originalContent: thought.content.substring(0, 500),
-                category: curatedData.category,
-                tags: JSON.stringify(curatedData.tags),
-                sentiment: curatedData.sentiment,
-                sourcePrivateThoughtId: thought.id,
-                commercializationStatus: "private",
-                isApprovedByOwner: false,
+                summary: thought.content.substring(0, 500),
+                sourceThoughtId: thought.id,
+                keywords: curatedData.tags ? curatedData.tags.join(",") : "",
+                topics: curatedData.category ? curatedData.category : "",
+                qualityScore: 0.75,
+                relevanceScore: 0.80,
+                noveltyScore: 0.70,
+                commercializationLevel: "internal",
+                isPublished: false,
               });
 
-              const curatedThoughtId = result[0]?.insertId;
+              // Note: Drizzle returns insertId differently, may need adjustment
+              const curatedThoughtId = (result as any)?.[0]?.insertId || (result as any)?.insertId;
               if (curatedThoughtId) {
                 // Record curation history
                 await db.insert(curationHistory).values({

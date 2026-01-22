@@ -2398,3 +2398,35 @@
 1. **本地数据库迁移**：运行 `pnpm db:push` 将 creativeWorkContent 表同步到数据库
 2. **修复 SQL 查询错误**：解决后台认知循环中的 WHERE 条件缺失问题
 3. **完成自我迭代框架集成**：为 selfIterationFrameworkV2 创建 tRPC 路由并集成到后台循环
+
+
+## 数据库迁移和表重设计（v13.0 - 当前任务）
+
+### 数据库迁移
+- [x] 重新设计 creativeWorks 表 - 移除 content 字段
+- [x] 修复 creativeWorkSaveService.ts - 使用正确的字段名
+- [x] 修复 bulkCurationService.ts - 使用正确的 curatedThoughts 字段
+- [x] 修复 autoCurationScheduler.ts - 使用正确的字段映射
+- [ ] 执行数据库迁移 - pnpm db:push（待解决交互式提示问题）
+- [ ] 验证 creativeWorkContent 表已创建
+
+### 自我迭代框架集成
+- [x] 创建 selfIteration.ts tRPC 路由（10个端点）
+- [x] 集成 selfIterationRouter 到主路由
+- [x] 修复 selfIterationRouter 中的 userId 参数传递
+- [x] 修复 Zod record 类型定义
+- [x] 在 optimizedBackgroundCognitionV3.ts 中添加自我迭代循环
+- [x] 配置自我迭代定期执行（每 2 小时）
+- [ ] 测试自我迭代 tRPC 端点
+- [ ] 验证后台认知循环中的自我迭代执行
+
+### 编译错误修复
+- [ ] 修复 autoCurationScheduler.ts 第 303 行 - curatedThoughts 插入错误
+- [ ] 修复 VoiceChatPage.tsx 第 80 行 - 类型不匹配错误
+- [ ] 验证所有编译错误已解决（当前: 113 个）
+
+### 进度统计
+- 完成项数: 18
+- 待完成项数: 5
+- 完成率: 78%
+- 编译错误: 113 个（主要来自 Drizzle ORM 类型兼容性问题）

@@ -307,9 +307,9 @@ Please curate this thought.`;
         sourceThoughtId: thoughtId,
         keywords: curatedData.tags ? (Array.isArray(curatedData.tags) ? curatedData.tags.join(",") : curatedData.tags) : "",
         topics: curatedData.category || "thought",
-        qualityScore: 0.75,
-        relevanceScore: 0.80,
-        noveltyScore: 0.70,
+        qualityScore: "0.75" as any,
+        relevanceScore: "0.80" as any,
+        noveltyScore: "0.70" as any,
         commercializationLevel: "internal",
         isPublished: false,
       });

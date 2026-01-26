@@ -338,10 +338,12 @@ export class StreamingProcessor<T, R> {
  * Memory monitoring service
  */
 export class MemoryMonitor extends EventEmitter {
+  private static _instance: MemoryMonitor | null = null;
   private monitorInterval: NodeJS.Timeout | null = null;
   private warningThreshold: number;
   private criticalThreshold: number;
   private lastStats: MemoryStats | null = null;
+  private cleanupHistory: Array<{ timestamp: number; type: 'cleanup' | 'evict'; size: number; reason?: string }> = [];
 
   constructor(
     warningThreshold: number = 0.80,
@@ -430,6 +432,55 @@ export class MemoryMonitor extends EventEmitter {
       rss: memUsage.rss,
       timestamp: Date.now(),
     };
+  }
+
+  /**
+   * Record cleanup event
+   */
+  recordCleanup(size: number, reason?: string): void {
+    this.cleanupHistory.push({
+      timestamp: Date.now(),
+      type: 'cleanup',
+      size,
+      reason,
+    });
+    // Keep only last 100 events
+    if (this.cleanupHistory.length > 100) {
+      this.cleanupHistory.shift();
+    }
+  }
+
+  /**
+   * Record eviction event
+   */
+  recordEviction(size: number, reason?: string): void {
+    this.cleanupHistory.push({
+      timestamp: Date.now(),
+      type: 'evict',
+      size,
+      reason,
+    });
+    // Keep only last 100 events
+    if (this.cleanupHistory.length > 100) {
+      this.cleanupHistory.shift();
+    }
+  }
+
+  /**
+   * Get cleanup history
+   */
+  getCleanupHistory(): Array<{ timestamp: number; type: 'cleanup' | 'evict'; size: number; reason?: string }> {
+    return [...this.cleanupHistory];
+  }
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(): MemoryMonitor {
+    if (!MemoryMonitor._instance) {
+      MemoryMonitor._instance = new MemoryMonitor();
+    }
+    return MemoryMonitor._instance;
   }
 }
 
@@ -541,48 +592,3 @@ export function initializeMemoryOptimization(): void {
   manager.start();
   console.log('[MemoryOptimization] Initialized and started');
 }
-
-// Add cleanup history tracking to MemoryMonitor
-MemoryMonitor.prototype.recordCleanup = function(size, reason) {
-  if (!this.cleanupHistory) {
-    this.cleanupHistory = [];
-  }
-  this.cleanupHistory.push({
-    timestamp: Date.now(),
-    type: 'cleanup',
-    size,
-    reason,
-  });
-  if (this.cleanupHistory.length > 100) {
-    this.cleanupHistory.shift();
-  }
-};
-
-MemoryMonitor.prototype.recordEviction = function(size, reason) {
-  if (!this.cleanupHistory) {
-    this.cleanupHistory = [];
-  }
-  this.cleanupHistory.push({
-    timestamp: Date.now(),
-    type: 'evict',
-    size,
-    reason,
-  });
-  if (this.cleanupHistory.length > 100) {
-    this.cleanupHistory.shift();
-  }
-};
-
-MemoryMonitor.prototype.getCleanupHistory = function() {
-  if (!this.cleanupHistory) {
-    this.cleanupHistory = [];
-  }
-  return [...this.cleanupHistory];
-};
-
-MemoryMonitor.getInstance = function() {
-  if (!MemoryMonitor._instance) {
-    MemoryMonitor._instance = new MemoryMonitor();
-  }
-  return MemoryMonitor._instance;
-};

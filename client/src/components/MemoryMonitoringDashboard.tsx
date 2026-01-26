@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { AlertCircle, TrendingUp, Zap } from 'lucide-react';
+import { AlertCircle, TrendingUp, Zap, Activity } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { trpc } from '@/lib/trpc';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MemoryStats {
   timestamp: number;
@@ -11,11 +13,13 @@ interface MemoryStats {
   heapUsagePercentage: number;
   external: number;
   rss: number;
+  isWarning?: boolean;
+  isCritical?: boolean;
 }
 
-interface CacheEvent {
+interface CleanupEvent {
   timestamp: number;
-  type: 'cleanup' | 'evict' | 'set' | 'get';
+  type: 'cleanup' | 'evict';
   size: number;
   reason?: string;
 }
@@ -24,316 +28,259 @@ interface CacheEvent {
  * Memory Monitoring Dashboard Component
  * 
  * Displays real-time memory usage, cache statistics, and cleanup events
+ * Fetches data from tRPC endpoints: system.getMemoryStats and system.getCleanupEvents
  */
 export function MemoryMonitoringDashboard() {
   const [memoryHistory, setMemoryHistory] = useState<MemoryStats[]>([]);
-  const [cacheEvents, setCacheEvents] = useState<CacheEvent[]>([]);
+  const [cleanupEvents, setCleanupEvents] = useState<CleanupEvent[]>([]);
   const [currentStats, setCurrentStats] = useState<MemoryStats | null>(null);
   const [cacheHitRate, setCacheHitRate] = useState(0);
-  const [cleanupCount, setCleanupCount] = useState(0);
 
-  // Simulate fetching memory stats from backend
+  // Fetch memory stats from tRPC
+  const { data: memStats, isLoading: memLoading } = trpc.system.getMemoryStats.useQuery(undefined, {
+    refetchInterval: 5000, // Refetch every 5 seconds
+  });
+
+  // Fetch cleanup events from tRPC
+  const { data: cleanupData, isLoading: cleanupLoading } = trpc.system.getCleanupEvents.useQuery(undefined, {
+    refetchInterval: 10000, // Refetch every 10 seconds
+  });
+
+  // Update memory history when new stats arrive
   useEffect(() => {
-    const interval = setInterval(() => {
-      // In a real implementation, this would fetch from a tRPC endpoint
-      const now = Date.now();
-      const memUsage = {
-        timestamp: now,
-        heapUsed: Math.random() * 100 * 1024 * 1024, // 0-100MB
-        heapTotal: 128 * 1024 * 1024, // 128MB
-        heapUsagePercentage: Math.random() * 0.95,
-        external: Math.random() * 10 * 1024 * 1024,
-        rss: Math.random() * 150 * 1024 * 1024,
-      };
-
-      setCurrentStats(memUsage);
+    if (memStats) {
+      setCurrentStats(memStats);
       setMemoryHistory(prev => {
-        const updated = [...prev, memUsage];
+        const updated = [...prev, memStats];
         return updated.slice(-60); // Keep last 60 data points
       });
+    }
+  }, [memStats]);
 
-      // Simulate cache events
-      if (Math.random() > 0.7) {
-        const event: CacheEvent = {
-          timestamp: now,
-          type: Math.random() > 0.5 ? 'cleanup' : 'evict',
-          size: Math.random() * 1024 * 1024,
-          reason: Math.random() > 0.5 ? 'expired' : 'aggressive',
-        };
-        setCacheEvents(prev => [...prev.slice(-20), event]);
-        setCleanupCount(prev => prev + 1);
+  // Update cleanup events when new data arrives
+  useEffect(() => {
+    if (cleanupData) {
+      setCleanupEvents(cleanupData.events || []);
+      
+      // Calculate cache hit rate based on events
+      if (cleanupData.events.length > 0) {
+        const cleanups = cleanupData.events.filter(e => e.type === 'cleanup').length;
+        const total = cleanupData.events.length;
+        setCacheHitRate(total > 0 ? (cleanups / total) * 100 : 0);
       }
+    }
+  }, [cleanupData]);
 
-      // Update cache hit rate
-      setCacheHitRate(Math.random() * 100);
-    }, 2000); // Update every 2 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!currentStats) {
+  if (memLoading || !currentStats) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground">Loading memory statistics...</p>
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const heapUsagePercent = (currentStats.heapUsagePercentage * 100).toFixed(1);
-  const isWarning = currentStats.heapUsagePercentage > 0.8;
-  const isCritical = currentStats.heapUsagePercentage > 0.94;
-
-  // Format bytes to MB
   const formatBytes = (bytes: number) => {
-    return (bytes / (1024 * 1024)).toFixed(2);
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // Chart data for memory history
-  const chartData = memoryHistory.map(stat => ({
-    timestamp: new Date(stat.timestamp).toLocaleTimeString(),
-    usage: parseFloat(formatBytes(stat.heapUsed)),
-    percentage: parseFloat((stat.heapUsagePercentage * 100).toFixed(1)),
-  }));
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString();
+  };
 
-  // Chart data for cache events
-  const eventData = cacheEvents.map((event, index) => ({
-    index,
-    size: parseFloat(formatBytes(event.size)),
-    type: event.type,
-  }));
+  const memoryPercentage = (currentStats.heapUsagePercentage * 100).toFixed(1);
+  const alertLevel = currentStats.isCritical ? 'critical' : currentStats.isWarning ? 'warning' : 'normal';
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 bg-background">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">内存监控仪表板</h2>
-          <p className="text-muted-foreground">Memory Monitoring Dashboard</p>
+          <h1 className="text-3xl font-bold">内存监控仪表板</h1>
+          <p className="text-muted-foreground">实时监控 Nova-Mind 的内存使用和缓存性能</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-yellow-500" />
-          <span className="text-sm font-medium">实时监控</span>
-        </div>
+        <Activity className="w-8 h-8 text-primary" />
       </div>
 
-      {/* Alert for high memory usage */}
-      {isCritical && (
-        <Alert variant="destructive">
+      {/* Alert Section */}
+      {alertLevel !== 'normal' && (
+        <Alert className={alertLevel === 'critical' ? 'border-destructive bg-destructive/10' : 'border-yellow-500 bg-yellow-500/10'}>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            ⚠️ 严重警告：堆内存使用率达到 {heapUsagePercent}%，系统已触发激进清理机制
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {isWarning && !isCritical && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            ⚠️ 警告：堆内存使用率达到 {heapUsagePercent}%，建议关注
+            {alertLevel === 'critical' 
+              ? `⚠️ 严重告警：堆内存使用率已达 ${memoryPercentage}%，建议立即采取行动`
+              : `⚠️ 警告：堆内存使用率已达 ${memoryPercentage}%，请关注内存使用情况`
+            }
           </AlertDescription>
         </Alert>
       )}
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">堆内存使用率</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">堆内存使用</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{heapUsagePercent}%</div>
-            <p className="text-xs text-muted-foreground">
-              {formatBytes(currentStats.heapUsed)} / {formatBytes(currentStats.heapTotal)} MB
+            <div className="text-2xl font-bold">{memoryPercentage}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatBytes(currentStats.heapUsed)} / {formatBytes(currentStats.heapTotal)}
             </p>
-            <div className="mt-2 h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${
-                  isCritical ? 'bg-red-500' : isWarning ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-                style={{ width: `${heapUsagePercent}%` }}
-              />
-            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">缓存命中率</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{cacheHitRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">缓存效率</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">清理事件</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{cleanupCount}</div>
-            <p className="text-xs text-muted-foreground">总清理次数</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">外部内存</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatBytes(currentStats.external)}</div>
-            <p className="text-xs text-muted-foreground">MB</p>
+            <p className="text-xs text-muted-foreground mt-1">非堆分配</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">驻留集大小</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatBytes(currentStats.rss)}</div>
+            <p className="text-xs text-muted-foreground mt-1">物理内存占用</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">缓存命中率</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cacheHitRate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">基于清理事件</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Memory Usage Chart */}
+      {/* Memory Trend Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>堆内存使用趋势</CardTitle>
-          <CardDescription>过去 2 分钟的内存使用情况（每 2 秒更新一次）</CardDescription>
+          <CardTitle>内存使用趋势</CardTitle>
+          <CardDescription>过去 5 分钟的堆内存使用百分比</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis yAxisId="left" label={{ value: '内存使用 (MB)', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" label={{ value: '使用率 (%)', angle: 90, position: 'insideRight' }} />
-              <Tooltip />
-              <Legend />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="usage"
-                stroke="#3b82f6"
-                dot={false}
-                name="内存使用 (MB)"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="percentage"
-                stroke="#ef4444"
-                dot={false}
-                name="使用率 (%)"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {memoryHistory.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={memoryHistory.map(stat => ({
+                time: formatTime(stat.timestamp),
+                usage: Math.round(stat.heapUsagePercentage * 100),
+                timestamp: stat.timestamp,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="time" 
+                  tick={{ fontSize: 12 }}
+                  interval={Math.max(0, Math.floor(memoryHistory.length / 6))}
+                />
+                <YAxis 
+                  domain={[0, 100]} 
+                  label={{ value: '使用率 (%)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value) => `${value}%`}
+                  labelFormatter={(label) => `时间: ${label}`}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="usage" 
+                  stroke="#3b82f6" 
+                  dot={false}
+                  name="堆内存使用率"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              等待数据...
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Cache Events */}
+      {/* Cleanup Events */}
       <Card>
         <CardHeader>
-          <CardTitle>缓存清理事件</CardTitle>
-          <CardDescription>最近的缓存清理和驱逐事件</CardDescription>
+          <CardTitle>清理事件历史</CardTitle>
+          <CardDescription>最近的 {cleanupData?.totalCleanups || 0} 次清理和 {cleanupData?.totalEvictions || 0} 次驱逐</CardDescription>
         </CardHeader>
         <CardContent>
-          {cacheEvents.length > 0 ? (
-            <div className="space-y-4">
-              {cacheEvents.slice(-10).reverse().map((event, index) => (
-                <div key={index} className="flex items-center justify-between border-b pb-2">
-                  <div>
-                    <p className="font-medium">
-                      {event.type === 'cleanup' ? '🧹 缓存清理' : '🗑️ 条目驱逐'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(event.timestamp).toLocaleTimeString()} - {event.reason || '自动'}
-                    </p>
+          {cleanupEvents.length > 0 ? (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {cleanupEvents.slice().reverse().map((event, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Zap className={`w-4 h-4 ${event.type === 'cleanup' ? 'text-blue-500' : 'text-orange-500'}`} />
+                    <div>
+                      <p className="font-medium text-sm">
+                        {event.type === 'cleanup' ? '缓存清理' : '缓存驱逐'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTime(event.timestamp)} {event.reason ? `(${event.reason})` : ''}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-sm">{formatBytes(event.size)} MB</p>
+                    <p className="font-medium text-sm">{formatBytes(event.size)}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">暂无清理事件</p>
+            <div className="h-32 flex items-center justify-center text-muted-foreground">
+              暂无清理事件
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Memory Statistics Table */}
+      {/* Statistics Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>详细统计</CardTitle>
-          <CardDescription>当前内存使用详情</CardDescription>
+          <CardTitle>统计摘要</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">堆内存已用</span>
-                <span className="text-sm">{formatBytes(currentStats.heapUsed)} MB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">堆内存总量</span>
-                <span className="text-sm">{formatBytes(currentStats.heapTotal)} MB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">外部内存</span>
-                <span className="text-sm">{formatBytes(currentStats.external)} MB</span>
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">总清理次数</p>
+              <p className="text-lg font-bold">{cleanupData?.totalCleanups || 0}</p>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">RSS 内存</span>
-                <span className="text-sm">{formatBytes(currentStats.rss)} MB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">可用内存</span>
-                <span className="text-sm">
-                  {formatBytes(currentStats.heapTotal - currentStats.heapUsed)} MB
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">使用率</span>
-                <span className="text-sm font-bold">{heapUsagePercent}%</span>
-              </div>
+            <div>
+              <p className="text-muted-foreground">总驱逐次数</p>
+              <p className="text-lg font-bold">{cleanupData?.totalEvictions || 0}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">最后更新</p>
+              <p className="text-lg font-bold">{formatTime(currentStats.timestamp)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">状态</p>
+              <p className={`text-lg font-bold ${
+                alertLevel === 'critical' ? 'text-destructive' : 
+                alertLevel === 'warning' ? 'text-yellow-600' : 
+                'text-green-600'
+              }`}>
+                {alertLevel === 'critical' ? '严重' : alertLevel === 'warning' ? '警告' : '正常'}
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle>优化建议</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {isCritical && (
-              <li className="flex items-start gap-2">
-                <span className="text-red-500 font-bold">🔴</span>
-                <span>堆内存使用率超过 94%，系统已启动激进清理机制。建议重启应用或增加堆内存限制。</span>
-              </li>
-            )}
-            {isWarning && !isCritical && (
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-500 font-bold">🟡</span>
-                <span>堆内存使用率超过 80%，建议检查是否有内存泄漏或优化缓存策略。</span>
-              </li>
-            )}
-            {!isWarning && (
-              <li className="flex items-start gap-2">
-                <span className="text-green-500 font-bold">🟢</span>
-                <span>内存使用率正常，系统运行良好。</span>
-              </li>
-            )}
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 font-bold">ℹ️</span>
-              <span>缓存命中率 {cacheHitRate.toFixed(1)}%，可考虑调整缓存大小以提高效率。</span>
-            </li>
-          </ul>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-export default MemoryMonitoringDashboard;

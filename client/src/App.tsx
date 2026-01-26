@@ -22,7 +22,7 @@ import MonitoringPage from "./pages/MonitoringPage";
 import CuratedThoughtsPage from "./pages/CuratedThoughtsPage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
 import AlertManagementDashboard from "./pages/AlertManagementDashboard";
-import MemoryMonitoringDashboard from "./components/MemoryMonitoringDashboard";
+import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {

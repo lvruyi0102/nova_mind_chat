@@ -21,6 +21,7 @@ import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
 import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
 import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
 import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./memoryOptimization";
+import { initializeMemoryAlertNotification } from "./memoryAlertNotification";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）

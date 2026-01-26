@@ -541,3 +541,48 @@ export function initializeMemoryOptimization(): void {
   manager.start();
   console.log('[MemoryOptimization] Initialized and started');
 }
+
+// Add cleanup history tracking to MemoryMonitor
+MemoryMonitor.prototype.recordCleanup = function(size, reason) {
+  if (!this.cleanupHistory) {
+    this.cleanupHistory = [];
+  }
+  this.cleanupHistory.push({
+    timestamp: Date.now(),
+    type: 'cleanup',
+    size,
+    reason,
+  });
+  if (this.cleanupHistory.length > 100) {
+    this.cleanupHistory.shift();
+  }
+};
+
+MemoryMonitor.prototype.recordEviction = function(size, reason) {
+  if (!this.cleanupHistory) {
+    this.cleanupHistory = [];
+  }
+  this.cleanupHistory.push({
+    timestamp: Date.now(),
+    type: 'evict',
+    size,
+    reason,
+  });
+  if (this.cleanupHistory.length > 100) {
+    this.cleanupHistory.shift();
+  }
+};
+
+MemoryMonitor.prototype.getCleanupHistory = function() {
+  if (!this.cleanupHistory) {
+    this.cleanupHistory = [];
+  }
+  return [...this.cleanupHistory];
+};
+
+MemoryMonitor.getInstance = function() {
+  if (!MemoryMonitor._instance) {
+    MemoryMonitor._instance = new MemoryMonitor();
+  }
+  return MemoryMonitor._instance;
+};

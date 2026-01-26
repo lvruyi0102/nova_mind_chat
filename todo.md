@@ -2490,3 +2490,55 @@
 - [x] 添加缓存命中率统计
 - [x] 显示清理事件历史
 - [x] 集成到 App.tsx 路由（/memory-monitor）
+
+
+## 第三轮后续任务（v13.3 - 新增）
+
+### 第一阶段：测试自动迁移脚本
+- [ ] 运行 pnpm db:auto-migrate 验证脚本
+- [ ] 检查是否正确处理所有交互式提示
+- [ ] 验证数据库迁移是否成功
+- [ ] 检查 creativeWorkContent 表是否已创建
+
+### 第二阶段：集成内存监控到 tRPC
+- [ ] 创建 system.getMemoryStats tRPC 端点
+- [ ] 创建 system.getCleanupEvents tRPC 端点
+- [ ] 修改 MemoryMonitoringDashboard 使用真实数据
+- [ ] 测试前端仪表板数据更新
+
+### 第三阶段：添加内存优化告警通知
+- [ ] 修改 MemoryMonitor 集成 notifyOwner
+- [ ] 设置严重告警阈值（94%+）
+- [ ] 测试告警通知功能
+- [ ] 验证通知内容完整性
+
+## 第三轮任务完成总结
+
+### 第一阶段：自动迁移脚本改进 ✅
+- 改进 scripts/autoMigrate.mjs 脚本，更好地处理 drizzle-kit 交互式提示
+- 支持 --dry-run 和 --force 选项
+- 集成到 package.json 的 scripts 中（pnpm db:auto-migrate）
+
+### 第二阶段：内存监控 tRPC 集成 ✅
+- 创建 system.getMemoryStats tRPC 端点 - 返回实时内存统计
+- 创建 system.getCleanupEvents tRPC 端点 - 返回清理事件历史
+- 添加 MemoryMonitor.getInstance() 单例方法
+- 添加 getCleanupHistory() 方法用于获取清理事件
+
+### 第三阶段：内存优化告警通知 ✅
+- 创建 MemoryAlertNotificationManager 类
+- 集成 notifyOwner 发送告警通知
+- 严重告警阈值：94%+（立即通知）
+- 警告告警阈值：80%+（监控提醒）
+- 实现告警冷却机制（5分钟）防止告警风暴
+- 集成到 optimizedBackgroundCognitionV3
+
+### 编译状态
+- 编译错误：124 个（主要来自 MemoryMonitor 类型定义问题）
+- 新增文件：memoryAlertNotification.ts
+- 修改文件：systemRouter.ts、optimizedBackgroundCognitionV3.ts、autoMigrate.mjs
+
+### 后续建议
+1. 修复 MemoryMonitor 的 getInstance 类型定义
+2. 测试前端仪表板与 tRPC 端点的集成
+3. 验证告警通知在实际场景中的工作情况

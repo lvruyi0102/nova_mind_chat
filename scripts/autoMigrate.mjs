@@ -32,15 +32,30 @@ async function generateMigrations() {
 
     let output = '';
     let errorOutput = '';
+    let promptCount = 0;
+    const maxPrompts = 50;
 
     proc.stdout.on('data', (data) => {
-      output += data.toString();
-      console.log(`[drizzle-kit] ${data.toString().trim()}`);
+      const text = data.toString();
+      output += text;
+      console.log(`[drizzle-kit] ${text.trim()}`);
+
+      // Handle drizzle-kit interactive prompts
+      // The prompt shows options with ❯ indicator for current selection
+      if (text.includes('❯') || text.includes('create column')) {
+        promptCount++;
+        if (promptCount <= maxPrompts) {
+          console.log(`[AutoMigrate] Auto-selecting option #${promptCount}...`);
+          // Send Enter to select the highlighted option
+          setTimeout(() => proc.stdin.write('\n'), 100);
+        }
+      }
     });
 
     proc.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-      console.error(`[drizzle-kit] ERROR: ${data.toString().trim()}`);
+      const text = data.toString();
+      errorOutput += text;
+      console.error(`[drizzle-kit] ERROR: ${text.trim()}`);
     });
 
     proc.on('close', (code) => {
@@ -52,6 +67,11 @@ async function generateMigrations() {
         reject(new Error(`Generation failed: ${errorOutput}`));
       }
     });
+
+    // Send Enter key after a short delay to handle initial prompts
+    setTimeout(() => {
+      proc.stdin.write('\n');
+    }, 500);
   });
 }
 
@@ -75,33 +95,19 @@ async function applyMigrations() {
     let output = '';
     let errorOutput = '';
     let promptCount = 0;
-    const maxPrompts = 20; // Safety limit
+    const maxPrompts = 50;
 
     proc.stdout.on('data', (data) => {
       const text = data.toString();
       output += text;
       console.log(`[drizzle-kit] ${text.trim()}`);
 
-      // Detect common prompts and auto-respond
-      if (text.includes('create column') || 
-          text.includes('Would you like to') ||
-          text.includes('Do you want to') ||
-          text.includes('? (y/n)')) {
-        
+      // Handle drizzle-kit interactive prompts
+      if (text.includes('❯') || text.includes('create column')) {
         promptCount++;
         if (promptCount <= maxPrompts) {
-          console.log(`[AutoMigrate] Auto-responding to prompt #${promptCount}...`);
-          // Send 'y' (yes) response
-          proc.stdin.write('y\n');
-        }
-      }
-
-      if (text.includes('Select an option') || text.includes('Choose')) {
-        // For selection prompts, send arrow key (down) then enter
-        promptCount++;
-        if (promptCount <= maxPrompts) {
-          console.log(`[AutoMigrate] Auto-selecting option for prompt #${promptCount}...`);
-          proc.stdin.write('\n'); // Press enter for default option
+          console.log(`[AutoMigrate] Auto-selecting option #${promptCount}...`);
+          setTimeout(() => proc.stdin.write('\n'), 100);
         }
       }
     });
@@ -125,6 +131,11 @@ async function applyMigrations() {
       }
     });
 
+    // Send initial Enter to start
+    setTimeout(() => {
+      proc.stdin.write('\n');
+    }, 500);
+
     // Close stdin after a delay to prevent hanging
     setTimeout(() => {
       try {
@@ -132,7 +143,7 @@ async function applyMigrations() {
       } catch (e) {
         // stdin might already be closed
       }
-    }, 5000);
+    }, 10000);
   });
 }
 
@@ -152,7 +163,7 @@ async function verifyMigration() {
       return true;
     } else {
       console.warn('[AutoMigrate] ⚠️  No migration files found');
-      return true; // Not a failure, just no changes
+      return true;
     }
   } catch (error) {
     console.error('[AutoMigrate] ❌ Verification failed:', error.message);

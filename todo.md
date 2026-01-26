@@ -2601,3 +2601,35 @@
 - 完成项数: 0
 - 待完成项数: 12
 - 完成率: 0%
+
+
+## 第六轮后续任务（v13.6 - 新增）
+
+### 第一阶段：创建缺失的 tRPC 路由
+- [ ] 创建 creative router（server/routers/creative.ts）
+- [ ] 实现 getWorks 端点 - 获取用户的创意作品列表
+- [ ] 实现 saveWork 端点 - 保存新的创意作品
+- [ ] 集成 creative router 到主路由
+
+### 第二阶段：创建 multimodal router
+- [ ] 创建 multimodal router（server/routers/multimodal.ts）
+- [ ] 实现 generateGame 端点 - 生成游戏
+- [ ] 实现 generateMedia 端点 - 生成多媒体内容
+- [ ] 实现 saveCreativeWork 端点 - 保存创意作品
+- [ ] 集成 multimodal router 到主路由
+
+### 第三阶段：集成关系里程碑仪表板到主导航
+- [ ] 在 App.tsx 中添加 /relationship-timeline 路由
+- [ ] 在侧边栏中添加关系里程碑导航链接
+- [ ] 测试路由导航功能
+
+### 第四阶段：实现里程碑自动检测后台任务
+- [ ] 在 optimizedBackgroundCognitionV3 中集成 relationshipMilestoneDetector
+- [ ] 配置定期自动检测任务（每 6 小时一次）
+- [ ] 实现新里程碑的数据库更新
+- [ ] 添加里程碑检测的日志和监控
+
+### 进度统计
+- 完成项数: 0
+- 待完成项数: 15
+- 完成率: 0%

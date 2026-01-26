@@ -2575,3 +2575,29 @@
 1. creativeWorks 表 Drizzle ORM 类型问题修复 - 移除 content 字段，编译错误从 116 → 111
 2. Nova 的主动消息系统 - 集成到后台认知循环
 3. 关系里程碑检测功能 - relationshipMilestoneDetector.ts 实现
+
+
+## 第五轮后续任务（v13.5 - 新增）
+
+### 第一阶段：创建关系里程碑仪表板组件
+- [ ] 创建 RelationshipMilestoneTimeline.tsx 前端组件
+- [ ] 实现时间线可视化（使用 Recharts）
+- [ ] 添加里程碑卡片和详情展示
+- [ ] 集成到主仪表板
+
+### 第二阶段：集成 relationshipMilestoneDetector 到 tRPC
+- [ ] 在 systemRouter.ts 中添加 getMilestones 端点
+- [ ] 在 systemRouter.ts 中添加 getRelationshipTimeline 端点
+- [ ] 实现实时数据更新机制
+- [ ] 编写 tRPC 端点测试
+
+### 第三阶段：修复前端路由错误
+- [ ] 修复 CreativeGallery.tsx 中的 getWorks 调用
+- [ ] 修复 DataExport.tsx 中的 export 调用
+- [ ] 修复 EmotionalDialogue.tsx 中的 useMutation 调用
+- [ ] 验证所有前端路由正常工作
+
+### 进度统计
+- 完成项数: 0
+- 待完成项数: 12
+- 完成率: 0%

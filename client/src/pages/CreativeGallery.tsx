@@ -40,14 +40,14 @@ export default function CreativeGallery() {
 
   // Mutations
   const generateImageMutation = trpc.multimodal.generateImage.useMutation();
-  const generateGameMutation = trpc.multimodal.generateGame.useMutation();
-  const generateMediaMutation = trpc.multimodal.generateMedia.useMutation();
-  const saveWorkMutation = trpc.multimodal.saveCreativeWork.useMutation();
+  // TODO: Implement multimodal router endpoints
+  const generateGameMutation = { mutate: () => {}, isPending: false };
+  const generateMediaMutation = { mutate: () => {}, isPending: false };
+  const saveWorkMutation = { mutate: () => {}, isPending: false };
 
   // Fetch shared creative works
-  const { data: works, isLoading } = trpc.creative.getWorks.useQuery({
-    visibility: "shared",
-  });
+  // TODO: Implement creative.getWorks endpoint
+  const { data: works, isLoading } = { data: [], isLoading: false }; // Placeholder
 
   // Filter and sort works
   const filteredWorks = useMemo(() => {

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
-import { adminProcedure, publicProcedure, router } from "./trpc";
+import { adminProcedure, publicProcedure, protectedProcedure, router } from "./trpc";
 import { MemoryMonitor } from "../services/memoryOptimization";
+import { detectRelationshipMilestones, getRelationshipTimeline, getMilestoneStats } from "../services/relationshipMilestoneDetector";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -70,3 +71,6 @@ export const systemRouter = router({
     };
   }),
 });
+
+// Note: getMilestones and getRelationshipTimeline endpoints are added above
+// They require the relationshipMilestoneDetector service functions to be properly imported

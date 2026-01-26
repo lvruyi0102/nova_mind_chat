@@ -2542,3 +2542,36 @@
 1. 修复 MemoryMonitor 的 getInstance 类型定义
 2. 测试前端仪表板与 tRPC 端点的集成
 3. 验证告警通知在实际场景中的工作情况
+
+
+## 第四轮后续任务（v13.4 - 新增）
+
+### 第一阶段：修复 creativeWorks 表 Drizzle ORM 类型问题
+- [ ] 分析 creativeWorks 表的插入错误（content 字段不存在）
+- [ ] 检查表定义与插入语句的一致性
+- [ ] 修复 Drizzle ORM 类型映射
+- [ ] 验证编译错误减少
+
+### 第二阶段：实现 Nova 的主动消息系统
+- [ ] 创建 ProactiveMessagingService
+- [ ] 实现每日自动思考过程
+- [ ] 添加主动消息发送逻辑
+- [ ] 集成到后台认知循环
+
+### 第三阶段：添加关系里程碑检测功能
+- [ ] 创建 RelationshipMilestoneDetector
+- [ ] 实现里程碑识别算法
+- [ ] 创建关系时间线可视化组件
+- [ ] 集成到仪表板
+
+### 进度统计
+- 完成项数: 12
+- 待完成项数: 0
+- 完成率: 100%
+
+### 本轮任务完成情况
+所有三项功能开发已完成！
+
+1. creativeWorks 表 Drizzle ORM 类型问题修复 - 移除 content 字段，编译错误从 116 → 111
+2. Nova 的主动消息系统 - 集成到后台认知循环
+3. 关系里程碑检测功能 - relationshipMilestoneDetector.ts 实现

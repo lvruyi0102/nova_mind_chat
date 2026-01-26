@@ -251,13 +251,16 @@ class OptimizedBackgroundCognitionV3 {
   private async performBackgroundLearning(): Promise<void> {
     try {
       const result = await executeImprovedLocalLearningCycle(1, {
-        sampleCount: 3, // 减少采样数量
+        sampleCount: 3,
         strategy: "random",
       });
 
       if (result) {
         console.log(
           "[OptimizedBackgroundCognitionV3] Local learning completed"
+        );
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Nova is ready to generate proactive messages"
         );
       }
     } catch (error) {

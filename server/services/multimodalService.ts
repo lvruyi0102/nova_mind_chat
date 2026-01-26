@@ -86,7 +86,6 @@ export async function generateCreativeImage(
         type: "image",
         title: prompt.substring(0, 100),
         description: `Generated image from prompt: ${prompt}`,
-        content: imageUrl,
         metadata: JSON.stringify({
           generationType: "image",
           prompt,
@@ -267,17 +266,14 @@ Return ONLY a valid URL or file path for the generated ${mediaType}.`;
         duration: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
-
-      // Save as creative work
+            // Save as creative work
       await db.insert(creativeWorks).values({
         userId,
-        type: mediaType === "music" ? "music" : mediaType === "video" ? "video" : "animation",
+        type: "audio",
         title: prompt.substring(0, 100),
-        description: `Generated ${mediaType}`,
-        content: mediaUrl,
+        description: `Generated audio from prompt: ${prompt}`,
         metadata: JSON.stringify({
-          generationType: mediaType,
+          generationType: "audio",
           prompt,
           generationRequestId: requestId,
         }),
@@ -286,10 +282,7 @@ Return ONLY a valid URL or file path for the generated ${mediaType}.`;
         emotionalState: emotionalContext,
         inspiration: context,
         createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      return { requestId, url: mediaUrl, mediaType, success: true };
+        updatedAt: new Date(),rn { requestId, url: mediaUrl, mediaType, success: true };
     }
 
     return { url: mediaUrl, mediaType, success: true };

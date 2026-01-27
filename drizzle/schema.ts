@@ -1650,4 +1650,3 @@ export const creativeWorkContent = mysqlTable("creativeWorkContent", {
 });
 
 export type CreativeWorkContent = typeof creativeWorkContent.$inferSelect;
-export type InsertCreativeWorkContent = typeof creativeWorkContent.$inferInsert;

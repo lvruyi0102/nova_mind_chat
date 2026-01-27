@@ -2633,3 +2633,29 @@
 - 完成项数: 0
 - 待完成项数: 15
 - 完成率: 0%
+
+
+## 第七轮后续任务（v13.7 - 新增）
+
+### 第一阶段：完成缺失的 tRPC 路由
+- [ ] 在 systemRouter 中添加 getCreativeWorks 端点
+- [ ] 在 systemRouter 中添加 saveCreativeWork 端点
+- [ ] 修复 CreativeGallery.tsx 中的 tRPC 调用
+- [ ] 验证编译错误减少
+
+### 第二阶段：实现关系里程碑自动检测
+- [ ] 在 optimizedBackgroundCognitionV3 中集成 relationshipMilestoneDetector
+- [ ] 配置每 6 小时自动检测新里程碑
+- [ ] 实现里程碑数据库更新逻辑
+- [ ] 测试自动检测功能
+
+### 第三阶段：添加 Nova 的情感记忆系统
+- [ ] 创建 emotionalMemory 表在 schema.ts 中
+- [ ] 实现 emotionalMemoryService.ts
+- [ ] 在对话中自动引用相关记忆
+- [ ] 集成到后台认知循环
+
+### 进度统计
+- 完成项数: 0
+- 待完成项数: 12
+- 完成率: 0%

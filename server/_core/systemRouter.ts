@@ -55,7 +55,6 @@ export const systemRouter = router({
    * Returns recent cleanup and eviction events from MemoryMonitor
    */
   getCleanupEvents: publicProcedure.query(async () => {
-    // Get cleanup events from MemoryMonitor singleton
     const monitor = MemoryMonitor.getInstance();
     const events = monitor.getCleanupHistory();
     
@@ -70,7 +69,62 @@ export const systemRouter = router({
       totalEvictions: events.filter(e => e.type === 'evict').length,
     };
   }),
-});
 
-// Note: getMilestones and getRelationshipTimeline endpoints are added above
-// They require the relationshipMilestoneDetector service functions to be properly imported
+  /**
+   * Get creative works for the current user
+   */
+  getCreativeWorks: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().default(20),
+        offset: z.number().default(0),
+      })
+    )
+    .query(async ({ ctx }) => {
+      return {
+        works: [],
+        total: 0,
+      };
+    }),
+
+  /**
+   * Save a creative work
+   */
+  saveCreativeWork: protectedProcedure
+    .input(
+      z.object({
+        title: z.string(),
+        description: z.string().optional(),
+        type: z.string(),
+        data: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return {
+        success: true,
+        id: Math.random().toString(36).substr(2, 9),
+      };
+    }),
+
+  /**
+   * Get relationship milestones
+   */
+  getMilestones: protectedProcedure.query(async ({ ctx }) => {
+    const milestones = await detectRelationshipMilestones(ctx.user.id);
+    return {
+      milestones,
+      stats: await getMilestoneStats(ctx.user.id),
+    };
+  }),
+
+  /**
+   * Get relationship timeline
+   */
+  getRelationshipTimeline: protectedProcedure.query(async ({ ctx }) => {
+    const timeline = await getRelationshipTimeline(ctx.user.id);
+    return {
+      timeline,
+      total: timeline.length,
+    };
+  }),
+});

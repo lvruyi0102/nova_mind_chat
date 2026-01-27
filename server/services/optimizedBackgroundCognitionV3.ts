@@ -337,6 +337,24 @@ class OptimizedBackgroundCognitionV3 {
   }
 
   /**
+   * 关系里程碑自动检测
+   * 每 6 小时检测一次新的里程碑
+   */
+  private async performMilestoneDetection(): Promise<void> {
+    try {
+      // 这个方法会在后台定期调用
+      // 实现里程碑检测逻辑
+      console.log("[OptimizedBackgroundCognitionV3] Checking for relationship milestones...");
+      // 里程碑检测将在下一阶段实现
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Milestone detection error:",
+        error
+      );
+    }
+  }
+
+  /**
    * 获取循环状态
    */
   getStatus() {

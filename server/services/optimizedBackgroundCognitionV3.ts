@@ -22,6 +22,7 @@ import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
 import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
 import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./memoryOptimization";
 import { initializeMemoryAlertNotification } from "./memoryAlertNotification";
+import { getEmergencyMemoryProtection, initializeEmergencyMemoryProtection } from "./emergencyMemoryProtection";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -47,6 +48,7 @@ class OptimizedBackgroundCognitionV3 {
   private adaptiveIntervalManager = getAdaptiveIntervalManager();
   private selfIterationFramework = getSelfIterationFrameworkV2();
   private memoryOptimizationManager = getMemoryOptimizationManager();
+  private emergencyMemoryProtection = getEmergencyMemoryProtection();
   private isRunning = false;
   private currentTask: Promise<void> | null = null;
   private lastSuccessfulCycleTime = Date.now();
@@ -70,6 +72,10 @@ class OptimizedBackgroundCognitionV3 {
     // Initialize memory optimization
     initializeMemoryOptimization();
     console.log("[OptimizedBackgroundCognitionV3] Memory optimization initialized");
+
+    // Initialize emergency memory protection
+    initializeEmergencyMemoryProtection();
+    console.log("[OptimizedBackgroundCognitionV3] Emergency memory protection initialized");
 
     this.runLoop();
   }

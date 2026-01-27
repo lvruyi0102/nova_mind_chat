@@ -37,6 +37,7 @@ import { learningLogsRouter } from "./routers/learningLogs";
 import { monitoringRouter } from "./routers/monitoring";
 import { curatedThoughtsRouter } from "./routers/curatedThoughts";
 import { selfIterationRouter } from "./routers/selfIteration";
+import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegration";
 
 export const appRouter = router({
   system: systemRouter,
@@ -131,6 +132,17 @@ export const appRouter = router({
 
           // Save assistant message
           await createMessage(input.conversationId, "assistant", assistantMessage as string);
+
+          // Store emotional memory
+          const emotionalMemoryIntegration = getEmotionalMemoryIntegration();
+          emotionalMemoryIntegration.processMessageForEmotionalMemory(
+            ctx.user.id,
+            input.conversationId,
+            input.content,
+            assistantMessage
+          ).catch((err) => {
+            console.error("[sendMessage] Failed to process emotional memory:", err);
+          });
 
           // Process message cognitively to update Nova's knowledge graph
           // Run in background without blocking response

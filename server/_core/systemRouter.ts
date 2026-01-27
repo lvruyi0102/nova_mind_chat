@@ -3,6 +3,10 @@ import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, protectedProcedure, router } from "./trpc";
 import { MemoryMonitor } from "../services/memoryOptimization";
 import { detectRelationshipMilestones, getRelationshipTimeline, getMilestoneStats } from "../services/relationshipMilestoneDetector";
+import { getDb } from "../db";
+import { conversations } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { saveCreativeWork } from "../services/creativeWorkSaveService";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -29,102 +33,110 @@ export const systemRouter = router({
       } as const;
     }),
 
-  /**
-   * Get current memory statistics
-   * Returns heap usage, external memory, and warning/critical flags
-   */
-  getMemoryStats: publicProcedure.query(async () => {
-    const memUsage = process.memoryUsage();
-    const heapUsagePercent = memUsage.heapUsed / memUsage.heapTotal;
-    
-    return {
-      timestamp: Date.now(),
-      heapUsed: memUsage.heapUsed,
-      heapTotal: memUsage.heapTotal,
-      heapUsagePercentage: heapUsagePercent,
-      external: memUsage.external,
-      rss: memUsage.rss,
-      arrayBuffers: memUsage.arrayBuffers || 0,
-      isWarning: heapUsagePercent > 0.8,
-      isCritical: heapUsagePercent > 0.94,
-    };
-  }),
-
-  /**
-   * Get cleanup events history
-   * Returns recent cleanup and eviction events from MemoryMonitor
-   */
-  getCleanupEvents: publicProcedure.query(async () => {
-    const monitor = MemoryMonitor.getInstance();
-    const events = monitor.getCleanupHistory();
-    
-    return {
-      events: events.map(event => ({
-        timestamp: event.timestamp,
-        type: event.type,
-        size: event.size,
-        reason: event.reason,
-      })),
-      totalCleanups: events.filter(e => e.type === 'cleanup').length,
-      totalEvictions: events.filter(e => e.type === 'evict').length,
-    };
-  }),
-
-  /**
-   * Get creative works for the current user
-   */
-  getCreativeWorks: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().default(20),
-        offset: z.number().default(0),
-      })
-    )
-    .query(async ({ ctx }) => {
+  getMemoryStats: protectedProcedure
+    .input(z.void())
+    .query(async () => {
+      const monitor = MemoryMonitor.getInstance();
+      const stats = monitor.getCurrentStats();
       return {
-        works: [],
-        total: 0,
+        heapUsed: stats.heapUsed,
+        heapTotal: stats.heapTotal,
+        heapUsagePercentage: stats.heapUsagePercentage,
+        external: stats.external,
+        rss: stats.rss,
+        timestamp: stats.timestamp,
       };
     }),
 
-  /**
-   * Save a creative work
-   */
+  getCleanupEvents: protectedProcedure
+    .input(z.void())
+    .query(async () => {
+      const monitor = MemoryMonitor.getInstance();
+      return monitor.getCleanupHistory();
+    }),
+
+  getCreativeWorks: protectedProcedure
+    .input(z.void())
+    .query(async () => {
+      return [];
+    }),
+
   saveCreativeWork: protectedProcedure
     .input(
       z.object({
         title: z.string(),
-        description: z.string().optional(),
-        type: z.string(),
-        data: z.string(),
+        content: z.string(),
+        category: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return {
-        success: true,
-        id: Math.random().toString(36).substr(2, 9),
-      };
+      try {
+        const result = await saveCreativeWork({
+          userId: ctx.user.id,
+          title: input.title,
+          content: input.content,
+          type: "other",
+          contentType: "text",
+        });
+        return result;
+      } catch (error) {
+        console.error("[systemRouter] Error saving creative work:", error);
+        throw error;
+      }
     }),
 
-  /**
-   * Get relationship milestones
-   */
-  getMilestones: protectedProcedure.query(async ({ ctx }) => {
-    const milestones = await detectRelationshipMilestones(ctx.user.id);
-    return {
-      milestones,
-      stats: await getMilestoneStats(ctx.user.id),
-    };
-  }),
+  getMilestones: protectedProcedure
+    .input(z.void())
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            milestones: [],
+            stats: { totalMilestones: 0, recentMilestones: 0 },
+          };
+        }
 
-  /**
-   * Get relationship timeline
-   */
-  getRelationshipTimeline: protectedProcedure.query(async ({ ctx }) => {
-    const timeline = await getRelationshipTimeline(ctx.user.id);
-    return {
-      timeline,
-      total: timeline.length,
-    };
-  }),
+        const userConversations = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.userId, ctx.user.id));
+
+        const allMilestones: any[] = [];
+        for (const conv of userConversations) {
+          const milestones = await detectRelationshipMilestones(ctx.user.id, conv.id);
+          allMilestones.push(...milestones);
+        }
+
+        return {
+          milestones: allMilestones,
+          stats: await getMilestoneStats(ctx.user.id),
+        };
+      } catch (error) {
+        console.error("[systemRouter] Error getting milestones:", error);
+        return {
+          milestones: [],
+          stats: { totalMilestones: 0, recentMilestones: 0 },
+        };
+      }
+    }),
+
+  getRelationshipTimeline: protectedProcedure
+    .input(z.void())
+    .query(async ({ ctx }) => {
+      try {
+        const timeline = await getRelationshipTimeline(ctx.user.id);
+        const timelineArray = Array.isArray(timeline) ? timeline : [];
+        return {
+          timeline: timelineArray,
+          total: timelineArray.length,
+        };
+      } catch (error) {
+        console.error("[systemRouter] Error getting relationship timeline:", error);
+        return {
+          timeline: [],
+          total: 0,
+        };
+      }
+    }),
 });

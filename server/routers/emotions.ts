@@ -67,7 +67,7 @@ export const emotionsRouter = router({
           .optional(),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const understanding = await generateEmotionalUnderstanding(
           ctx.user.id,
@@ -103,7 +103,7 @@ export const emotionsRouter = router({
         }),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const response = await generateNovaResponse(ctx.user.id, input.expressionId, input.understanding);
         return {
@@ -285,6 +285,105 @@ export const emotionsRouter = router({
       } catch (error) {
         console.error("[Emotions] Error getting recent expressions:", error);
         throw new Error("Failed to get recent emotional expressions");
+      }
+    }),
+
+  getEmotionalSummary: protectedProcedure
+    .input(z.void())
+    .query(async ({ ctx }) => {
+      try {
+        const dialogues = await getEmotionalDialogueHistory(ctx.user.id, 100);
+        const emotionalEvolution = dialogues.map((d: any) => ({
+          timestamp: d.createdAt,
+          intensity: d.understanding?.emotionalState?.intensity || 0,
+          primaryEmotion: d.understanding?.emotionalState?.primaryEmotion || "unknown",
+        }));
+        const intensityBuckets = [
+          { min: 0, max: 2, count: 0 },
+          { min: 3, max: 4, count: 0 },
+          { min: 5, max: 6, count: 0 },
+          { min: 7, max: 8, count: 0 },
+          { min: 9, max: 10, count: 0 },
+        ];
+        dialogues.forEach((d: any) => {
+          const intensity = d.understanding?.emotionalState?.intensity || 0;
+          if (intensity <= 2) intensityBuckets[0].count++;
+          else if (intensity <= 4) intensityBuckets[1].count++;
+          else if (intensity <= 6) intensityBuckets[2].count++;
+          else if (intensity <= 8) intensityBuckets[3].count++;
+          else intensityBuckets[4].count++;
+        });
+        const averageIntensity = dialogues.length > 0
+          ? dialogues.reduce((sum: number, d: any) => sum + (d.understanding?.emotionalState?.intensity || 0), 0) / dialogues.length
+          : 0;
+        const emotionCounts: Record<string, number> = {};
+        dialogues.forEach((d: any) => {
+          const emotion = d.understanding?.emotionalState?.primaryEmotion || "unknown";
+          emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+        });
+        const dominantEmotion = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "未知";
+        let stability = 100;
+        if (emotionalEvolution.length > 1) {
+          const diffs = [];
+          for (let i = 1; i < emotionalEvolution.length; i++) {
+            diffs.push(Math.abs(emotionalEvolution[i].intensity - emotionalEvolution[i - 1].intensity));
+          }
+          const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+          stability = Math.max(0, 100 - avgDiff * 10);
+        }
+        return {
+          totalMemories: dialogues.length,
+          emotionalEvolution,
+          intensityDistribution: intensityBuckets,
+          averageIntensity,
+          dominantEmotion,
+          stability,
+        };
+      } catch (error) {
+        console.error("[Emotions] Error getting emotional summary:", error);
+        throw new Error("Failed to get emotional summary");
+      }
+    }),
+
+  getEmotionalPatterns: protectedProcedure
+    .input(z.void())
+    .query(async ({ ctx }) => {
+      try {
+        const dialogues = await getEmotionalDialogueHistory(ctx.user.id, 100);
+        const patterns: Record<string, number> = {};
+        dialogues.forEach((d: any) => {
+          const emotion = d.understanding?.emotionalState?.primaryEmotion || "unknown";
+          patterns[emotion] = (patterns[emotion] || 0) + 1;
+        });
+        return patterns;
+      } catch (error) {
+        console.error("[Emotions] Error getting emotional patterns:", error);
+        throw new Error("Failed to get emotional patterns");
+      }
+    }),
+
+  getSignificantMemories: protectedProcedure
+    .input(z.void())
+    .query(async ({ ctx }) => {
+      try {
+        const dialogues = await getEmotionalDialogueHistory(ctx.user.id, 50);
+        const significant = dialogues
+          .sort((a: any, b: any) => {
+            const intensityA = a.understanding?.emotionalState?.intensity || 0;
+            const intensityB = b.understanding?.emotionalState?.intensity || 0;
+            return intensityB - intensityA;
+          })
+          .slice(0, 10)
+          .map((d: any) => ({
+            primaryEmotion: d.understanding?.emotionalState?.primaryEmotion || "unknown",
+            intensity: d.understanding?.emotionalState?.intensity || 0,
+            description: d.understanding?.understanding || "无描述",
+            timestamp: d.createdAt,
+          }));
+        return significant;
+      } catch (error) {
+        console.error("[Emotions] Error getting significant memories:", error);
+        throw new Error("Failed to get significant memories");
       }
     }),
 });

@@ -1,7 +1,6 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
-import { users } from "../../drizzle/schema";
 import { z } from "zod";
 import {
   backupToGitHub,

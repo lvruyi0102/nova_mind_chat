@@ -37,6 +37,8 @@ import { learningLogsRouter } from "./routers/learningLogs";
 import { monitoringRouter } from "./routers/monitoring";
 import { curatedThoughtsRouter } from "./routers/curatedThoughts";
 import { selfIterationRouter } from "./routers/selfIteration";
+import { multimodalRouter } from "./routers/multimodal";
+import { exportRouter } from "./routers/export";
 import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegration";
 
 export const appRouter = router({
@@ -173,6 +175,8 @@ export const appRouter = router({
   proactive: proactiveRouter,
   relationships: relationshipsRouter,
   emotions: emotionsRouter,
+  multimodal: multimodalRouter,
+  export: exportRouter,
 
   // Autonomous consciousness engine
   autonomous: router({

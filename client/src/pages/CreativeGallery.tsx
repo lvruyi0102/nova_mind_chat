@@ -40,10 +40,9 @@ export default function CreativeGallery() {
 
   // Mutations
   const generateImageMutation = trpc.multimodal.generateImage.useMutation();
-  // TODO: Implement multimodal router endpoints
-  const generateGameMutation = { mutate: () => {}, isPending: false };
-  const generateMediaMutation = { mutate: () => {}, isPending: false };
-  const saveWorkMutation = { mutate: () => {}, isPending: false };
+  const generateGameMutation = trpc.multimodal.generateGame.useMutation();
+  const generateMediaMutation = trpc.multimodal.generateMedia.useMutation();
+  const saveWorkMutation = trpc.system.saveCreativeWork.useMutation();
 
   // Fetch shared creative works
   // TODO: Implement creative.getWorks endpoint
@@ -130,19 +129,19 @@ export default function CreativeGallery() {
         toast.success("图片生成完成！");
       } else if (generationMode === "game") {
         const result = await generateGameMutation.mutateAsync({
-          gameType,
-          prompt,
+          theme: prompt,
+          genre: gameType as any,
         });
         setGeneratedContent({
           type: "game",
-          html: result.html,
-          title: "Nova的游戏创作",
+          html: `<div>${result.game.description}</div>`,
+          title: result.game.title,
         });
-        toast.success("游戏生成完成！");
+        toast.success("游戏生成完成！")
       } else if (generationMode === "music") {
         const result = await generateMediaMutation.mutateAsync({
-          mediaType,
-          prompt,
+          type: "music" as const,
+          description: prompt,
         });
         setGeneratedContent({
           type: "music",
@@ -546,11 +545,8 @@ export default function CreativeGallery() {
                           
                           await saveWorkMutation.mutateAsync({
                             title: generatedContent.title,
-                            description: `Nova generated ${generatedContent.type}`,
-                            type: generatedContent.type,
-                            content: contentToSave,
-                            contentType,
-                            contentUrl,
+                            content: `Nova generated ${generatedContent.type}`,
+                            category: generatedContent.type,
                           });
                           
                           toast.success("作品已保存！");

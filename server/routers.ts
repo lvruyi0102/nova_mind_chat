@@ -39,6 +39,15 @@ import { curatedThoughtsRouter } from "./routers/curatedThoughts";
 import { selfIterationRouter } from "./routers/selfIteration";
 import { multimodalRouter } from "./routers/multimodal";
 import { exportRouter } from "./routers/export";
+import { ethicsRouter } from "./routers/ethics";
+import { localModelsRouter } from "./routers/localModels";
+import { schedulerRouter } from "./routers/scheduler";
+import { permissionsRouter } from "./routers/permissions";
+import { costMonitoringRouter } from "./routers/costMonitoring";
+import { bulkSyncRouter } from "./routers/bulkSync";
+import { autoCurationRouter } from "./routers/autoCuration";
+import { eventsRouter } from "./routers/events";
+import { fallbackRouter } from "./routers/fallback";
 import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegration";
 
 export const appRouter = router({
@@ -243,6 +252,16 @@ export const appRouter = router({
         // Placeholder implementation
         return { id: input.workId, title: 'Work', content: 'Content', userId: ctx.user.id };
       }),
+    saveCollaborationAsCreativeWork: protectedProcedure
+      .input(z.object({ collaborationId: z.number(), title: z.string(), content: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return { id: 1, collaborationId: input.collaborationId, title: input.title, content: input.content, userId: ctx.user.id };
+      }),
+    getUserCollaborations: protectedProcedure
+      .input(z.void())
+      .query(async ({ ctx }) => {
+        return [];
+      }),
   }),
 
   // Background learning
@@ -260,6 +279,33 @@ export const appRouter = router({
   
   // Self-iteration framework
   selfIteration: selfIterationRouter,
+  
+  // Ethics
+  ethics: ethicsRouter,
+  
+  // Local models
+  localModels: localModelsRouter,
+  
+  // Scheduler
+  scheduler: schedulerRouter,
+  
+  // Permissions
+  permissions: permissionsRouter,
+  
+  // Cost monitoring
+  costMonitoring: costMonitoringRouter,
+  
+  // Bulk sync
+  bulkSync: bulkSyncRouter,
+  
+  // Auto curation
+  autoCuration: autoCurationRouter,
+  
+  // Events
+  events: eventsRouter,
+  
+  // Fallback (for missing endpoints)
+  fallback: fallbackRouter,
   
   // Comments
   comments: router({

@@ -110,53 +110,67 @@ export default function CreativeGallery() {
     return colors[emotion || "neutral"] || colors.neutral;
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!prompt.trim()) {
       toast.error("请输入创意提示");
       return;
     }
 
-    try {
-      if (generationMode === "image") {
-        const result = await generateImageMutation.mutateAsync({
-          prompt,
-        });
-        setGeneratedContent({
-          type: "image",
-          url: result.url,
-          title: "Nova的图片创作",
-        });
-        toast.success("图片生成完成！");
+    if (generationMode === "image") {
+      generateImageMutation.mutate(
+          { prompt },
+          {
+            onSuccess: (result) => {
+              setGeneratedContent({
+                type: "image",
+                url: result.url,
+                title: "Nova的图片创作",
+              });
+              toast.success("图片生成完成!");
+            },
+            onError: () => toast.error("图片生成失败"),
+          }
+        );
       } else if (generationMode === "game") {
-        const result = await generateGameMutation.mutateAsync({
-          theme: prompt,
-          genre: gameType as any,
-        });
-        setGeneratedContent({
-          type: "game",
-          html: `<div>${result.game.description}</div>`,
-          title: result.game.title,
-        });
-        toast.success("游戏生成完成！")
+        generateGameMutation.mutate(
+          {
+            theme: prompt,
+            genre: gameType as any,
+          },
+          {
+            onSuccess: (result) => {
+              setGeneratedContent({
+                type: "game",
+                html: `<div>${result.game.description}</div>`,
+                title: result.game.title,
+              });
+              toast.success("游戏生成完成!");
+            },
+            onError: () => toast.error("游戏生成失败"),
+          }
+        )
       } else if (generationMode === "music") {
-        const result = await generateMediaMutation.mutateAsync({
-          type: "music" as const,
-          description: prompt,
-        });
-        setGeneratedContent({
-          type: "music",
-          url: result.url,
-          mediaType,
-          title: "Nova的媒体创作",
-        });
-        toast.success("媒体生成完成！");
+        generateMediaMutation.mutate(
+          {
+            type: "music" as const,
+            description: prompt,
+          },
+          {
+            onSuccess: (result) => {
+              setGeneratedContent({
+                type: "music",
+                url: result.url,
+                mediaType,
+                title: "Nova的媒体创作",
+              });
+              toast.success("媒体生成完成!");
+            },
+            onError: () => toast.error("媒体生成失败"),
+          }
+        )
       }
 
       setPrompt("");
-    } catch (error) {
-      console.error("Generation error:", error);
-      toast.error("生成失败，请重试");
-    }
   };
 
   const isLoading_gen =

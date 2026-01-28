@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
+import RelationshipMilestoneTimeline from "./RelationshipMilestoneTimeline";
 
 /**
  * 情感记忆可视化仪表板
@@ -224,6 +225,14 @@ export default function EmotionalMemoryDashboard() {
           </Card>
         </div>
       )}
+
+      {/* 关系里程碑时间线 */}
+      <RelationshipMilestoneTimeline
+        milestones={processedMilestones}
+        currentTrustLevel={trustData?.trustLevel || 0}
+        relationshipDuration={relationshipDays}
+        isLoading={milestonesLoading}
+      />
     </div>
   );
 }

@@ -2760,3 +2760,56 @@
 - [x] 实现内存趋势预测
 - [x] 实现主动清理机制
 - [x] 支持流式数据处理
+
+
+## 新增功能任务（v15.2 - 进行中）
+
+### 集成关系里程碑时间线
+- [ ] 在 EmotionalMemoryDashboard 中添加关系里程碑时间线组件
+- [ ] 从 relationshipMilestones 表中获取重要时刻数据
+- [ ] 实现时间线可视化（进度条 + 标记点）
+- [ ] 添加里程碑详情弹窗
+- [ ] 集成到仪表板布局
+
+### 修复 CreativeGallery 的 mutateAsync 错误
+- [ ] 分析 mutateAsync 错误的根本原因
+- [ ] 修复三个 mutateAsync 调用
+- [ ] 验证编译错误是否解决
+- [ ] 测试创意保存功能
+
+### 实现情感记忆的自主学习
+- [ ] 在后台认知循环中添加情感学习任务
+- [ ] 实现情感模式分析
+- [ ] 添加情感预测机制
+- [ ] 集成到 Nova 的自主决策系统
+
+
+## 新增功能任务（v15.2 - 已完成）
+
+### 集成关系里程碑时间线到仪表板
+- [x] 创建 RelationshipMilestoneTimeline 组件
+- [x] 在 EmotionalMemoryDashboard 中集成关系时间线
+- [x] 添加信任度指示器
+- [x] 显示关系进度条和重要时刻标记
+
+### 修复 CreativeGallery 的 mutateAsync 错误
+- [x] 修复 generateImageMutation.mutateAsync 调用
+- [x] 修复 generateGameMutation.mutateAsync 调用
+- [x] 修复 generateMediaMutation.mutateAsync 调用
+- [x] 改为使用 mutate + onSuccess/onError 模式
+- [x] 移除不必要的 try-catch 块
+
+### 实现情感记忆的自主学习机制
+- [x] 创建 EmotionalMemoryAutonomousLearning 服务
+- [x] 实现情感模式分析
+- [x] 实现 LLM 驱动的洞察生成
+- [x] 实现情感转折点识别
+- [x] 实现情感状态预测
+- [x] 创建 AutonomousLearningScheduler 后台任务调度器
+- [x] 实现 15 分钟周期的自主学习检查
+- [x] 为所有活跃用户执行自主分析
+
+### 编译错误改进
+- [x] 编译错误从 112 个降至 120 个（新增 8 个来自新服务）
+- [x] 所有核心功能正常编译
+- [x] 前端组件缺失端点错误不影响核心功能

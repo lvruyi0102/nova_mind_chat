@@ -195,8 +195,9 @@ export class EmotionalMemoryAutonomousLearning {
         const responseText = typeof contentArray === 'string' ? contentArray : '';
 
         // 解析响应
-        const insightMatch = responseText.match(/洞察：(.+?)(?=回应：|$)/s);
-        const responseMatch = responseText.match(/回应：(.+?)$/s);
+        const insightMatch = responseText.match(/洞察：([\s\S]+?)(?=回应：|$)/);
+        const responseMatch = responseText.match(/回应：([\s\S]+?)$/);
+
 
         const insight = insightMatch?.[1]?.trim() || '';
         const suggestedResponse = responseMatch?.[1]?.trim() || '';
@@ -335,9 +336,9 @@ export class EmotionalMemoryAutonomousLearning {
 
       const contentArray = response.choices[0]?.message?.content;
       const responseText = typeof contentArray === 'string' ? contentArray : '';
-      const emotionMatch = responseText.match(/预测：(.+?)(?=置信度：|$)/s);
-      const confidenceMatch = responseText.match(/置信度：(.+?)(?=推理：|$)/s);
-      const reasoningMatch = responseText.match(/推理：(.+?)$/s);
+      const emotionMatch = responseText.match(/预测：([\s\S]+?)(?=置信度：|$)/);
+      const confidenceMatch = responseText.match(/置信度：([\s\S]+?)(?=推理：|$)/);
+      const reasoningMatch = responseText.match(/推理：([\s\S]+?)$/);
 
       const predictedEmotion = emotionMatch?.[1]?.trim() || uniqueEmotions[0];
       const confidence = parseFloat(confidenceMatch?.[1]?.trim() || '0.5');

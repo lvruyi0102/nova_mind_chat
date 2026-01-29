@@ -7,7 +7,20 @@ import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+// 禁用 HMR 插件
+function vitePluginDisableHmr() {
+  return {
+    name: "disable-hmr",
+    apply: "serve",
+    configResolved(config: any) {
+      if (config.server) {
+        config.server.hmr = false;
+      }
+    },
+  };
+}
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginDisableHmr()];
 
 export default defineConfig(({ command, mode }) => {
   // 从环境变量中获取 HMR 配置
@@ -45,7 +58,7 @@ export default defineConfig(({ command, mode }) => {
         "localhost",
         "127.0.0.1",
       ],
-      hmr: hmrConfig,
+      hmr: false,
       fs: {
         strict: true,
         deny: ["**/.*"],

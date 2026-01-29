@@ -70,6 +70,10 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       
+      // 在 Vite transformIndexHtml 之前注入禁用 HMR 脚本
+      const disableHmrScript = `<script>window.__VITE_SKIP_HMR__ = true;</script>`;
+      template = template.replace("<head>", `<head>${disableHmrScript}`);
+      
       // 直接从请求头获取 HMR 配置
       const forwardedHost = req.get("X-Forwarded-Host") || req.get("Host") || "localhost:3000";
       const isProxyEnvironment = forwardedHost && forwardedHost !== "localhost:3000" && forwardedHost !== "127.0.0.1:3000";
@@ -90,6 +94,7 @@ export async function setupVite(app: Express, server: Server) {
       `;
       template = template.replace("</head>", `${hmrConfig}</head>`);
       
+      // transformIndexHtml 会自动注入 Vite 客户端脚本
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

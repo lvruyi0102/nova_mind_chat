@@ -11,6 +11,7 @@ import { getOptimizedBackgroundCognitionV3 } from "../services/optimizedBackgrou
 import { startMonitoring } from "../performanceMonitor";
 import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
+import { getEmergencyMemoryRecovery } from "../services/emergencyMemoryRecovery";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,10 +39,25 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
+  // Initialize emergency memory recovery
+  const emergencyRecovery = getEmergencyMemoryRecovery();
+  console.log("[Server] Emergency memory recovery initialized");
+
   // Memory monitoring endpoints
   app.get("/api/health/memory", (req, res) => {
     const cognitionLoop = getOptimizedBackgroundCognitionV3();
     res.json(cognitionLoop.getDiagnosticReport());
+  });
+
+  // Emergency recovery status endpoint
+  app.get("/api/health/emergency-recovery", (req, res) => {
+    const lastMetrics = emergencyRecovery.getLastRecoveryMetrics();
+    const history = emergencyRecovery.getRecoveryHistory();
+    res.json({
+      lastRecovery: lastMetrics,
+      recoveryCount: history.length,
+      history: history.slice(-5),
+    });
   });
 
   app.get("/api/health/cognition", (req, res) => {

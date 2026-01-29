@@ -37,10 +37,10 @@ interface CognitionLoopConfig {
 
 class OptimizedBackgroundCognitionV3 {
   private config: CognitionLoopConfig = {
-    intervalMs: 10 * 60 * 1000, // 10 分钟（更频繁的清理）
+    intervalMs: 5 * 60 * 1000, // 5 分钟（更频繁的清理）
     maxConcurrentTasks: 1, // 严格串行执行
-    memoryThreshold: 0.50, // 50%（更激进，提前清理）
-    taskTimeoutMs: 3 * 60 * 1000, // 3 分钟任务超时（更严格）
+    memoryThreshold: 0.40, // 40%（极度激进，提前清理）
+    taskTimeoutMs: 2 * 60 * 1000, // 2 分钟任务超时（更严格）
     enableCacheCleanup: true,
     enableGC: true,
   };
@@ -188,9 +188,10 @@ class OptimizedBackgroundCognitionV3 {
 
   /**
    * 执行认知任务（带超时）
+   * 紧急模式：仅执行内存清理任务，禁用所有其他后台任务
    */
   private async executeCognitionTasksWithTimeout(): Promise<void> {
-    console.log("[OptimizedBackgroundCognitionV3] Executing cognition tasks...");
+    console.log("[OptimizedBackgroundCognitionV3] Executing cognition tasks (EMERGENCY MODE)...");
 
     // 检查后台任务是否被禁用
     if (this.aggressiveMemoryCleanup.areBackgroundTasksDisabled()) {
@@ -200,13 +201,14 @@ class OptimizedBackgroundCognitionV3 {
       return;
     }
 
+    // 紧急模式：仅执行内存清理，禁用所有其他任务
     const tasks = [
-      { name: "Daily Curation", fn: () => this.generateCuratedThoughts() },
-      { name: "Local Learning", fn: () => this.performBackgroundLearning() },
-      { name: "Self-Iteration", fn: () => this.performSelfIteration() },
-      { name: "Monthly LLM Learning", fn: () => this.performMonthlyLearning() },
       { name: "Emotional Memory Cleanup", fn: () => this.cleanupEmotionalMemory() },
     ];
+
+    console.warn(
+      "[OptimizedBackgroundCognitionV3] EMERGENCY MODE: Only running memory cleanup. Other tasks disabled."
+    );
 
     for (const task of tasks) {
       try {

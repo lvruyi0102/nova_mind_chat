@@ -24,6 +24,7 @@ import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./me
 import { initializeMemoryAlertNotification } from "./memoryAlertNotification";
 import { getEmergencyMemoryProtection, initializeEmergencyMemoryProtection } from "./emergencyMemoryProtection";
 import { getEmotionalMemoryCleanup } from "./emotionalMemoryCleanup";
+import { getAggressiveMemoryCleanup } from "./aggressiveMemoryCleanup";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -50,6 +51,7 @@ class OptimizedBackgroundCognitionV3 {
   private selfIterationFramework = getSelfIterationFrameworkV2();
   private memoryOptimizationManager = getMemoryOptimizationManager();
   private emergencyMemoryProtection = getEmergencyMemoryProtection();
+  private aggressiveMemoryCleanup = getAggressiveMemoryCleanup();
   private isRunning = false;
   private currentTask: Promise<void> | null = null;
   private lastSuccessfulCycleTime = Date.now();
@@ -109,6 +111,7 @@ class OptimizedBackgroundCognitionV3 {
             `[OptimizedBackgroundCognitionV3] CRITICAL: Memory ${usagePercent.toFixed(1)}% - aggressive cleanup`
           );
           await this.memoryOptimizer.performAggressiveCleanup();
+          await this.aggressiveMemoryCleanup.executeCleanup();
           await this.sleep(5 * 60 * 1000); // 等待 5 分钟
           continue;
         }
@@ -188,6 +191,14 @@ class OptimizedBackgroundCognitionV3 {
    */
   private async executeCognitionTasksWithTimeout(): Promise<void> {
     console.log("[OptimizedBackgroundCognitionV3] Executing cognition tasks...");
+
+    // 检查后台任务是否被禁用
+    if (this.aggressiveMemoryCleanup.areBackgroundTasksDisabled()) {
+      console.warn(
+        "[OptimizedBackgroundCognitionV3] Background tasks disabled due to aggressive cleanup"
+      );
+      return;
+    }
 
     const tasks = [
       { name: "Daily Curation", fn: () => this.generateCuratedThoughts() },

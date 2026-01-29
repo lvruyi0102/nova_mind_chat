@@ -7,6 +7,7 @@ import { getDb } from "../db";
 import { conversations } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { saveCreativeWork } from "../services/creativeWorkSaveService";
+import { getAggressiveMemoryCleanup } from "../services/aggressiveMemoryCleanup";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -53,6 +54,25 @@ export const systemRouter = router({
     .query(async () => {
       const monitor = MemoryMonitor.getInstance();
       return monitor.getCleanupHistory();
+    }),
+
+  getAggressiveCleanupStatus: protectedProcedure
+    .input(z.void())
+    .query(async () => {
+      const cleanup = getAggressiveMemoryCleanup();
+      return cleanup.getStatus();
+    }),
+
+  triggerAggressiveCleanup: adminProcedure
+    .input(z.void())
+    .mutation(async () => {
+      const cleanup = getAggressiveMemoryCleanup();
+      const result = await cleanup.executeCleanup();
+      return {
+        success: result.success,
+        freedMemory: result.freedMemory,
+        actions: result.actions,
+      };
     }),
 
   getCreativeWorks: protectedProcedure

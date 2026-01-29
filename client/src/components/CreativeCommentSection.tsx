@@ -1,5 +1,3 @@
-// @ts-ignore
-// @ts-ignore - Type mismatches with tRPC routes
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import CommentForm from "./CommentForm";

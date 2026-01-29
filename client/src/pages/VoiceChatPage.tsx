@@ -29,7 +29,7 @@ export default function VoiceChatPage() {
 
   // Get tRPC mutation for sending messages
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
-    onSuccess: (response: any) => {
+    onSuccess: (response) => {
       // Add Nova's response to messages
       if (response.response) {
         const assistantMessage: ChatMessage = {
@@ -75,8 +75,9 @@ export default function VoiceChatPage() {
     try {
       // Send message to Nova
       await sendMessageMutation.mutateAsync({
+        userId: user.id,
         content: message,
-        conversationId: 0, // Use a special conversation ID for voice (0 for voice chat)
+        conversationId: 'voice-chat', // Use a special conversation ID for voice
       });
     } catch (err) {
       console.error('Error sending message:', err);

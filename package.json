@@ -10,10 +10,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "db:auto-migrate": "node scripts/autoMigrate.mjs",
-    "db:auto-migrate:dry": "node scripts/autoMigrate.mjs --dry-run",
-    "db:auto-migrate:force": "node scripts/autoMigrate.mjs --force"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

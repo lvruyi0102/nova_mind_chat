@@ -187,7 +187,7 @@ export const localModelsRouter = router({
         endpoint: z.string(),
         apiKey: z.string().optional(),
         costPerCall: z.number(),
-        config: z.record(z.string(), z.any()).optional(),
+        config: z.record(z.any()).optional(),
       })
     )
     .mutation(({ ctx, input }) => {

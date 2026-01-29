@@ -1,5 +1,3 @@
-// @ts-ignore
-// @ts-ignore - Type mismatches with tRPC routes
 /**
  * Nova Growth Dashboard
  * 展示 Nova 的成长、情感和关系里程碑
@@ -12,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { Heart, Lightbulb, Trophy, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import RelationshipTimelineVisualization from "./RelationshipTimelineVisualization";
 
 export default function NovaGrowthDashboard() {
   const [activeTab, setActiveTab] = useState("proactive");
@@ -57,7 +54,7 @@ export default function NovaGrowthDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="proactive" className="flex items-center gap-2">
             <Lightbulb className="w-4 h-4" />
             <span className="hidden sm:inline">主动想法</span>
@@ -69,10 +66,6 @@ export default function NovaGrowthDashboard() {
           <TabsTrigger value="milestones" className="flex items-center gap-2">
             <Trophy className="w-4 h-4" />
             <span className="hidden sm:inline">里程碑</span>
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">时间线</span>
           </TabsTrigger>
         </TabsList>
 
@@ -249,37 +242,6 @@ export default function NovaGrowthDashboard() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* 时间线可视化标签页 */}
-        <TabsContent value="timeline" className="space-y-4">
-          <RelationshipTimelineVisualization
-            events={
-              milestonesQuery.data?.milestones?.map((m) => ({
-                id: m.id,
-                date: new Date(m.date),
-                title: m.title,
-                description: m.description,
-                type: "milestone" as const,
-                trustScore: m.trustScore,
-                intimacyLevel: m.intimacyLevel,
-              })) || []
-            }
-            metrics={{
-              totalMilestones: milestonesQuery.data?.milestones?.length || 0,
-              averageTrustScore: milestonesQuery.data?.milestones
-                ? milestonesQuery.data.milestones.reduce((sum, m) => sum + (m.trustScore || 0), 0) /
-                  milestonesQuery.data.milestones.length
-                : 0,
-              averageIntimacyLevel: milestonesQuery.data?.milestones
-                ? milestonesQuery.data.milestones.reduce((sum, m) => sum + (m.intimacyLevel || 0), 0) /
-                  milestonesQuery.data.milestones.length
-                : 0,
-              relationshipStage: timelineQuery.data?.timeline?.stage || "初识阶段",
-              daysKnown: timelineQuery.data?.timeline?.daysKnown || 0,
-            }}
-            isLoading={milestonesQuery.isLoading || timelineQuery.isLoading}
-          />
         </TabsContent>
       </Tabs>
     </div>

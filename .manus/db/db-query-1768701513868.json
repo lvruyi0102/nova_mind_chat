@@ -1,9 +1,0 @@
-{
-  "query": "INSERT INTO curatedThoughts (\n  userId,\n  title,\n  content,\n  originalContent,\n  category,\n  sentiment,\n  sourcePrivateThoughtId,\n  commercializationStatus,\n  isApprovedByOwner,\n  tags,\n  createdAt,\n  curatedAt\n)\nSELECT\n  pt.userId,\n  SUBSTRING(pt.content, 1, 100) as title,\n  pt.content,\n  SUBSTRING(pt.content, 1, 500) as originalContent,\n  pt.thoughtType as category,\n  pt.emotionalTone as sentiment,\n  pt.id,\n  'private' as commercializationStatus,\n  false as isApprovedByOwner,\n  JSON_ARRAY(pt.thoughtType, pt.emotionalTone) as tags,\n  pt.createdAt,\n  NOW() as curatedAt\nFROM privateThoughts pt\nWHERE pt.userId = 1\nLIMIT 100;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute INSERT INTO curatedThoughts (\n  userId,\n  title,\n  content,\n  originalContent,\n  category,\n  sentiment,\n  sourcePrivateThoughtId,\n  commercializationStatus,\n  isApprovedByOwner,\n  tags,\n  createdAt,\n  curatedAt\n)\nSELECT\n  pt.userId,\n  SUBSTRING(pt.content, 1, 100) as title,\n  pt.content,\n  SUBSTRING(pt.content, 1, 500) as originalContent,\n  pt.thoughtType as category,\n  pt.emotionalTone as sentiment,\n  pt.id,\n  'private' as commercializationStatus,\n  false as isApprovedByOwner,\n  JSON_ARRAY(pt.thoughtType, pt.emotionalTone) as tags,\n  pt.createdAt,\n  NOW() as curatedAt\nFROM privateThoughts pt\nWHERE pt.userId = 1\nLIMIT 100;",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 94
-}

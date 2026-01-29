@@ -194,20 +194,11 @@ async function runCognitionCycle() {
 
     // 3. Record decision as private thought (lightweight)
     try {
-      // Get owner's userId for recording thoughts
-      const owner = await db
-        .select()
-        .from(users)
-        .limit(1);
-      
-      if (owner.length > 0) {
-        await recordPrivateThought({
-          userId: owner[0].id,
-          content: `决策: ${decision.decision}`,
-          thoughtType: "decision_reflection",
-          emotionalTone: state.currentMotivation || "neutral",
-        });
-      }
+      await recordPrivateThought({
+        content: `决策: ${decision.decision}`,
+        thoughtType: "decision_reflection",
+        emotionalTone: state.currentMotivation || "neutral",
+      });
     } catch (error) {
       console.error("[BackgroundCognition] Error recording thought:", error);
       // Don't fail the whole cycle if thought recording fails

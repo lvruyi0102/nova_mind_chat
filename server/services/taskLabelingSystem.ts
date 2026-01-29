@@ -209,8 +209,7 @@ class TaskLabelingSystem {
       totalEstimatedCost: 0,
     };
 
-    const tasks = Array.from(this.labeledTasks.values());
-    for (const task of tasks) {
+    for (const task of this.labeledTasks.values()) {
       if (task.label === "core") stats.core++;
       else if (task.label === "daily") stats.daily++;
       else if (task.label === "integration") stats.integration++;

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-// @ts-ignore - tRPC route types may not be fully aligned
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,14 +12,14 @@ export function CostMonitoringDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   // 获取统计数据
-  const statsQuery = trpc.monitoring.getStats.useQuery();
-  const dailySummariesQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const cacheEfficiencyQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const serviceBreakdownQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const llmMetricsQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const queryMetricsQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const recommendationsQuery = trpc.monitoring.getSystemMetrics.useQuery();
-  const predictQuery = trpc.monitoring.getSystemMetrics.useQuery();
+  const statsQuery = trpc.costMonitoring.getStats.useQuery();
+  const dailySummariesQuery = trpc.costMonitoring.getDailySummaries.useQuery({ days: 30 });
+  const cacheEfficiencyQuery = trpc.costMonitoring.getCacheEfficiency.useQuery();
+  const serviceBreakdownQuery = trpc.costMonitoring.getServiceCostBreakdown.useQuery();
+  const llmMetricsQuery = trpc.costMonitoring.getLLMMetrics.useQuery();
+  const queryMetricsQuery = trpc.costMonitoring.getQueryMetrics.useQuery();
+  const recommendationsQuery = trpc.costMonitoring.getOptimizationRecommendations.useQuery();
+  const predictQuery = trpc.costMonitoring.predictMonthlyCost.useQuery();
 
   const stats = statsQuery.data;
   const dailySummaries = dailySummariesQuery.data || [];
@@ -149,7 +148,7 @@ export function CostMonitoringDashboard() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: any) => `¥${typeof value === 'number' ? value.toFixed(2) : '0.00'}`} />
+                      <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -215,7 +214,7 @@ export function CostMonitoringDashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value: any) => `¥${typeof value === 'number' ? value.toFixed(2) : '0.00'}`} />
+                    <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
                     <Legend />
                     <Line type="monotone" dataKey="llm" stroke="#3b82f6" name="LLM 成本" />
                     <Line type="monotone" dataKey="database" stroke="#10b981" name="数据库成本" />

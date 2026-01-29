@@ -13,7 +13,7 @@ export const retryManagementRouter = router({
   /**
    * 获取重试队列统计信息
    */
-  getStats: protectedProcedure.input(z.void()).query(async () => {
+  getStats: protectedProcedure.query(async () => {
     return await getRetryQueueStats();
   }),
 
@@ -38,7 +38,7 @@ export const retryManagementRouter = router({
   /**
    * 获取待重试的任务列表
    */
-  getPendingTasks: protectedProcedure.input(z.void()).query(async () => {
+  getPendingTasks: protectedProcedure.query(async () => {
     return await getPendingRetryTasks();
   }),
 

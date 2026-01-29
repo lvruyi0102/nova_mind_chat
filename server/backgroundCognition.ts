@@ -115,20 +115,11 @@ async function runCognitionCycle() {
     `);
 
     // Record a private thought about the decision
-    // Get owner's userId for recording thoughts
-    const owner = await db
-      .select()
-      .from(users)
-      .limit(1);
-    
-    if (owner.length > 0) {
-      await recordPrivateThought({
-        userId: owner[0].id,
-        content: `我决定${decision.decision}。${decision.reasoning}`,
-        thoughtType: "decision_reflection",
-        emotionalTone: state.currentMotivation || "neutral",
-      });
-    }
+    await recordPrivateThought({
+      content: `我决定${decision.decision}。${decision.reasoning}`,
+      thoughtType: "decision_reflection",
+      emotionalTone: state.currentMotivation || "neutral",
+    });
 
     // 3. Execute decision
     await executeDecision(decision);

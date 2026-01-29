@@ -69,10 +69,8 @@ class LLMOptimizer {
     // 调用 LLM
     const response = await invokeLLM({
       messages: [{ role: "user", content: prompt }],
+      temperature: options?.temperature,
     });
-    
-    // 注意: temperature 参数不是 invokeLLM 的标准参数
-    // 如果需要控制模型行为，请使用其他配置选项
 
     const content = response.choices[0]?.message?.content;
     if (typeof content !== "string") {

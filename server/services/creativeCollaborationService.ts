@@ -44,7 +44,7 @@ export async function startCollaboration(
     .orderBy(desc(creativeCollaborations.id))
     .limit(1);
 
-  return (result[0]?.id as number) || 0;
+  return result[0]?.id || 0;
 }
 
 export async function addUserContribution(
@@ -183,7 +183,7 @@ export async function recordInspirationTrigger(
     .orderBy(desc(creativeInspirationTriggers.id))
     .limit(1);
 
-  return (result[0]?.id as number) || 0;
+  return result[0]?.id || 0;
 }
 
 export async function generateCreativeResponseToTrigger(
@@ -362,10 +362,10 @@ export async function saveCollaborationAsCreativeWork(
     .orderBy(desc(creativeWorks.id))
     .limit(1);
 
-  const creativeWorkId = (result[0]?.id as number) || 0;
+  const creativeWorkId = result[0]?.id || 0;
 
   // Update the collaboration with the creative work reference
-  if ((creativeWorkId as number) > 0) {
+  if (creativeWorkId > 0) {
     await db
       .update(creativeCollaborations)
       .set({

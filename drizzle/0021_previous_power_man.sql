@@ -1,2 +1,0 @@
-ALTER TABLE `privateThoughts` ADD `userId` int NOT NULL;--> statement-breakpoint
-ALTER TABLE `privateThoughts` ADD CONSTRAINT `privateThoughts_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;

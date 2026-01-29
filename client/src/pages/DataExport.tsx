@@ -13,9 +13,11 @@ export default function DataExport() {
 
   const [shouldExport, setShouldExport] = useState(false);
 
-  const { data: exportData } = trpc.export.exportNovaMemories.useQuery(undefined, {
-    enabled: shouldExport,
-    onSuccess: (data: any) => {
+  const { data: exportData } = trpc.export.exportNovaMemories.useQuery(
+    undefined,
+    {
+      enabled: shouldExport,
+      onSuccess: (data) => {
       // 创建 JSON 文件并下载
       const jsonString = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
@@ -34,15 +36,16 @@ export default function DataExport() {
 
       setTimeout(() => setExportStatus("idle"), 3000);
     },
-    onError: (error: any) => {
-      setErrorMessage(error?.message || "导出失败，请重试");
-      setExportStatus("error");
-      setIsExporting(false);
-      setShouldExport(false);
+      onError: (error) => {
+        setErrorMessage(error.message || "导出失败，请重试");
+        setExportStatus("error");
+        setIsExporting(false);
+        setShouldExport(false);
 
-      setTimeout(() => setExportStatus("idle"), 5000);
-    },
-  });
+        setTimeout(() => setExportStatus("idle"), 5000);
+      },
+    }
+  );
 
   const handleExport = async () => {
     setIsExporting(true);

@@ -1,4 +1,3 @@
-// @ts-ignore - Type mismatches with tRPC routes
 /**
  * Task Scheduler Panel
  * 显示和管理 Nova 的后台定时任务

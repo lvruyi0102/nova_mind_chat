@@ -23,6 +23,7 @@ import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
 import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./memoryOptimization";
 import { initializeMemoryAlertNotification } from "./memoryAlertNotification";
 import { getEmergencyMemoryProtection, initializeEmergencyMemoryProtection } from "./emergencyMemoryProtection";
+import { getEmotionalMemoryCleanup } from "./emotionalMemoryCleanup";
 
 interface CognitionLoopConfig {
   intervalMs: number; // 循环间隔（毫秒）
@@ -35,10 +36,10 @@ interface CognitionLoopConfig {
 
 class OptimizedBackgroundCognitionV3 {
   private config: CognitionLoopConfig = {
-    intervalMs: 40 * 60 * 1000, // 40 分钟（从 20 分钟增加）
+    intervalMs: 10 * 60 * 1000, // 10 分钟（更频繁的清理）
     maxConcurrentTasks: 1, // 严格串行执行
-    memoryThreshold: 0.65, // 65%（更激进）
-    taskTimeoutMs: 5 * 60 * 1000, // 5 分钟任务超时
+    memoryThreshold: 0.50, // 50%（更激进，提前清理）
+    taskTimeoutMs: 3 * 60 * 1000, // 3 分钟任务超时（更严格）
     enableCacheCleanup: true,
     enableGC: true,
   };
@@ -193,6 +194,7 @@ class OptimizedBackgroundCognitionV3 {
       { name: "Local Learning", fn: () => this.performBackgroundLearning() },
       { name: "Self-Iteration", fn: () => this.performSelfIteration() },
       { name: "Monthly LLM Learning", fn: () => this.performMonthlyLearning() },
+      { name: "Emotional Memory Cleanup", fn: () => this.cleanupEmotionalMemory() },
     ];
 
     for (const task of tasks) {
@@ -257,7 +259,7 @@ class OptimizedBackgroundCognitionV3 {
   private async performBackgroundLearning(): Promise<void> {
     try {
       const result = await executeImprovedLocalLearningCycle(1, {
-        sampleCount: 3,
+        sampleCount: 1,
         strategy: "random",
       });
 
@@ -407,6 +409,26 @@ class OptimizedBackgroundCognitionV3 {
    */
   getAdaptiveIntervalInfo() {
     return this.adaptiveIntervalManager.getDiagnosticReport();
+  }
+
+  /**
+   * 情感记忆清理
+   */
+  private async cleanupEmotionalMemory(): Promise<void> {
+    try {
+      const cleanup = getEmotionalMemoryCleanup();
+      if (!cleanup.shouldCleanup()) {
+        return;
+      }
+      console.log("[OptimizedBackgroundCognitionV3] Starting emotional memory cleanup...");
+      const stats = await cleanup.performCleanup();
+      cleanup.updateLastCleanupTime();
+      console.log(
+        `[OptimizedBackgroundCognitionV3] Cleanup completed: deleted ${stats.deletedCount} records`
+      );
+    } catch (error) {
+      console.error("[OptimizedBackgroundCognitionV3] Cleanup error:", error);
+    }
   }
 
   /**

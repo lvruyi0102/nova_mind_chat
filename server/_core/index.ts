@@ -12,6 +12,7 @@ import { startMonitoring } from "../performanceMonitor";
 import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
 import { getEmergencyMemoryRecovery } from "../services/emergencyMemoryRecovery";
+import { getEmergencyMemoryProtection } from "../services/emergencyMemoryProtection";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -42,6 +43,11 @@ async function startServer() {
   // Initialize emergency memory recovery
   const emergencyRecovery = getEmergencyMemoryRecovery();
   console.log("[Server] Emergency memory recovery initialized");
+
+  // Disable memory warning notifications to prevent email spam
+  const memoryProtection = getEmergencyMemoryProtection();
+  memoryProtection.disableNotifications();
+  console.log("[Server] Memory warning notifications disabled to prevent email spam");
 
   // Memory monitoring endpoints
   app.get("/api/health/memory", (req, res) => {

@@ -46,7 +46,8 @@ export class EmergencyMemoryProtection extends EventEmitter {
   private emergencyThreshold = 0.98; // 98% - shutdown services
   private cleanupEvents: CleanupEvent[] = [];
   private lastNotificationTime = 0;
-  private notificationCooldown = 5 * 60 * 1000; // 5 minutes between notifications
+  private notificationCooldown = 60 * 60 * 1000; // 60 minutes between notifications (reduced frequency)
+  private notificationsDisabled = false; // 禁用通知开关
   private lastStats: EmergencyMemoryStats | null = null;
   private cleanupAttempts = 0;
   private maxCleanupAttempts = 3;
@@ -250,6 +251,11 @@ export class EmergencyMemoryProtection extends EventEmitter {
    * Send warning notification (with cooldown)
    */
   private async sendWarningNotification(stats: EmergencyMemoryStats): Promise<void> {
+    // 禁用通知以防止邮件轰炸
+    if (this.notificationsDisabled) {
+      return;
+    }
+
     const now = Date.now();
     if (now - this.lastNotificationTime < this.notificationCooldown) {
       return; // Skip if within cooldown period
@@ -273,6 +279,11 @@ export class EmergencyMemoryProtection extends EventEmitter {
    * Send critical notification
    */
   private async sendCriticalNotification(stats: EmergencyMemoryStats): Promise<void> {
+    // 禁用通知以防止邮件轰炸
+    if (this.notificationsDisabled) {
+      return;
+    }
+
     try {
       await notifyOwner({
         title: '🚨 Nova-Mind CRITICAL Memory Alert',
@@ -351,6 +362,19 @@ export class EmergencyMemoryProtection extends EventEmitter {
       totalFreed,
       averageFreed: totalFreed / successful.length || 0,
     };
+  }
+
+  /**
+   * 禁用/启用通知
+   */
+  disableNotifications(): void {
+    this.notificationsDisabled = true;
+    console.log('[EmergencyMemoryProtection] Notifications disabled');
+  }
+
+  enableNotifications(): void {
+    this.notificationsDisabled = false;
+    console.log('[EmergencyMemoryProtection] Notifications enabled');
   }
 }
 

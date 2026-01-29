@@ -70,31 +70,18 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       
-      // 在 Vite transformIndexHtml 之前注入禁用 HMR 脚本
-      const disableHmrScript = `<script>window.__VITE_SKIP_HMR__ = true;</script>`;
-      template = template.replace("<head>", `<head>${disableHmrScript}`);
-      
-      // 直接从请求头获取 HMR 配置
-      const forwardedHost = req.get("X-Forwarded-Host") || req.get("Host") || "localhost:3000";
-      const isProxyEnvironment = forwardedHost && forwardedHost !== "localhost:3000" && forwardedHost !== "127.0.0.1:3000";
-      
-      const hmrHost = isProxyEnvironment ? forwardedHost.split(":")[0] : "localhost";
-      const hmrPort = isProxyEnvironment ? 443 : 5173;
-      const hmrProtocol = isProxyEnvironment ? "wss" : "ws";
-      
       // 注入 HMR 配置到 HTML
       const hmrConfig = `
         <script>
           window.__VITE_HMR_CONFIG__ = {
-            host: "${hmrHost}",
-            port: ${hmrPort},
-            protocol: "${hmrProtocol}"
+            host: "${process.env.VITE_HMR_HOST || "localhost"}",
+            port: ${process.env.VITE_HMR_PORT || "5173"},
+            protocol: "${process.env.VITE_HMR_PROTOCOL || "ws"}"
           };
         </script>
       `;
       template = template.replace("</head>", `${hmrConfig}</head>`);
       
-      // transformIndexHtml 会自动注入 Vite 客户端脚本
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

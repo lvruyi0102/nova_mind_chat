@@ -37,7 +37,7 @@ export default function CreativeDetail({
   };
 
   const handleDownload = () => {
-    if (work?.content && work.type !== "image") {
+    if (work?.content && (work as any).type !== "image") {
       const element = document.createElement("a");
       element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(work.content));
       element.setAttribute("download", `${work.title || "nova-creation"}.txt`);
@@ -61,10 +61,11 @@ export default function CreativeDetail({
 
   const getMetadata = () => {
     try {
-      if (typeof work?.metadata === "string") {
-        return JSON.parse(work.metadata);
+      const metadata = (work as any)?.metadata;
+      if (typeof metadata === "string") {
+        return JSON.parse(metadata);
       }
-      return work?.metadata || {};
+      return metadata || {};
     } catch {
       return {};
     }
@@ -104,7 +105,7 @@ export default function CreativeDetail({
           ) : work ? (
             <>
               {/* Image Preview for image type */}
-              {work.type === "image" && work.content && (
+              {(work as any).type === "image" && work.content && (
                 <div className="bg-slate-800/50 rounded-lg p-4 flex items-center justify-center">
                   <img
                     src={work.content}
@@ -115,7 +116,7 @@ export default function CreativeDetail({
               )}
 
               {/* Content Display */}
-              {work.type !== "image" && work.content && (
+              {(work as any).type !== "image" && work.content && (
                 <div className="bg-slate-800/50 rounded-lg p-6 border border-purple-500/20">
                   <div className="max-h-96 overflow-y-auto">
                     <Streamdown>{work.content}</Streamdown>
@@ -124,10 +125,10 @@ export default function CreativeDetail({
               )}
 
               {/* Description */}
-              {work.description && (
+              {(work as any).description && (
                 <div>
                   <h3 className="text-sm font-semibold text-purple-300 mb-2">描述</h3>
-                  <p className="text-purple-200">{work.description}</p>
+                  <p className="text-purple-200">{(work as any).description}</p>
                 </div>
               )}
 
@@ -136,28 +137,28 @@ export default function CreativeDetail({
                 <div>
                   <h3 className="text-sm font-semibold text-purple-300 mb-2">创意类型</h3>
                   <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-                    {getTypeLabel(work.type)}
+                    {getTypeLabel((work as any).type)}
                   </Badge>
                 </div>
 
-                {work.emotionalState && (
+                {(work as any).emotionalState && (
                   <div>
                     <h3 className="text-sm font-semibold text-purple-300 mb-2">情感状态</h3>
-                    <Badge className={`${getEmotionColor(work.emotionalState)} text-xs`}>
-                      💭 {work.emotionalState}
+                    <Badge className={`${getEmotionColor((work as any).emotionalState)} text-xs`}>
+                      💭 {(work as any).emotionalState}
                     </Badge>
                   </div>
                 )}
 
                 <div>
                   <h3 className="text-sm font-semibold text-purple-300 mb-2">创建时间</h3>
-                  <p className="text-white">{formatDate(work.createdAt)}</p>
+                  <p className="text-white">{formatDate((work as any).createdAt || new Date())}</p>
                 </div>
 
-                {work.inspiration && (
+                {(work as any).inspiration && (
                   <div>
                     <h3 className="text-sm font-semibold text-purple-300 mb-2">灵感来源</h3>
-                    <p className="text-purple-200">{work.inspiration}</p>
+                    <p className="text-purple-200">{(work as any).inspiration}</p>
                   </div>
                 )}
 
@@ -200,7 +201,7 @@ export default function CreativeDetail({
             <Button
               onClick={handleDownload}
               variant="outline"
-              disabled={!work?.content || work.type === "image"}
+              disabled={!work?.content || (work as any).type === "image"}
               className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 disabled:opacity-50"
             >
               <Download className="w-4 h-4 mr-2" />

@@ -149,7 +149,7 @@ export function CostMonitoringDashboard() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
+                      <Tooltip formatter={(value: any) => `¥${typeof value === 'number' ? value.toFixed(2) : '0.00'}`} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -215,7 +215,7 @@ export function CostMonitoringDashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
+                    <Tooltip formatter={(value: any) => `¥${typeof value === 'number' ? value.toFixed(2) : '0.00'}`} />
                     <Legend />
                     <Line type="monotone" dataKey="llm" stroke="#3b82f6" name="LLM 成本" />
                     <Line type="monotone" dataKey="database" stroke="#10b981" name="数据库成本" />

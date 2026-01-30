@@ -249,25 +249,30 @@ class AggressiveMemoryOptimization {
 
   /**
    * 清理 require 缓存
+   * 注意：在 ES 模块环境中，require 不可用
    */
   private clearRequireCache(): void {
     try {
-      // 清理不必要的模块缓存
-      const modulesToKeep = [
-        'express',
-        'trpc',
-        'drizzle-orm',
-        'node_modules',
-      ];
+      // 在 ES 模块环境中，require 不可用
+      // 这个方法在 CommonJS 环境中才能使用
+      if (typeof require !== 'undefined' && require.cache) {
+        const modulesToKeep = [
+          'express',
+          'trpc',
+          'drizzle-orm',
+          'node_modules',
+        ];
 
-      for (const moduleId in require.cache) {
-        const shouldKeep = modulesToKeep.some(keep => moduleId.includes(keep));
-        if (!shouldKeep && !moduleId.includes('node_modules')) {
-          delete require.cache[moduleId];
+        for (const moduleId in require.cache) {
+          const shouldKeep = modulesToKeep.some(keep => moduleId.includes(keep));
+          if (!shouldKeep && !moduleId.includes('node_modules')) {
+            delete require.cache[moduleId];
+          }
         }
       }
     } catch (error) {
-      console.error("[AggressiveMemoryOptimization] Error clearing require cache:", error);
+      // 在 ES 模块环境中，这个错误是预期的
+      // console.error("[AggressiveMemoryOptimization] Error clearing require cache:", error);
     }
   }
 

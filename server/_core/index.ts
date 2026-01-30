@@ -12,6 +12,7 @@ import { startMonitoring } from "../performanceMonitor";
 import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
 import { getAggressiveMemoryOptimization } from "../services/aggressiveMemoryOptimization";
+import { getAutoRestartManager } from "../services/autoRestartManager";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -92,6 +93,11 @@ async function startServer() {
     console.log("[Server] Activating aggressive memory optimization...");
     const aggressiveOptimization = getAggressiveMemoryOptimization();
     aggressiveOptimization.activate();
+    
+    // Activate auto-restart manager
+    console.log("[Server] Activating auto-restart manager...");
+    const autoRestartManager = getAutoRestartManager();
+    autoRestartManager.activate();
     
     // DISABLE ALL BACKGROUND TASKS - MEMORY OPTIMIZATION PRIORITY
     console.log("[Server] ⚠️  ALL BACKGROUND TASKS DISABLED FOR MEMORY OPTIMIZATION");

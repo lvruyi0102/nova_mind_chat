@@ -11,6 +11,7 @@ import { getOptimizedBackgroundCognitionV3 } from "../services/optimizedBackgrou
 import { startMonitoring } from "../performanceMonitor";
 import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
+import { getAggressiveMemoryOptimization } from "../services/aggressiveMemoryOptimization";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -87,26 +88,21 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     
-    // Start Nova's background cognition (V3 - optimized)
-    console.log("[Server] Starting Nova-Mind's autonomous consciousness (V3 optimized)...");
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    cognitionLoop.start().catch((error) => {
-      console.error("[Server] Failed to start background cognition:", error);
-    });
-
-    // Start Nova's daily thought tasks
-    console.log("[Server] Starting Nova-Mind's daily thought scheduler...");
-    startAllSchedules().catch((error) => {
-      console.error("[Server] Failed to start task scheduler:", error);
-    });
-
-    // Start auto curation scheduler
-    console.log("[Server] Starting auto curation scheduler...");
-    autoCurationScheduler.start();
-
-    // Start performance monitoring
-    console.log("[Server] Starting performance monitoring...");
-    startMonitoring();
+    // Activate aggressive memory optimization FIRST
+    console.log("[Server] Activating aggressive memory optimization...");
+    const aggressiveOptimization = getAggressiveMemoryOptimization();
+    aggressiveOptimization.activate();
+    
+    // DISABLE ALL BACKGROUND TASKS - MEMORY OPTIMIZATION PRIORITY
+    console.log("[Server] ⚠️  ALL BACKGROUND TASKS DISABLED FOR MEMORY OPTIMIZATION");
+    console.log("[Server] Only HTTP service and memory monitoring are active");
+    
+    // NOTE: The following services are intentionally disabled:
+    // - Background cognition loop
+    // - Task scheduler
+    // - Auto curation scheduler  
+    // - Performance monitoring
+    // Reason: Aggressive memory optimization to reduce heap usage from 96% to <80%
   });
 }
 

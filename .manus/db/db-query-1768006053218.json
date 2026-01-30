@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE IF NOT EXISTS `emotionalUnderstandings` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userExpressionId` varchar(36) NOT NULL,\n  `userId` int NOT NULL,\n  `understanding` text NOT NULL,\n  `confidence` decimal(3,2),\n  `reasoning` text,\n  `emotionalState` json,\n  `behavioralSignals` json,\n  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,\n  FOREIGN KEY (`userExpressionId`) REFERENCES `emotionalExpressions`(`id`),\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute CREATE TABLE IF NOT EXISTS `emotionalUnderstandings` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userExpressionId` varchar(36) NOT NULL,\n  `userId` int NOT NULL,\n  `understanding` text NOT NULL,\n  `confidence` decimal(3,2),\n  `reasoning` text,\n  `emotionalState` json,\n  `behavioralSignals` json,\n  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,\n  FOREIGN KEY (`userExpressionId`) REFERENCES `emotionalExpressions`(`id`),\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 636
-}

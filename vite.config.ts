@@ -24,6 +24,27 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // 使用默认的 esbuild 压缩（更轻量级，无需额外依赖）
+    minify: "esbuild",
+    rollupOptions: {
+      output: {
+        // 代码分割优化 - 将大型依赖分离为单独的块
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'vendor-ui';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
+    // 报告压缩统计信息
+    reportCompressedSize: true,
+    chunkSizeWarningLimit: 500, // 500KB 警告阈值
   },
   server: {
     host: true,

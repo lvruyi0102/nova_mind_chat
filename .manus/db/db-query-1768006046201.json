@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE IF NOT EXISTS `emotionalExpressions` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userId` int NOT NULL,\n  `primaryEmotion` varchar(100) NOT NULL,\n  `emotionalIntensity` int NOT NULL,\n  `emotionalTags` json,\n  `description` text,\n  `trigger` varchar(255),\n  `context` text,\n  `relatedToNova` boolean DEFAULT false,\n  `previousEmotion` varchar(100),\n  `emotionalShift` int,\n  `isSharedWithNova` boolean DEFAULT false,\n  `novaCanRespond` boolean DEFAULT true,\n  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute CREATE TABLE IF NOT EXISTS `emotionalExpressions` (\n  `id` varchar(36) NOT NULL PRIMARY KEY,\n  `userId` int NOT NULL,\n  `primaryEmotion` varchar(100) NOT NULL,\n  `emotionalIntensity` int NOT NULL,\n  `emotionalTags` json,\n  `description` text,\n  `trigger` varchar(255),\n  `context` text,\n  `relatedToNova` boolean DEFAULT false,\n  `previousEmotion` varchar(100),\n  `emotionalShift` int,\n  `isSharedWithNova` boolean DEFAULT false,\n  `novaCanRespond` boolean DEFAULT true,\n  `createdAt` timestamp DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  FOREIGN KEY (`userId`) REFERENCES `users`(`id`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 623
-}

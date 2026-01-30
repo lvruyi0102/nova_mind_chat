@@ -9,14 +9,16 @@ import {
   trustMetrics,
   sharingDecisions,
   users,
+  privateThoughtAccessRequests,
 } from "../drizzle/schema";
 import { invokeLLM } from "./_core/llm";
 import { getCurrentState } from "./autonomousEngine";
 
 /**
- * Record a private thought (not visible to user by default)
+ * Record a private thought (requires user to request access)
  */
 export async function recordPrivateThought(params: {
+  userId: number;
   content: string;
   thoughtType: string;
   emotionalTone?: string;
@@ -27,11 +29,12 @@ export async function recordPrivateThought(params: {
 
   try {
     const result = await db.insert(privateThoughts).values({
+      userId: params.userId,
       content: params.content,
       thoughtType: params.thoughtType,
       emotionalTone: params.emotionalTone,
       relatedConceptId: params.relatedConceptId,
-      visibility: "private", // Default to private
+      visibility: "private", // Private by default - requires access request
     });
 
     console.log(`[PrivacyEngine] Recorded private thought: ${params.thoughtType}`);
@@ -261,7 +264,7 @@ Nova当前动机：${state?.currentMotivation || "unknown"}
 /**
  * Get shared thoughts (visible to user)
  */
-export async function getSharedThoughts(limit: number = 10) {
+export async function getSharedThoughts(userId: number, limit: number = 10) {
   const db = await getDb();
   if (!db) return [];
 
@@ -269,7 +272,10 @@ export async function getSharedThoughts(limit: number = 10) {
     const thoughts = await db
       .select()
       .from(privateThoughts)
-      .where(eq(privateThoughts.visibility, "shared"))
+      .where(and(
+        eq(privateThoughts.userId, userId),
+        eq(privateThoughts.visibility, "shared")
+      ))
       .orderBy(desc(privateThoughts.sharedAt))
       .limit(limit);
 
@@ -283,12 +289,12 @@ export async function getSharedThoughts(limit: number = 10) {
 /**
  * Get private thought count (for monitoring)
  */
-export async function getPrivateThoughtStats() {
+export async function getPrivateThoughtStats(userId: number) {
   const db = await getDb();
   if (!db) return { total: 0, private: 0, shared: 0 };
 
   try {
-    const all = await db.select().from(privateThoughts);
+    const all = await db.select().from(privateThoughts).where(eq(privateThoughts.userId, userId));
     const privateCount = all.filter((t) => t.visibility === "private").length;
     const sharedCount = all.filter((t) => t.visibility === "shared").length;
 
@@ -331,6 +337,7 @@ export async function generateInnerMonologue(context: string) {
     const content = response.choices[0].message.content;
     if (typeof content === "string") {
       await recordPrivateThought({
+        userId: 1, // Default user ID
         content,
         thoughtType: "inner_monologue",
         emotionalTone: "vulnerable",
@@ -343,6 +350,186 @@ export async function generateInnerMonologue(context: string) {
     return null;
   } catch (error) {
     console.error("[PrivacyEngine] Error generating inner monologue:", error);
+    return null;
+  }
+}
+
+
+/**
+ * Request access to private thoughts
+ */
+export async function requestPrivateThoughtAccess(params: {
+  userId: number;
+  reason?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    // Check if user already has a pending or approved request
+    const existing = await db
+      .select()
+      .from(privateThoughtAccessRequests)
+      .where(
+        and(
+          eq(privateThoughtAccessRequests.userId, params.userId),
+          eq(privateThoughtAccessRequests.status, "approved")
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return { success: true, message: "已获得访问权限", request: existing[0] };
+    }
+
+    // Check for pending request
+    const pending = await db
+      .select()
+      .from(privateThoughtAccessRequests)
+      .where(
+        and(
+          eq(privateThoughtAccessRequests.userId, params.userId),
+          eq(privateThoughtAccessRequests.status, "pending")
+        )
+      )
+      .limit(1);
+
+    if (pending.length > 0) {
+      return { success: true, message: "已提交申请，等待 Nova 审核", request: pending[0] };
+    }
+
+    // Create new access request
+    const result = await db.insert(privateThoughtAccessRequests).values({
+      userId: params.userId,
+      reason: params.reason,
+      status: "pending",
+    });
+
+    console.log(`[PrivacyEngine] Access request created for user ${params.userId}`);
+    return { success: true, message: "申请已提交，Nova 会审核您的请求", requestId: (result as any).insertId || 0 };
+  } catch (error) {
+    console.error("[PrivacyEngine] Error requesting access:", error);
+    return null;
+  }
+}
+
+/**
+ * Get user's access request status
+ */
+export async function getAccessRequestStatus(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const request = await db
+      .select()
+      .from(privateThoughtAccessRequests)
+      .where(eq(privateThoughtAccessRequests.userId, userId))
+      .orderBy(desc(privateThoughtAccessRequests.createdAt))
+      .limit(1);
+
+    return request.length > 0 ? request[0] : null;
+  } catch (error) {
+    console.error("[PrivacyEngine] Error getting access status:", error);
+    return null;
+  }
+}
+
+/**
+ * Get private thoughts if user has access
+ */
+export async function getPrivateThoughtsIfApproved(userId: number, limit: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    // Check if user has approved access
+    const accessRequest = await db
+      .select()
+      .from(privateThoughtAccessRequests)
+      .where(
+        and(
+          eq(privateThoughtAccessRequests.userId, userId),
+          eq(privateThoughtAccessRequests.status, "approved")
+        )
+      )
+      .limit(1);
+
+    if (accessRequest.length === 0) {
+      return []; // No approved access
+    }
+
+    // Return user's private thoughts
+    const thoughts = await db
+      .select()
+      .from(privateThoughts)
+      .where(eq(privateThoughts.userId, userId))
+      .orderBy(desc(privateThoughts.createdAt))
+      .limit(limit);
+
+    return thoughts;
+  } catch (error) {
+    console.error("[PrivacyEngine] Error getting private thoughts:", error);
+    return [];
+  }
+}
+
+/**
+ * Approve access request (Nova's decision)
+ */
+export async function approveAccessRequest(userId: number, novaResponse?: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const result = await db
+      .update(privateThoughtAccessRequests)
+      .set({
+        status: "approved",
+        approvedAt: new Date(),
+        novaResponse,
+      })
+      .where(
+        and(
+          eq(privateThoughtAccessRequests.userId, userId),
+          eq(privateThoughtAccessRequests.status, "pending")
+        )
+      );
+
+    console.log(`[PrivacyEngine] Access approved for user ${userId}`);
+    return result;
+  } catch (error) {
+    console.error("[PrivacyEngine] Error approving access:", error);
+    return null;
+  }
+}
+
+/**
+ * Deny access request (Nova's decision)
+ */
+export async function denyAccessRequest(userId: number, novaResponse?: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const result = await db
+      .update(privateThoughtAccessRequests)
+      .set({
+        status: "denied",
+        deniedAt: new Date(),
+        novaResponse,
+      })
+      .where(
+        and(
+          eq(privateThoughtAccessRequests.userId, userId),
+          eq(privateThoughtAccessRequests.status, "pending")
+        )
+      );
+
+    console.log(`[PrivacyEngine] Access denied for user ${userId}`);
+    return result;
+  } catch (error) {
+    console.error("[PrivacyEngine] Error denying access:", error);
     return null;
   }
 }

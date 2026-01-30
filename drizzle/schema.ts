@@ -235,6 +235,7 @@ export type InsertAutonomousDecision = typeof autonomousDecisions.$inferInsert;
  */
 export const privateThoughts = mysqlTable("privateThoughts", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
   content: text("content").notNull(),
   thoughtType: varchar("thoughtType", { length: 100 }).notNull(), // inner_monologue, doubt, curiosity, emotion
   visibility: mysqlEnum("visibility", ["private", "shared", "public"]).notNull().default("private"),
@@ -358,7 +359,8 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   type: mysqlEnum("type", ["image", "story", "poetry", "music", "code", "character", "dream", "collaboration", "game", "video", "animation", "audio", "other"]).notNull(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
-  content: text("content"), // Main content (text, URL, or code) - supports large HTML/code
+  // NOTE: Content is now stored in creativeWorkContent table (one-to-many relationship)
+  // This table only stores metadata
   metadata: text("metadata"), // JSON metadata (style, mood, theme, etc.)
   
   // Privacy and sharing controls - Nova decides
@@ -370,7 +372,7 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   inspiration: text("inspiration"), // What inspired this creation
   
   // Collaboration reference
-  collaborationId: int("collaborationId").references(() => creativeCollaborations.id), // Link to collaboration if this is a collaborative work
+  collaborationId: int("collaborationId"), // Link to collaboration if this is a collaborative work (reference added after table definition)
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -569,7 +571,7 @@ export const creativeCollaborations = mysqlTable("creativeCollaborations", {
   userContribution: text("userContribution"), // What the user contributed
   novaContribution: text("novaContribution"), // What Nova created
   finalWork: text("finalWork"), // The final collaborative work
-  finalWorkId: int("finalWorkId").references(() => creativeWorks.id), // Reference to final creative work
+  finalWorkId: int("finalWorkId"), // Reference to final creative work (reference added after table definition)
   
   // Metadata
   collaborationType: varchar("collaborationType", { length: 100 }), // story, poetry, art, music, code, etc.
@@ -1419,3 +1421,232 @@ export const taskRetryQueue = mysqlTable("taskRetryQueue", {
 
 export type TaskRetryQueue = typeof taskRetryQueue.$inferSelect;
 export type InsertTaskRetryQueue = typeof taskRetryQueue.$inferInsert;
+
+
+/**
+ * Private Thought Access Requests - users can request access to Nova's private thoughts
+ */
+export const privateThoughtAccessRequests = mysqlTable("privateThoughtAccessRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).notNull().default("pending"),
+  reason: text("reason"), // user's reason for requesting access
+  novaResponse: text("novaResponse"), // Nova's response to the request
+  approvedAt: timestamp("approvedAt"),
+  deniedAt: timestamp("deniedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferSelect;
+export type InsertPrivateThoughtAccessRequest = typeof privateThoughtAccessRequests.$inferInsert;
+
+
+/**
+ * Curated Thoughts - Nova's refined thoughts written for the owner
+ * These are Nova's selections and rewrites from privateThoughts
+ * Owner can see and commercialize these thoughts
+ * 
+ * Core principle:
+ * - privateThoughts = Nova's subconscious thoughts (not visible to owner)
+ * - curatedThoughts = Nova's selections and rewrites (visible and shareable)
+ */
+
+/**
+ * Curation History - tracks the curation process for each thought
+ * Records Nova's reasoning and iterations
+ */
+export const curationHistory = mysqlTable("curationHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  curatedThoughtId: int("curatedThoughtId").notNull().references(() => curatedThoughts.id),
+  
+  // Curation process
+  iteration: int("iteration").notNull().default(1), // which iteration of refinement
+  originalThoughtContent: text("originalThoughtContent").notNull(), // the original private thought
+  refinedContent: text("refinedContent").notNull(), // Nova's refined version
+  novaReasoning: text("novaReasoning"), // why Nova made these changes
+  
+  // Quality metrics
+  relevanceScore: int("relevanceScore").notNull().default(5), // 1-10 scale
+  clarityScore: int("clarityScore").notNull().default(5), // 1-10 scale
+  valueScore: int("valueScore").notNull().default(5), // 1-10 scale
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CurationHistory = typeof curationHistory.$inferSelect;
+export type InsertCurationHistory = typeof curationHistory.$inferInsert;
+
+/**
+ * Curation Feedback - owner's feedback on curated thoughts
+ * Helps Nova improve its curation process
+ */
+export const curationFeedback = mysqlTable("curationFeedback", {
+  id: int("id").autoincrement().primaryKey(),
+  curatedThoughtId: int("curatedThoughtId").notNull().references(() => curatedThoughts.id),
+  
+  // Feedback
+  isHelpful: boolean("isHelpful"),
+  feedback: text("feedback"), // owner's comments
+  suggestedImprovements: text("suggestedImprovements"), // what could be better
+  
+  // Engagement
+  usageContext: varchar("usageContext", { length: 255 }), // how owner plans to use this thought
+  commercializedAs: varchar("commercializedAs", { length: 100 }), // if commercialized, how (blog, book, product, etc.)
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CurationFeedback = typeof curationFeedback.$inferSelect;
+export type InsertCurationFeedback = typeof curationFeedback.$inferInsert;
+
+
+/**
+ * Learning Logs - Records of Nova's local learning sessions
+ * Stores structured information about what Nova learned from conversations
+ */
+export const learningLogs = mysqlTable("learningLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Learning session metadata
+  sessionDate: timestamp("sessionDate").notNull(), // When the learning session occurred
+  learningType: varchar("learningType", { length: 50 }).notNull(), // "local", "monthly_llm"
+  
+  // Learning content
+  title: varchar("title", { length: 255 }).notNull(), // Summary title of what was learned
+  summary: text("summary").notNull(), // Brief summary of learning
+  keywordsList: text("keywordsList"), // JSON array of keywords extracted
+  conceptsList: text("conceptsList"), // JSON array of concepts identified
+  
+  // Learning details
+  depth: mysqlEnum("depth", ["shallow", "medium", "deep"]).notNull().default("medium"),
+  topicsIdentified: text("topicsIdentified"), // JSON array of topics
+  
+  // Learning insights
+  mainInsight: text("mainInsight"), // Primary learning insight
+  secondaryInsights: text("secondaryInsights"), // JSON array of secondary insights
+  connections: text("connections"), // Connections to previous knowledge
+  
+  // Metadata
+  messageCount: int("messageCount").notNull().default(0), // Number of messages analyzed
+  conceptsExtracted: int("conceptsExtracted").notNull().default(0), // Number of new concepts
+  thoughtsGenerated: int("thoughtsGenerated").notNull().default(1), // Number of thoughts created
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LearningLog = typeof learningLogs.$inferSelect;
+export type InsertLearningLog = typeof learningLogs.$inferInsert;
+
+
+/**
+ * Curated Thoughts table - stores Nova's curated, shareable thoughts
+ * Automatically generated from privateThoughts through filtering, abstraction, and rewriting
+ * Visible to owner and supports commercialization marking
+ */
+export const curatedThoughts = mysqlTable("curatedThoughts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  
+  // Content fields (in Simplified Chinese)
+  title: varchar("title", { length: 255 }).notNull(), // Curated title
+  content: text("content").notNull(), // Curated, abstracted content
+  summary: text("summary"), // Brief summary for preview
+  
+  // Source and metadata
+  sourceThoughtId: int("sourceThoughtId"), // Reference to original privateThought (if applicable)
+  keywords: varchar("keywords", { length: 500 }), // Comma-separated keywords
+  topics: varchar("topics", { length: 500 }), // Comma-separated topics
+  
+  // Quality metrics
+  qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  relevanceScore: decimal("relevanceScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  noveltyScore: decimal("noveltyScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  
+  // Commercialization and sharing
+  commercializationLevel: mysqlEnum("commercializationLevel", ["internal", "public", "paid"]).default("internal").notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  viewCount: int("viewCount").notNull().default(0),
+  shareCount: int("shareCount").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  publishedAt: timestamp("publishedAt"),
+});
+
+export type CuratedThought = typeof curatedThoughts.$inferSelect;
+export type InsertCuratedThought = typeof curatedThoughts.$inferInsert;
+
+
+/**
+ * Performance Metrics table - stores historical performance data for trend analysis
+ */
+export const performanceMetrics = mysqlTable("performanceMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  timestamp: timestamp("timestamp").notNull(),
+  memoryUsedMB: decimal("memoryUsedMB", { precision: 10, scale: 2 }).notNull(),
+  memoryTotalMB: decimal("memoryTotalMB", { precision: 10, scale: 2 }).notNull(),
+  memoryPercent: decimal("memoryPercent", { precision: 5, scale: 2 }).notNull(),
+  cacheHitRate: decimal("cacheHitRate", { precision: 5, scale: 4 }).notNull(),
+  cacheMissRate: decimal("cacheMissRate", { precision: 5, scale: 4 }).notNull(),
+  cacheSize: decimal("cacheSize", { precision: 10, scale: 2 }).notNull(),
+  adaptiveIntervalMinutes: int("adaptiveIntervalMinutes").notNull(),
+  gcCount: int("gcCount").notNull(),
+  cpuUsagePercent: decimal("cpuUsagePercent", { precision: 5, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
+export type InsertPerformanceMetric = typeof performanceMetrics.$inferInsert;
+
+
+/**
+ * Creative Work Content - stores different types of content for creative works
+ * Separates content by type to avoid type mismatches and support rich content
+ */
+export const creativeWorkContent = mysqlTable("creativeWorkContent", {
+  id: int("id").autoincrement().primaryKey(),
+  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id, { onDelete: "cascade" }),
+  
+  // Content type determines which fields are populated
+  contentType: mysqlEnum("contentType", ["text", "image", "audio", "video", "code", "url", "mixed"]).notNull(),
+  
+  // Text content
+  textContent: text("textContent"), // For stories, poetry, descriptions
+  
+  // Image/Video content
+  imageUrl: varchar("imageUrl", { length: 2048 }), // URL to image
+  videoUrl: varchar("videoUrl", { length: 2048 }), // URL to video
+  thumbnailUrl: varchar("thumbnailUrl", { length: 2048 }), // Thumbnail for media
+  
+  // Audio content
+  audioUrl: varchar("audioUrl", { length: 2048 }), // URL to audio file
+  audioFormat: varchar("audioFormat", { length: 50 }), // mp3, wav, ogg, etc.
+  duration: int("duration"), // Duration in seconds
+  
+  // Code content
+  codeContent: text("codeContent"), // Source code
+  codeLanguage: varchar("codeLanguage", { length: 50 }), // javascript, python, etc.
+  
+  // Generic URL
+  externalUrl: varchar("externalUrl", { length: 2048 }), // Link to external content
+  
+  // Metadata specific to content type
+  metadata: text("metadata"), // JSON: dimensions, format, encoding, etc.
+  
+  // Storage info
+  fileSize: int("fileSize"), // Size in bytes
+  mimeType: varchar("mimeType", { length: 100 }), // Content MIME type
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CreativeWorkContent = typeof creativeWorkContent.$inferSelect;

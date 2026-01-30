@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COUNT(*) as total_curated, COUNT(DISTINCT sourcePrivateThoughtId) as from_private FROM curatedThoughts;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mURJdTugfm3wUg.root --database GK7whYHMS6v5hwwmuDYu4U --execute SELECT COUNT(*) as total_curated, COUNT(DISTINCT sourcePrivateThoughtId) as from_private FROM curatedThoughts;",
+  "rows": [
+    {
+      "total_curated": "300",
+      "from_private": "300"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_curated\tfrom_private\n300\t300\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

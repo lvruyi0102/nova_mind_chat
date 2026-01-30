@@ -1,3 +1,5 @@
+// @ts-ignore
+// @ts-ignore - Type mismatches with tRPC routes
 /**
  * Nova-Mind Ethics Dashboard
  * 

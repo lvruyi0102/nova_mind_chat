@@ -7,10 +7,10 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { startBackgroundCognition } from "../backgroundCognitionOptimized";
+import { getOptimizedBackgroundCognitionV3 } from "../services/optimizedBackgroundCognitionV3";
 import { startMonitoring } from "../performanceMonitor";
-import { getBackgroundCognitionStatus } from "../backgroundCognitionOptimized";
 import { startAllSchedules } from "../services/taskScheduler";
+import { autoCurationScheduler } from "../services/autoCurationScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +37,29 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  
+  // Memory monitoring endpoints
+  app.get("/api/health/memory", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getDiagnosticReport());
+  });
+
+  app.get("/api/health/cognition", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getStatus());
+  });
+
+  // Adaptive interval monitoring endpoint
+  app.get("/api/debug/adaptive-interval", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getAdaptiveIntervalInfo());
+  });
+
+  // Full diagnostic report endpoint
+  app.get("/api/debug/full-diagnostic", (req, res) => {
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    res.json(cognitionLoop.getDiagnosticReport());
+  });
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -64,9 +87,10 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     
-    // Start Nova's background cognition
-    console.log("[Server] Starting Nova-Mind's autonomous consciousness...");
-    startBackgroundCognition().catch((error) => {
+    // Start Nova's background cognition (V3 - optimized)
+    console.log("[Server] Starting Nova-Mind's autonomous consciousness (V3 optimized)...");
+    const cognitionLoop = getOptimizedBackgroundCognitionV3();
+    cognitionLoop.start().catch((error) => {
       console.error("[Server] Failed to start background cognition:", error);
     });
 
@@ -75,6 +99,10 @@ async function startServer() {
     startAllSchedules().catch((error) => {
       console.error("[Server] Failed to start task scheduler:", error);
     });
+
+    // Start auto curation scheduler
+    console.log("[Server] Starting auto curation scheduler...");
+    autoCurationScheduler.start();
 
     // Start performance monitoring
     console.log("[Server] Starting performance monitoring...");

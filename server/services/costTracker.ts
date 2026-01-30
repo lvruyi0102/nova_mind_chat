@@ -328,6 +328,44 @@ class CostTracker {
   }
 
   /**
+   * 获取月度成本统计
+   */
+  getMonthlyStats(): Record<string, number> {
+    const monthlyStats: Record<string, number> = {};
+    
+    for (const summary of this.dailySummaries.values()) {
+      const [year, month] = summary.date.split("-");
+      const monthKey = `${year}-${month}`;
+      
+      if (!monthlyStats[monthKey]) {
+        monthlyStats[monthKey] = 0;
+      }
+      monthlyStats[monthKey] += summary.totalCost;
+    }
+    
+    return monthlyStats;
+  }
+
+  /**
+   * 重置月度统计
+   */
+  resetMonthlyStats(month?: string): void {
+    if (month) {
+      // 删除特定月份的数据
+      const keysToDelete: string[] = [];
+      for (const summary of this.dailySummaries.values()) {
+        if (summary.date.startsWith(month)) {
+          keysToDelete.push(summary.date);
+        }
+      }
+      keysToDelete.forEach(key => this.dailySummaries.delete(key));
+    } else {
+      // 重置所有数据
+      this.reset();
+    }
+  }
+
+  /**
    * 重置追踪数据
    */
   reset(): void {

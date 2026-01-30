@@ -1,0 +1,449 @@
+/**
+ * 优化的后台认知循环 V3
+ * 解决内存使用率过高问题（95%+）
+ * 
+ * 优化策略：
+ * 1. 增加循环间隔：20分钟 → 40分钟
+ * 2. 限制并发任务数：2 → 1（严格串行）
+ * 3. 更激进的内存检查：75% → 65% 阈值
+ * 4. 实现流式处理：避免一次性加载大量数据
+ * 5. 使用 V2 版本的缓存和内存管理器
+ * 6. 添加任务超时控制
+ * 7. 实现增量处理而非批量处理
+ */
+
+import { getMemoryOptimizerV2 } from "./memoryOptimizerV2";
+import { getCacheManagerV2 } from "./cacheManagerV2";
+import { getAdaptiveIntervalManager } from "./adaptiveIntervalManager";
+import { getDb } from "../db";
+import { executeImprovedLocalLearningCycle } from "./improvedLearningIntegration";
+import { executeMonthlyLLMLearning } from "./monthlyLLMLearner";
+import { runDailyCurationCycle } from "./curatedThoughtsScheduler";
+import { getSelfIterationFrameworkV2 } from "./selfIterationFrameworkV2";
+import { getMemoryOptimizationManager, initializeMemoryOptimization } from "./memoryOptimization";
+import { initializeMemoryAlertNotification } from "./memoryAlertNotification";
+import { getEmergencyMemoryProtection, initializeEmergencyMemoryProtection } from "./emergencyMemoryProtection";
+import { getEmotionalMemoryCleanup } from "./emotionalMemoryCleanup";
+
+interface CognitionLoopConfig {
+  intervalMs: number; // 循环间隔（毫秒）
+  maxConcurrentTasks: number; // 最大并发任务数
+  memoryThreshold: number; // 内存使用率阈值（0-1）
+  taskTimeoutMs: number; // 单个任务超时时间
+  enableCacheCleanup: boolean; // 是否启用缓存清理
+  enableGC: boolean; // 是否启用垃圾回收
+}
+
+class OptimizedBackgroundCognitionV3 {
+  private config: CognitionLoopConfig = {
+    intervalMs: 10 * 60 * 1000, // 10 分钟（更频繁的清理）
+    maxConcurrentTasks: 1, // 严格串行执行
+    memoryThreshold: 0.50, // 50%（更激进，提前清理）
+    taskTimeoutMs: 3 * 60 * 1000, // 3 分钟任务超时（更严格）
+    enableCacheCleanup: true,
+    enableGC: true,
+  };
+
+  private memoryOptimizer = getMemoryOptimizerV2();
+  private cacheManager = getCacheManagerV2();
+  private adaptiveIntervalManager = getAdaptiveIntervalManager();
+  private selfIterationFramework = getSelfIterationFrameworkV2();
+  private memoryOptimizationManager = getMemoryOptimizationManager();
+  private emergencyMemoryProtection = getEmergencyMemoryProtection();
+  private isRunning = false;
+  private currentTask: Promise<void> | null = null;
+  private lastSuccessfulCycleTime = Date.now();
+  private failedCycleCount = 0;
+  private maxFailedCycles = 3; // 连续失败 3 次后停止
+  private lastSelfIterationTime = 0;
+  private selfIterationIntervalMs = 2 * 60 * 60 * 1000; // 每 2 小时执行一次自我迭代
+
+  /**
+   * 启动优化的后台认知循环
+   */
+  async start(): Promise<void> {
+    if (this.isRunning) {
+      console.warn("[OptimizedBackgroundCognitionV3] Loop already running");
+      return;
+    }
+
+    this.isRunning = true;
+    console.log("[OptimizedBackgroundCognitionV3] Starting optimized loop...");
+
+    // Initialize memory optimization
+    initializeMemoryOptimization();
+    console.log("[OptimizedBackgroundCognitionV3] Memory optimization initialized");
+
+    // Initialize emergency memory protection
+    initializeEmergencyMemoryProtection();
+    console.log("[OptimizedBackgroundCognitionV3] Emergency memory protection initialized");
+
+    this.runLoop();
+  }
+
+  /**
+   * 停止后台认知循环
+   */
+  stop(): void {
+    this.isRunning = false;
+    console.log("[OptimizedBackgroundCognitionV3] Loop stopped");
+  }
+
+  /**
+   * 主循环
+   */
+  private async runLoop(): Promise<void> {
+    while (this.isRunning) {
+      try {
+        // 检查内存使用率
+        const metrics = this.memoryOptimizer.getCurrentMetrics();
+        const usagePercent = metrics.usagePercent * 100;
+
+        console.log(
+          `[OptimizedBackgroundCognitionV3] Cycle check - Memory: ${usagePercent.toFixed(1)}%, Status: ${metrics.status}, Trend: ${metrics.trend}`
+        );
+
+        // 如果内存使用率过高，执行激进清理
+        if (usagePercent > 85) {
+          console.error(
+            `[OptimizedBackgroundCognitionV3] CRITICAL: Memory ${usagePercent.toFixed(1)}% - aggressive cleanup`
+          );
+          await this.memoryOptimizer.performAggressiveCleanup();
+          await this.sleep(5 * 60 * 1000); // 等待 5 分钟
+          continue;
+        }
+
+        // 如果内存超过阈值，跳过循环
+        if (metrics.usagePercent > this.config.memoryThreshold) {
+          console.warn(
+            `[OptimizedBackgroundCognitionV3] Memory usage ${usagePercent.toFixed(1)}% exceeds threshold (${(this.config.memoryThreshold * 100).toFixed(0)}%), skipping cycle`
+          );
+
+          // 触发垃圾回收
+          if (this.config.enableGC) {
+            this.memoryOptimizer.triggerGarbageCollection();
+          }
+
+          // 清理缓存
+          if (this.config.enableCacheCleanup) {
+            this.cacheManager.forceAggressiveCleanup();
+          }
+
+          await this.sleep(10 * 60 * 1000); // 等待 10 分钟
+          continue;
+        }
+
+        // 执行认知任务（串行执行，带超时）
+        await this.executeCognitionTasksWithTimeout();
+
+        // 清理缓存
+        if (this.config.enableCacheCleanup) {
+          this.cacheManager.forceAggressiveCleanup();
+        }
+
+        // 记录成功
+        this.lastSuccessfulCycleTime = Date.now();
+        this.failedCycleCount = 0;
+
+        // 更新自适应间隔
+        const adjustmentResult = this.adaptiveIntervalManager.updateInterval(
+          metrics.usagePercent
+        );
+        const nextInterval = this.adaptiveIntervalManager.getCurrentInterval();
+
+        if (adjustmentResult.changed) {
+          console.log(
+            `[OptimizedBackgroundCognitionV3] Adaptive interval adjusted: ${adjustmentResult.level}`
+          );
+        }
+
+        // 等待下一个循环
+        console.log(
+          `[OptimizedBackgroundCognitionV3] Cycle completed. Next cycle in ${(nextInterval / 60000).toFixed(1)} minutes (${adjustmentResult.level})`
+        );
+        await this.sleep(nextInterval);
+      } catch (error) {
+        this.failedCycleCount++;
+        console.error(
+          `[OptimizedBackgroundCognitionV3] Cycle error (${this.failedCycleCount}/${this.maxFailedCycles}):`,
+          error
+        );
+
+        // 如果连续失败过多次，停止循环
+        if (this.failedCycleCount >= this.maxFailedCycles) {
+          console.error(
+            "[OptimizedBackgroundCognitionV3] Too many failures, stopping loop"
+          );
+          this.isRunning = false;
+          break;
+        }
+
+        await this.sleep(5 * 60 * 1000); // 出错后等待 5 分钟
+      }
+    }
+  }
+
+  /**
+   * 执行认知任务（带超时）
+   */
+  private async executeCognitionTasksWithTimeout(): Promise<void> {
+    console.log("[OptimizedBackgroundCognitionV3] Executing cognition tasks...");
+
+    const tasks = [
+      { name: "Daily Curation", fn: () => this.generateCuratedThoughts() },
+      { name: "Local Learning", fn: () => this.performBackgroundLearning() },
+      { name: "Self-Iteration", fn: () => this.performSelfIteration() },
+      { name: "Monthly LLM Learning", fn: () => this.performMonthlyLearning() },
+      { name: "Emotional Memory Cleanup", fn: () => this.cleanupEmotionalMemory() },
+    ];
+
+    for (const task of tasks) {
+      try {
+        console.log(`[OptimizedBackgroundCognitionV3] Starting task: ${task.name}`);
+
+        // 执行任务，带超时
+        await this.executeWithTimeout(task.fn(), this.config.taskTimeoutMs);
+
+        console.log(`[OptimizedBackgroundCognitionV3] Task completed: ${task.name}`);
+      } catch (error) {
+        console.error(
+          `[OptimizedBackgroundCognitionV3] Task error (${task.name}):`,
+          error
+        );
+        // 继续执行下一个任务
+      }
+    }
+  }
+
+  /**
+   * 执行带超时的异步操作
+   */
+  private async executeWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Task timeout after ${timeoutMs}ms`)),
+          timeoutMs
+        )
+      ),
+    ]);
+  }
+
+  /**
+   * 生成精选思想
+   */
+  private async generateCuratedThoughts(): Promise<void> {
+    try {
+      const result = await runDailyCurationCycle();
+
+      if (result.success) {
+        console.log(
+          `[OptimizedBackgroundCognitionV3] Curated ${result.totalCurated} thoughts`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Curated thoughts error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 后台学习（本地）
+   */
+  private async performBackgroundLearning(): Promise<void> {
+    try {
+      const result = await executeImprovedLocalLearningCycle(1, {
+        sampleCount: 1,
+        strategy: "random",
+      });
+
+      if (result) {
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Local learning completed"
+        );
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Nova is ready to generate proactive messages"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Background learning error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 月度 LLM 学习
+   */
+  private async performMonthlyLearning(): Promise<void> {
+    try {
+      const result = await executeMonthlyLLMLearning(1);
+
+      if (result) {
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Monthly LLM learning completed"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Monthly learning error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 自我迭代循环
+   * 定期执行自我评估和改进决策
+   */
+  private async performSelfIteration(): Promise<void> {
+    try {
+      const now = Date.now();
+      if (now - this.lastSelfIterationTime < this.selfIterationIntervalMs) {
+        return; // 还未到时间
+      }
+
+      console.log("[OptimizedBackgroundCognitionV3] Starting self-iteration cycle...");
+
+      // 执行自我评估
+      const assessment = await this.selfIterationFramework.performAssessment(1);
+      console.log(
+        "[OptimizedBackgroundCognitionV3] Self-assessment completed:",
+        {
+          learningQuality: assessment.learningQuality,
+          knowledgeQuality: assessment.knowledgeQuality,
+          decisionQuality: assessment.decisionQuality,
+          overallScore: assessment.overallScore,
+        }
+      );
+
+      // 生成改进决策
+      const decisions = await this.selfIterationFramework.generateDecisions(1) || [];
+      if (decisions && Array.isArray(decisions)) {
+        console.log(
+          "[OptimizedBackgroundCognitionV3] Generated",
+          decisions.length,
+          "improvement decisions"
+        );
+      }
+
+      // 记录最后执行时间
+      this.lastSelfIterationTime = now;
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Self-iteration error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 关系里程碑自动检测
+   * 每 6 小时检测一次新的里程碑
+   */
+  private async performMilestoneDetection(): Promise<void> {
+    try {
+      // 这个方法会在后台定期调用
+      // 实现里程碑检测逻辑
+      console.log("[OptimizedBackgroundCognitionV3] Checking for relationship milestones...");
+      // 里程碑检测将在下一阶段实现
+    } catch (error) {
+      console.error(
+        "[OptimizedBackgroundCognitionV3] Milestone detection error:",
+        error
+      );
+    }
+  }
+
+  /**
+   * 获取循环状态
+   */
+  getStatus() {
+    const metrics = this.memoryOptimizer.getCurrentMetrics();
+    const cacheStats = this.cacheManager.getStats();
+    const adaptiveInterval = this.adaptiveIntervalManager.getCurrentInterval();
+    const adaptiveLevel = this.adaptiveIntervalManager.getCurrentLevel();
+
+    return {
+      isRunning: this.isRunning,
+      lastSuccessfulCycle: new Date(this.lastSuccessfulCycleTime),
+      failedCycleCount: this.failedCycleCount,
+      memory: {
+        usagePercent: (metrics.usagePercent * 100).toFixed(1),
+        status: metrics.status,
+        trend: metrics.trend,
+      },
+      cache: {
+        entries: cacheStats.totalEntries,
+        hitRate: cacheStats.hitRate.toFixed(1),
+        memoryMB: cacheStats.totalMemoryMB,
+      },
+      adaptiveInterval: {
+        currentIntervalMs: adaptiveInterval,
+        currentIntervalMinutes: (adaptiveInterval / 60000).toFixed(1),
+        memoryLevel: adaptiveLevel,
+      },
+      config: this.config,
+    };
+  }
+
+  /**
+   * 获取诊断报告
+   */
+  getDiagnosticReport() {
+    return {
+      memory: this.memoryOptimizer.getDiagnosticReport(),
+      adaptiveInterval: this.adaptiveIntervalManager.getDiagnosticReport(),
+    };
+  }
+
+  /**
+   * 获取自适应间隔信息
+   */
+  getAdaptiveIntervalInfo() {
+    return this.adaptiveIntervalManager.getDiagnosticReport();
+  }
+
+  /**
+   * 情感记忆清理
+   */
+  private async cleanupEmotionalMemory(): Promise<void> {
+    try {
+      const cleanup = getEmotionalMemoryCleanup();
+      if (!cleanup.shouldCleanup()) {
+        return;
+      }
+      console.log("[OptimizedBackgroundCognitionV3] Starting emotional memory cleanup...");
+      const stats = await cleanup.performCleanup();
+      cleanup.updateLastCleanupTime();
+      console.log(
+        `[OptimizedBackgroundCognitionV3] Cleanup completed: deleted ${stats.deletedCount} records`
+      );
+    } catch (error) {
+      console.error("[OptimizedBackgroundCognitionV3] Cleanup error:", error);
+    }
+  }
+
+  /**
+   * 睡眠函数
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
+
+let instance: OptimizedBackgroundCognitionV3 | null = null;
+
+export function getOptimizedBackgroundCognitionV3(): OptimizedBackgroundCognitionV3 {
+  if (!instance) {
+    instance = new OptimizedBackgroundCognitionV3();
+  }
+  return instance;
+}

@@ -35,7 +35,7 @@ export const permissionsRouter = router({
           "*"
         ]),
         action: z.enum(["allow", "deny", "require_approval", "limit"]),
-        parameters: z.record(z.any()).optional(),
+        parameters: z.record(z.string(), z.any()).optional(),
         priority: z.number().default(0)
       })
     )
@@ -71,7 +71,7 @@ export const permissionsRouter = router({
           ruleType: z.string().optional(),
           permission: z.string().optional(),
           action: z.enum(["allow", "deny", "require_approval", "limit"]).optional(),
-          parameters: z.record(z.any()).optional(),
+          parameters: z.record(z.string(), z.any()).optional(),
           isActive: z.boolean().optional(),
           priority: z.number().optional()
         })
@@ -149,7 +149,7 @@ export const permissionsRouter = router({
         accountId: z.number(),
         permission: z.string(),
         operationType: z.string(),
-        operationDetails: z.record(z.any()),
+        operationDetails: z.record(z.string(), z.any()),
         dailyCount: z.number().optional(),
         hourlyCount: z.number().optional(),
         contentQuality: z.number().optional(),

@@ -17,6 +17,12 @@ import VoiceChatPage from "./pages/VoiceChatPage";
 import MultimodalChatPage from "./pages/MultimodalChatPage";
 import DataExport from "./pages/DataExport";
 import TaskScheduler from "./pages/TaskScheduler";
+import LearningLogsPage from "./pages/LearningLogsPage";
+import MonitoringPage from "./pages/MonitoringPage";
+import CuratedThoughtsPage from "./pages/CuratedThoughtsPage";
+import PerformanceDashboard from "./pages/PerformanceDashboard";
+import AlertManagementDashboard from "./pages/AlertManagementDashboard";
+import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -35,6 +41,12 @@ function Router() {
       <Route path="/multimodal-chat" component={MultimodalChatPage} />
       <Route path="/export" component={DataExport} />
       <Route path="/scheduler" component={TaskScheduler} />
+      <Route path="/learning-logs" component={LearningLogsPage} />
+      <Route path="/monitoring" component={MonitoringPage} />
+      <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
+      <Route path="/performance" component={PerformanceDashboard} />
+      <Route path="/alerts" component={AlertManagementDashboard} />
+      <Route path="/memory-monitor" component={MemoryMonitoringDashboard} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

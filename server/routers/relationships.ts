@@ -18,7 +18,7 @@ export const relationshipsRouter = router({
   /**
    * 检测并记录关系里程碑
    */
-  detectAndRecord: protectedProcedure.mutation(async ({ ctx }) => {
+  detectAndRecord: protectedProcedure.input(z.void()).mutation(async ({ ctx }) => {
     try {
       const detected = await detectMilestones(ctx.user.id);
 
@@ -73,7 +73,7 @@ export const relationshipsRouter = router({
   /**
    * 生成关系时间线
    */
-  getTimeline: protectedProcedure.query(async ({ ctx }) => {
+  getTimeline: protectedProcedure.input(z.void()).query(async ({ ctx }) => {
     const timeline = await generateRelationshipTimeline(ctx.user.id);
     return {
       success: !!timeline,

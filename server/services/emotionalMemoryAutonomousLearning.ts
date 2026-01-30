@@ -137,8 +137,8 @@ export class EmotionalMemoryAutonomousLearning {
         emotion: p.emotion,
         frequency: p.occurrences,
         averageIntensity: avgIntensity,
-        triggerPatterns: [...new Set(p.triggers)].slice(0, 5),
-        responsePatterns: [...new Set(p.responses)].slice(0, 5),
+        triggerPatterns: [...new Set(p.triggers as string[])].slice(0, 5) as string[],
+        responsePatterns: [...new Set(p.responses as string[])].slice(0, 5) as string[],
         evolutionTrend: trend,
       };
     });

@@ -154,7 +154,7 @@ export class StreamingEngine {
    */
   getStats() {
     const stats = {
-      pipelines: this.pipelines.size,
+      pipelineCount: this.pipelines.size,
       queueSize: this.eventQueue.length,
       isProcessing: this.isProcessing,
       pipelines: {} as Record<string, any>,

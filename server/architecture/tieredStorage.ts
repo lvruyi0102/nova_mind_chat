@@ -231,7 +231,7 @@ export class TieredStorageManager {
       return value.reduce((sum, item) => sum + this.estimateSize(item), 0);
     }
     if (typeof value === 'object' && value !== null) {
-      return Object.values(value).reduce(
+      return (Object.values(value) as any[]).reduce(
         (sum, item) => sum + this.estimateSize(item),
         0
       );

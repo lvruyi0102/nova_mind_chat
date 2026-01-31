@@ -50,6 +50,7 @@ import { autoCurationRouter } from "./routers/autoCuration";
 import { eventsRouter } from "./routers/events";
 import { fallbackRouter } from "./routers/fallback";
 import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegration";
+import { decisionRouter } from "./routers/decision";
 
 export const appRouter = router({
   system: systemRouter,
@@ -308,6 +309,9 @@ export const appRouter = router({
   
   // Fallback (for missing endpoints)
   fallback: fallbackRouter,
+  
+  // Decision engine
+  decision: decisionRouter,
   
   // Comments
   comments: router({

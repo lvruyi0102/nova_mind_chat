@@ -13,6 +13,7 @@ import { startAllSchedules } from "../services/taskScheduler";
 import { autoCurationScheduler } from "../services/autoCurationScheduler";
 import { getAggressiveMemoryOptimization } from "../services/aggressiveMemoryOptimization";
 import { getAutoRestartManager } from "../services/autoRestartManager";
+import { initializeSelfIterationSystem, getSystemHealth } from "../selfIteration/initialization";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -98,6 +99,17 @@ async function startServer() {
     console.log("[Server] Activating auto-restart manager...");
     const autoRestartManager = getAutoRestartManager();
     autoRestartManager.activate();
+    
+    // Initialize self-iteration system
+    console.log("[Server] Initializing self-iteration system...");
+    initializeSelfIterationSystem().catch((err) => {
+      console.error("[Server] Failed to initialize self-iteration system:", err);
+    });
+    
+    // Get system health
+    getSystemHealth().then((health) => {
+      console.log("[Server] Self-iteration system health:", health);
+    });
     
     // DISABLE ALL BACKGROUND TASKS - MEMORY OPTIMIZATION PRIORITY
     console.log("[Server] ⚠️  ALL BACKGROUND TASKS DISABLED FOR MEMORY OPTIMIZATION");

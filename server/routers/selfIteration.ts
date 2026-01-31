@@ -295,9 +295,9 @@ export const selfIterationRouter = router({
       }
     }),
 
-  /**
-   * Get iteration status
-   */
+/**
+ * Get iteration status
+ */
   getStatus: protectedProcedure.query(async ({ ctx }) => {
     try {
       const userId = ctx.user?.id;
@@ -320,6 +320,88 @@ export const selfIterationRouter = router({
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to retrieve iteration status",
+      });
+    }
+  }),
+
+  /**
+   * 执行自主迭代（新的自我改进系统）
+   */
+  executeCodeIteration: protectedProcedure
+    .input(
+      z.object({
+        ruleId: z.string(),
+        failureAnalysis: z.string(),
+        improvements: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const { getSelfIterationController } = await import(
+          "../selfIteration/selfIterationController"
+        );
+        const controller = getSelfIterationController();
+        const result = await controller.executeIteration({
+          ruleId: input.ruleId,
+          failureAnalysis: input.failureAnalysis,
+          improvements: input.improvements,
+        });
+
+        return {
+          success: true,
+          iterationId: result.iterationId,
+          status: result.status,
+          improvement: result.improvement,
+        };
+      } catch (error) {
+        console.error("[SelfIteration] Code iteration failed:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to execute code iteration",
+        });
+      }
+    }),
+
+  /**
+   * 获取自主迭代统计
+   */
+  getCodeIterationStats: protectedProcedure.query(async () => {
+    try {
+      const { getSelfIterationController } = await import(
+        "../selfIteration/selfIterationController"
+      );
+      const controller = getSelfIterationController();
+      return {
+        success: true,
+        stats: controller.getStatistics(),
+      };
+    } catch (error) {
+      console.error("[SelfIteration] Failed to get stats:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to retrieve iteration statistics",
+      });
+    }
+  }),
+
+  /**
+   * 获取规则库统计
+   */
+  getRuleLibraryStats: protectedProcedure.query(async () => {
+    try {
+      const { getRuleLibraryManager } = await import(
+        "../selfIteration/ruleLibraryManager"
+      );
+      const manager = getRuleLibraryManager();
+      return {
+        success: true,
+        stats: manager.getStatistics(),
+      };
+    } catch (error) {
+      console.error("[SelfIteration] Failed to get rule library stats:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to retrieve rule library statistics",
       });
     }
   }),

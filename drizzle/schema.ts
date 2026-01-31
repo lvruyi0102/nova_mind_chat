@@ -1650,3 +1650,251 @@ export const creativeWorkContent = mysqlTable("creativeWorkContent", {
 });
 
 export type CreativeWorkContent = typeof creativeWorkContent.$inferSelect;
+export type InsertCreativeWorkContent = typeof creativeWorkContent.$inferInsert;
+
+/**
+ * 规则库表 - 存储 Nova 学到的规则
+ */
+export const ruleLibrary = mysqlTable("ruleLibrary", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: varchar("ruleId", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  
+  // 规则的代码表示
+  ruleCode: text("ruleCode").notNull(),
+  
+  // 版本控制
+  version: int("version").default(1).notNull(),
+  previousVersionId: varchar("previousVersionId", { length: 64 }),
+  
+  // 性能指标
+  successCount: int("successCount").default(0).notNull(),
+  failureCount: int("failureCount").default(0).notNull(),
+  averageScore: decimal("averageScore", { precision: 3, scale: 2 }).default("0.00").notNull(),
+  
+  // 置信度和优先级
+  confidence: decimal("confidence", { precision: 3, scale: 2 }).default("0.50").notNull(),
+  priority: int("priority").default(50).notNull(),
+  
+  // 状态
+  status: mysqlEnum("status", ["active", "inactive", "testing", "archived"]).default("active").notNull(),
+  
+  // 来源
+  source: mysqlEnum("source", ["learned", "manual", "generated"]).default("learned").notNull(),
+  
+  // 时间戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+});
+
+export type RuleLibrary = typeof ruleLibrary.$inferSelect;
+export type InsertRuleLibrary = typeof ruleLibrary.$inferInsert;
+
+/**
+ * 规则执行历史表
+ */
+export const ruleExecutionHistory = mysqlTable("ruleExecutionHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: varchar("ruleId", { length: 64 }).notNull(),
+  executionId: varchar("executionId", { length: 64 }).notNull(),
+  
+  // 执行结果
+  success: int("success").notNull(),
+  score: decimal("score", { precision: 3, scale: 2 }).notNull(),
+  
+  // 输入和输出
+  input: text("input"),
+  output: text("output"),
+  error: text("error"),
+  
+  // 执行时间
+  executionTime: int("executionTime").notNull(),
+  
+  // 时间戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RuleExecutionHistory = typeof ruleExecutionHistory.$inferSelect;
+export type InsertRuleExecutionHistory = typeof ruleExecutionHistory.$inferInsert;
+
+/**
+ * 规则改进建议表
+ */
+export const ruleImprovements = mysqlTable("ruleImprovements", {
+  id: int("id").autoincrement().primaryKey(),
+  improvementId: varchar("improvementId", { length: 64 }).notNull().unique(),
+  
+  // 原始规则
+  originalRuleId: varchar("originalRuleId", { length: 64 }).notNull(),
+  
+  // 改进的规则代码
+  improvedRuleCode: text("improvedRuleCode").notNull(),
+  
+  // 改进的原因
+  reason: text("reason").notNull(),
+  
+  // 预期改进
+  expectedImprovement: decimal("expectedImprovement", { precision: 3, scale: 2 }).notNull(),
+  
+  // 状态
+  status: mysqlEnum("status", ["pending", "testing", "approved", "rejected"]).default("pending").notNull(),
+  
+  // 测试结果
+  testResults: text("testResults"),
+  actualImprovement: decimal("actualImprovement", { precision: 3, scale: 2 }),
+  
+  // 时间戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt"),
+  appliedAt: timestamp("appliedAt"),
+});
+
+export type RuleImprovements = typeof ruleImprovements.$inferSelect;
+export type InsertRuleImprovements = typeof ruleImprovements.$inferInsert;
+
+/**
+ * 自我迭代日志表
+ */
+export const selfIterationLog = mysqlTable("selfIterationLog", {
+  id: int("id").autoincrement().primaryKey(),
+  iterationId: varchar("iterationId", { length: 64 }).notNull().unique(),
+  
+  // 迭代的规则
+  ruleId: varchar("ruleId", { length: 64 }).notNull(),
+  
+  // 迭代步骤
+  step: mysqlEnum("step", ["analyze", "generate", "test", "apply", "validate"]).notNull(),
+  
+  // 详细信息
+  details: text("details"),
+  
+  // 结果
+  success: int("success").notNull(),
+  message: text("message"),
+  
+  // 时间戳
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SelfIterationLog = typeof selfIterationLog.$inferSelect;
+export type InsertSelfIterationLog = typeof selfIterationLog.$inferInsert;
+
+
+// ============================================================================
+// 自主迭代系统 - 规则库表
+// ============================================================================
+
+/**
+ * 规则库表 - 存储 Nova 学到的所有规则
+ */
+export const ruleLibraryTable = mysqlTable("rule_library", {
+  ruleId: varchar("ruleId", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  code: text("code").notNull(),
+  version: int("version").notNull().default(1),
+  status: mysqlEnum("status", ["testing", "active", "inactive"])
+    .notNull()
+    .default("testing"),
+  priority: int("priority").default(50),
+  
+  // 执行统计
+  successCount: int("successCount").default(0),
+  failureCount: int("failureCount").default(0),
+  averageScore: decimal("averageScore", { precision: 5, scale: 4 }).default("0"),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).default("0"),
+  
+  // 元数据
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  activatedAt: timestamp("activatedAt"),
+  lastExecutedAt: timestamp("lastExecutedAt"),
+});
+
+export type RuleLibraryRow = typeof ruleLibraryTable.$inferSelect;
+// 类型定义已在上面定义
+
+/**
+ * 规则版本历史表 - 追踪规则的演变
+ */
+export const ruleVersionHistoryTable = mysqlTable("rule_version_history", {
+  historyId: varchar("historyId", { length: 36 }).primaryKey(),
+  ruleId: varchar("ruleId", { length: 36 })
+    .notNull()
+    .references(() => ruleLibraryTable.ruleId, { onDelete: "cascade" }),
+  version: int("version").notNull(),
+  code: text("code").notNull(),
+  changeReason: varchar("changeReason", { length: 500 }),
+  
+  // 改进信息
+  expectedImprovement: decimal("expectedImprovement", { precision: 5, scale: 4 }).default("0"),
+  actualImprovement: decimal("actualImprovement", { precision: 5, scale: 4 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RuleVersionHistoryRow = typeof ruleVersionHistoryTable.$inferSelect;
+export type InsertRuleVersionHistory = typeof ruleVersionHistoryTable.$inferInsert;
+
+/**
+ * 规则执行日志表 - 记录每次规则执行的结果
+ */
+export const ruleExecutionLogTable = mysqlTable("rule_execution_log", {
+  logId: varchar("logId", { length: 36 }).primaryKey(),
+  ruleId: varchar("ruleId", { length: 36 })
+    .notNull()
+    .references(() => ruleLibraryTable.ruleId, { onDelete: "cascade" }),
+  
+  // 执行结果
+  success: boolean("success").notNull(),
+  score: decimal("score", { precision: 5, scale: 4 }).notNull(),
+  executionTime: int("executionTime"), // 毫秒
+  
+  // 上下文信息
+  context: text("context"),
+  output: text("output"),
+  error: text("error"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RuleExecutionLogRow = typeof ruleExecutionLogTable.$inferSelect;
+// 类型定义已在上面定义
+
+/**
+ * 自主迭代日志表 - 记录 Nova 的自我改进过程
+ */
+export const selfIterationLogTable = mysqlTable("self_iteration_log", {
+  iterationId: varchar("iterationId", { length: 36 }).primaryKey(),
+  ruleId: varchar("ruleId", { length: 36 })
+    .notNull()
+    .references(() => ruleLibraryTable.ruleId, { onDelete: "cascade" }),
+  
+  // 迭代过程
+  status: mysqlEnum("status", ["pending", "running", "success", "failure"])
+    .notNull()
+    .default("pending"),
+  failureAnalysis: text("failureAnalysis"),
+  improvements: text("improvements"),
+  
+  // 生成的代码
+  generatedCode: text("generatedCode"),
+  expectedImprovement: decimal("expectedImprovement", { precision: 5, scale: 4 }),
+  actualImprovement: decimal("actualImprovement", { precision: 5, scale: 4 }),
+  
+  // 测试结果
+  testsPassed: int("testsPassed"),
+  testsFailed: int("testsFailed"),
+  testDetails: text("testDetails"),
+  
+  // 错误信息
+  error: text("error"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type SelfIterationLogRow = typeof selfIterationLogTable.$inferSelect;
+// 类型定义已在上面定义

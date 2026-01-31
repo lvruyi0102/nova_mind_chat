@@ -1,0 +1,198 @@
+[
+  {
+    "ruleId": "rule_1769879814996_5gd91qoy2",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-01-31T17:16:54.997Z"
+  },
+  {
+    "ruleId": "rule_1769879861557_ae4ff1tzo",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-01-31T17:17:41.558Z"
+  },
+  {
+    "ruleId": "rule_1769879916702_t15hwafux",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-01-31T17:18:36.702Z"
+  },
+  {
+    "ruleId": "rule_1769879916702_t15hwafux",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-01-31T17:18:36.703Z"
+  },
+  {
+    "ruleId": "rule_1769879916719_ygamv5ggy",
+    "success": true,
+    "score": 0.5201206751658023,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-01-31T17:18:36.720Z"
+  },
+  {
+    "ruleId": "rule_1769879916719_ygamv5ggy",
+    "success": true,
+    "score": 0.6470583475364933,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-01-31T17:18:36.721Z"
+  },
+  {
+    "ruleId": "rule_1769879916719_ygamv5ggy",
+    "success": false,
+    "score": 0.6682027420537481,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-01-31T17:18:36.722Z"
+  },
+  {
+    "ruleId": "rule_1769879916719_ygamv5ggy",
+    "success": true,
+    "score": 0.6173929589112217,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-01-31T17:18:36.723Z"
+  },
+  {
+    "ruleId": "rule_1769879916719_ygamv5ggy",
+    "success": false,
+    "score": 0.5174595722547413,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-01-31T17:18:36.724Z"
+  },
+  {
+    "ruleId": "rule_1769879916725_z5nbm2e2t",
+    "success": true,
+    "score": 0.9130620868419697,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-01-31T17:18:36.726Z"
+  },
+  {
+    "ruleId": "rule_1769879916725_z5nbm2e2t",
+    "success": true,
+    "score": 0.8931012029803663,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-01-31T17:18:36.727Z"
+  },
+  {
+    "ruleId": "rule_1769879916725_z5nbm2e2t",
+    "success": true,
+    "score": 0.8932548419488581,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-01-31T17:18:36.728Z"
+  },
+  {
+    "ruleId": "rule_1769879916725_z5nbm2e2t",
+    "success": true,
+    "score": 0.8903296099929099,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-01-31T17:18:36.730Z"
+  },
+  {
+    "ruleId": "rule_1769879916725_z5nbm2e2t",
+    "success": true,
+    "score": 0.9074276586731466,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-01-31T17:18:36.732Z"
+  },
+  {
+    "ruleId": "rule_1769879916734_l12zzt47w",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-01-31T17:18:36.735Z"
+  }
+]

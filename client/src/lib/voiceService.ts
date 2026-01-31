@@ -3,6 +3,14 @@
  * Uses Web Speech API for browser-native voice capabilities
  */
 
+// Type definitions for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition?: typeof SpeechRecognition;
+    webkitSpeechRecognition?: typeof SpeechRecognition;
+  }
+}
+
 export type VoiceLanguage = 'zh-CN' | 'en-US' | 'zh-TW';
 
 export interface VoiceServiceConfig {
@@ -18,7 +26,7 @@ export interface VoiceRecognitionResult {
 }
 
 export class VoiceService {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: any = null; // SpeechRecognition API
   private synthesis: SpeechSynthesis | null = null;
   private isListening = false;
   private language: VoiceLanguage = 'zh-CN';
@@ -51,7 +59,7 @@ export class VoiceService {
       this.onStartCallback?.();
     };
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = (event: any) => { // SpeechRecognitionEvent
       let transcript = '';
       let isFinal = false;
       let confidence = 0;
@@ -73,7 +81,7 @@ export class VoiceService {
       });
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    this.recognition.onerror = (event: any) => { // SpeechRecognitionErrorEvent
       const errorMessage = this.getErrorMessage(event.error);
       this.onErrorCallback?.(errorMessage);
     };

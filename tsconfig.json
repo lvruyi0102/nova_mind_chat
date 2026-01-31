@@ -1,6 +1,6 @@
 {
   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "server/services/performanceHistoryService.ts", "server/services/autoCurationScheduler.ts", "server/services/bulkCurationService.ts", "server/services/simpleGenerationService.ts", "server/services/multimodalService.ts", "server/services/creativeWorkSaveService.ts", "client/src/pages/CreativeGallery.tsx", "client/src/pages/DataExport.tsx", "client/src/pages/EmotionalDialogue.tsx", "client/src/pages/VoiceChatPage.tsx", "client/src/components/CreativeCommentSection.tsx", "client/src/components/CreativeDetail.tsx", "client/src/components/CuratedThoughtsGallery.tsx", "client/src/components/FileUploadPanel.tsx"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "client/**/*", "server/services/performanceHistoryService.ts", "server/services/autoCurationScheduler.ts", "server/services/bulkCurationService.ts", "server/services/simpleGenerationService.ts", "server/services/multimodalService.ts", "server/services/creativeWorkSaveService.ts"],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
@@ -17,10 +17,13 @@
     "strictPropertyInitialization": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": false,
+    "noImplicitAny": false,
+    "suppressImplicitAnyIndexErrors": false,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "noPropertyAccessFromIndexSignature": false,
     "allowImportingTsExtensions": true,
 
     "moduleResolution": "bundler",

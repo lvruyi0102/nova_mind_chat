@@ -32,6 +32,7 @@ import {
   getNextLearningRecommendation,
 } from "./skillLearningService";
 import { emotionsRouter } from "./routers/emotions";
+import { learningRouter } from "./routers/learning";
 import { backgroundLearningRouter } from "./routers/backgroundLearning";
 import { learningLogsRouter } from "./routers/learningLogs";
 import { monitoringRouter } from "./routers/monitoring";
@@ -184,6 +185,7 @@ export const appRouter = router({
   proactive: proactiveRouter,
   relationships: relationshipsRouter,
   emotions: emotionsRouter,
+  learning: learningRouter,
   multimodal: multimodalRouter,
   export: exportRouter,
 

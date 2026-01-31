@@ -51,6 +51,7 @@ import { eventsRouter } from "./routers/events";
 import { fallbackRouter } from "./routers/fallback";
 import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegration";
 import { decisionRouter } from "./routers/decision";
+import { feedbackRouter } from "./routers/feedback";
 
 export const appRouter = router({
   system: systemRouter,
@@ -312,6 +313,9 @@ export const appRouter = router({
   
   // Decision engine
   decision: decisionRouter,
+  
+  // Feedback loop
+  feedback: feedbackRouter,
   
   // Comments
   comments: router({

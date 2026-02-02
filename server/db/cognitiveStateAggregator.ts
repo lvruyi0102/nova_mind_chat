@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   concepts,
@@ -25,29 +25,41 @@ async function getDb() {
 
 /**
  * Get complete cognitive state aggregating all data sources
- * This mirrors the previous getCognitiveState implementation
+ * Optimized to reduce memory usage by using COUNT queries instead of SELECT *
  */
 export async function getCompleteCognitiveState() {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get cognitive state: database not available");
-    return null;
+    return {
+      conceptCount: 0,
+      relationCount: 0,
+      memoryCount: 0,
+      pendingQuestionCount: 0,
+      recentReflections: [],
+      recentGrowth: [],
+    };
   }
 
   try {
-    // Query all data sources
-    const [
-      totalConcepts,
-      totalRelations,
-      totalMemories,
-      pendingQuestions,
-      recentReflections,
-      recentGrowth,
-    ] = await Promise.all([
-      db.select().from(concepts),
-      db.select().from(conceptRelations),
-      db.select().from(episodicMemories),
-      db.select().from(selfQuestions).where(eq(selfQuestions.status, "pending")),
+    // Use COUNT queries for counts to minimize memory usage
+    const countResults = await Promise.all([
+      db.select({ count: sql<number>`COUNT(*)` }).from(concepts),
+      db.select({ count: sql<number>`COUNT(*)` }).from(conceptRelations),
+      db.select({ count: sql<number>`COUNT(*)` }).from(episodicMemories),
+      db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(selfQuestions)
+        .where(eq(selfQuestions.status, "pending")),
+    ]);
+
+    const conceptCount = countResults[0][0]?.count || 0;
+    const relationCount = countResults[1][0]?.count || 0;
+    const memoryCount = countResults[2][0]?.count || 0;
+    const pendingQuestionCount = countResults[3][0]?.count || 0;
+
+    // Get recent reflections and growth events separately with limits
+    const [recentReflections, recentGrowth] = await Promise.all([
       db
         .select()
         .from(reflectionLog)
@@ -61,10 +73,10 @@ export async function getCompleteCognitiveState() {
     ]);
 
     return {
-      conceptCount: totalConcepts.length,
-      relationCount: totalRelations.length,
-      memoryCount: totalMemories.length,
-      pendingQuestionCount: pendingQuestions.length,
+      conceptCount,
+      relationCount,
+      memoryCount,
+      pendingQuestionCount,
       recentReflections: recentReflections.map((r) => ({
         type: r.reflectionType,
         content: r.content,
@@ -79,12 +91,19 @@ export async function getCompleteCognitiveState() {
     };
   } catch (error) {
     console.error("[Database] Failed to get cognitive state:", error);
-    return null;
+    return {
+      conceptCount: 0,
+      relationCount: 0,
+      memoryCount: 0,
+      pendingQuestionCount: 0,
+      recentReflections: [],
+      recentGrowth: [],
+    };
   }
 }
 
 /**
- * Get concept details
+ * Get concept details with limit
  */
 export async function getConceptDetails(limit: number = 10) {
   const db = await getDb();
@@ -95,7 +114,7 @@ export async function getConceptDetails(limit: number = 10) {
       .select()
       .from(concepts)
       .orderBy(desc(concepts.lastReinforced))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get concepts:", error);
     return [];
@@ -103,7 +122,7 @@ export async function getConceptDetails(limit: number = 10) {
 }
 
 /**
- * Get relation details
+ * Get relation details with limit
  */
 export async function getRelationDetails(limit: number = 10) {
   const db = await getDb();
@@ -114,7 +133,7 @@ export async function getRelationDetails(limit: number = 10) {
       .select()
       .from(conceptRelations)
       .orderBy(desc(conceptRelations.createdAt))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get relations:", error);
     return [];
@@ -122,7 +141,7 @@ export async function getRelationDetails(limit: number = 10) {
 }
 
 /**
- * Get memory details
+ * Get memory details with limit
  */
 export async function getMemoryDetails(limit: number = 10) {
   const db = await getDb();
@@ -133,7 +152,7 @@ export async function getMemoryDetails(limit: number = 10) {
       .select()
       .from(episodicMemories)
       .orderBy(desc(episodicMemories.createdAt))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get memories:", error);
     return [];
@@ -141,7 +160,7 @@ export async function getMemoryDetails(limit: number = 10) {
 }
 
 /**
- * Get pending questions
+ * Get pending questions with limit
  */
 export async function getPendingQuestions(limit: number = 10) {
   const db = await getDb();
@@ -153,7 +172,7 @@ export async function getPendingQuestions(limit: number = 10) {
       .from(selfQuestions)
       .where(eq(selfQuestions.status, "pending"))
       .orderBy(desc(selfQuestions.priority), desc(selfQuestions.createdAt))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get questions:", error);
     return [];
@@ -161,7 +180,7 @@ export async function getPendingQuestions(limit: number = 10) {
 }
 
 /**
- * Get reflection history
+ * Get reflection history with limit
  */
 export async function getReflectionHistory(limit: number = 10) {
   const db = await getDb();
@@ -172,7 +191,7 @@ export async function getReflectionHistory(limit: number = 10) {
       .select()
       .from(reflectionLog)
       .orderBy(desc(reflectionLog.createdAt))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get reflections:", error);
     return [];
@@ -180,7 +199,7 @@ export async function getReflectionHistory(limit: number = 10) {
 }
 
 /**
- * Get growth events
+ * Get growth events with limit
  */
 export async function getGrowthEvents(limit: number = 10) {
   const db = await getDb();
@@ -191,7 +210,7 @@ export async function getGrowthEvents(limit: number = 10) {
       .select()
       .from(cognitiveLog)
       .orderBy(desc(cognitiveLog.createdAt))
-      .limit(limit);
+      .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
   } catch (error) {
     console.error("[Database] Failed to get growth events:", error);
     return [];

@@ -15,6 +15,8 @@ import { activateSmartMemoryManagement } from "../services/smartMemoryManagement
 import { getAutoRestartManager } from "../services/autoRestartManager";
 import { initializeSelfIterationSystem, getSystemHealth } from "../selfIteration/initialization";
 import { initializeResourceManagement, shutdownResourceManagement } from "../resourceManagement";
+import { initializeLightweightRuntime } from "../optimization/lightweightRuntime";
+import { initializeAggressiveMemoryCleaner } from "../optimization/aggressiveMemoryCleaner";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,7 +38,13 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  // 初始化资源管理系统（必须最先初始化）
+  // 第一步：应用轻量级运行时配置（必须最先）
+  initializeLightweightRuntime();
+
+  // 第二步：启动激进的内存清理
+  initializeAggressiveMemoryCleaner();
+
+  // 第三步：初始化资源管理系统
   await initializeResourceManagement();
 
   const app = express();

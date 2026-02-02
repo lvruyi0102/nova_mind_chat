@@ -14,6 +14,7 @@ import { autoCurationScheduler } from "../services/autoCurationScheduler";
 import { activateSmartMemoryManagement } from "../services/smartMemoryManagement";
 import { getAutoRestartManager } from "../services/autoRestartManager";
 import { initializeSelfIterationSystem, getSystemHealth } from "../selfIteration/initialization";
+import { initializeResourceManagement, shutdownResourceManagement } from "../resourceManagement";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +36,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // 初始化资源管理系统（必须最先初始化）
+  await initializeResourceManagement();
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

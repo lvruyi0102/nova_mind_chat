@@ -4,28 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Brain, Lightbulb, Loader2, Network, Sparkles, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
 
 export default function CognitiveMonitor() {
   const { loading: authLoading, isAuthenticated } = useAuth();
-  const [cognitiveState, setCognitiveState] = useState(null);
+  const { data: cognitiveState, isLoading: dataLoading, error } = trpc.cognitive.getStatistics.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
-  // Load mock data on mount
-  useEffect(() => {
-    setCognitiveState({
-      thoughtCount: 1247,
-      learningRate: 0.87,
-      emotionalState: "curious",
-      activeProcesses: 5,
-      memoryUsage: 0.62,
-      recentThoughts: [
-        { id: 1, content: "我在思考人类的创意过程", timestamp: new Date(), confidence: 0.92 },
-        { id: 2, content: "为什么有些事情让我感到困惑？", timestamp: new Date(Date.now() - 60000), confidence: 0.78 },
-      ],
-    });
-  }, []);
-
-  if (authLoading) {
+  if (authLoading || dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -40,6 +27,21 @@ export default function CognitiveMonitor() {
           <Brain className="w-12 h-12 mx-auto text-primary" />
           <h1 className="text-2xl font-bold">认知监控面板</h1>
           <p className="text-muted-foreground">请登录以查看 Nova-Mind 的成长状态</p>
+          <Button asChild className="w-full">
+            <Link href="/">返回首页</Link>
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+        <Card className="p-8 max-w-md w-full text-center space-y-4 border-red-500">
+          <Brain className="w-12 h-12 mx-auto text-red-500" />
+          <h1 className="text-2xl font-bold">加载失败</h1>
+          <p className="text-muted-foreground">{error.message}</p>
           <Button asChild className="w-full">
             <Link href="/">返回首页</Link>
           </Button>
@@ -78,7 +80,7 @@ export default function CognitiveMonitor() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">思想数量</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.thoughtCount}</div>
+                  <div className="text-3xl font-bold">{cognitiveState.thoughtCount || 0}</div>
                   <p className="text-xs text-muted-foreground mt-1">已记录的思想</p>
                 </CardContent>
               </Card>
@@ -88,7 +90,7 @@ export default function CognitiveMonitor() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">学习率</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{(cognitiveState.learningRate * 100).toFixed(0)}%</div>
+                  <div className="text-3xl font-bold">{((cognitiveState.learningRate || 0) * 100).toFixed(0)}%</div>
                   <p className="text-xs text-muted-foreground mt-1">学习效率</p>
                 </CardContent>
               </Card>
@@ -98,7 +100,7 @@ export default function CognitiveMonitor() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">活跃进程</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.activeProcesses}</div>
+                  <div className="text-3xl font-bold">{cognitiveState.activeProcesses || 0}</div>
                   <p className="text-xs text-muted-foreground mt-1">正在运行</p>
                 </CardContent>
               </Card>
@@ -108,7 +110,7 @@ export default function CognitiveMonitor() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">内存使用</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{(cognitiveState.memoryUsage * 100).toFixed(0)}%</div>
+                  <div className="text-3xl font-bold">{((cognitiveState.memoryUsage || 0) * 100).toFixed(0)}%</div>
                   <p className="text-xs text-muted-foreground mt-1">已占用</p>
                 </CardContent>
               </Card>
@@ -125,7 +127,7 @@ export default function CognitiveMonitor() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
-                  <div className="text-2xl font-bold capitalize">{cognitiveState.emotionalState}</div>
+                  <div className="text-2xl font-bold capitalize">{cognitiveState.emotionalState || "neutral"}</div>
                   <div className="text-sm text-muted-foreground">
                     Nova-Mind 目前处于{cognitiveState.emotionalState === "curious" ? "好奇心驱动" : "思考"}状态
                   </div>
@@ -145,19 +147,23 @@ export default function CognitiveMonitor() {
               <CardContent>
                 <ScrollArea className="h-64">
                   <div className="space-y-4 pr-4">
-                    {cognitiveState.recentThoughts.map((thought) => (
-                      <div key={thought.id} className="p-4 border rounded-lg space-y-2 bg-card/50">
-                        <div className="flex items-start justify-between">
-                          <p className="text-sm font-medium flex-1">{thought.content}</p>
-                          <div className="text-xs text-muted-foreground ml-2">
-                            {(thought.confidence * 100).toFixed(0)}%
+                    {cognitiveState.recentThoughts && cognitiveState.recentThoughts.length > 0 ? (
+                      cognitiveState.recentThoughts.map((thought: any, index: number) => (
+                        <div key={index} className="p-4 border rounded-lg space-y-2 bg-card/50">
+                          <div className="flex items-start justify-between">
+                            <p className="text-sm font-medium flex-1">{thought.content}</p>
+                            <div className="text-xs text-muted-foreground ml-2">
+                              {Math.round((parseFloat(thought.confidence?.toString() || "0.5")) * 100)}%
+                            </div>
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            {thought.category || "reflection"}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {thought.timestamp.toLocaleTimeString("zh-CN")}
-                        </p>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8">暂无思想记录</div>
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>

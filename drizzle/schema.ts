@@ -1898,3 +1898,37 @@ export const selfIterationLogTable = mysqlTable("self_iteration_log", {
 
 export type SelfIterationLogRow = typeof selfIterationLogTable.$inferSelect;
 // 类型定义已在上面定义
+
+/**
+ * Cognitive State - tracks Nova-Mind's cognitive metrics and state
+ */
+export const cognitiveStates = mysqlTable("cognitiveStates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  thoughtCount: int("thoughtCount").notNull().default(0), // Total thoughts generated
+  learningRate: decimal("learningRate", { precision: 5, scale: 4 }).notNull().default("0.5"), // 0-1 scale
+  emotionalState: varchar("emotionalState", { length: 50 }).notNull().default("neutral"), // curious, confused, excited, etc.
+  activeProcesses: int("activeProcesses").notNull().default(0), // Number of active cognitive processes
+  memoryUsage: decimal("memoryUsage", { precision: 5, scale: 4 }).notNull().default("0.5"), // 0-1 scale
+  confidenceLevel: decimal("confidenceLevel", { precision: 5, scale: 4 }).notNull().default("0.5"), // 0-1 scale
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CognitiveState = typeof cognitiveStates.$inferSelect;
+export type InsertCognitiveState = typeof cognitiveStates.$inferInsert;
+
+/**
+ * Recent Thoughts - stores Nova-Mind's recent thoughts for monitoring
+ */
+export const recentThoughts = mysqlTable("recentThoughts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).notNull().default("0.5"), // 0-1 scale
+  category: varchar("category", { length: 100 }), // reflection, learning, creative, analytical, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RecentThought = typeof recentThoughts.$inferSelect;
+export type InsertRecentThought = typeof recentThoughts.$inferInsert;

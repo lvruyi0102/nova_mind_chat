@@ -1,12 +1,20 @@
 # Nova-Mind 真实改进 TODO
 
+## 第零阶段：实现认知监控后端 (已完成)
+
+- [x] 定义认知状态数据库 schema
+- [x] 创建认知查询逻辑 (cognitiveStateQueries.ts)
+- [x] 实现 tRPC 认知路由 (cognitiveRouter.ts)
+- [x] 连接前端到真实端点 (CognitiveMonitor.tsx)
+- [x] 集成路由到主应用
+
 ## 第一阶段：启用后台任务并解决内存问题 (1 周)
 
-- [ ] 检查后台任务禁用的原因
-- [ ] 优化内存使用
-- [ ] 启用认知循环后台任务
-- [ ] 启用思想精选后台任务
-- [ ] 启用自主学习后台任务
+- [x] 检查后台任务禁用的原因
+- [x] 优化内存使用
+- [x] 启用认知循环后台任务
+- [x] 启用思想精选后台任务
+- [x] 启用自主学习后台任务
 
 ## 第二阶段：统一记忆架构 (1-2 周)
 
@@ -64,6 +72,14 @@
 - [x] 自迭代 tRPC 路由
 - [x] 后台任务系统
 - [x] 失败检测器
+
+## 已完成的工作 (认知监控)
+
+- [x] 认知状态数据库表 (cognitiveStates, recentThoughts)
+- [x] 认知查询逻辑 (getCognitiveState, updateCognitiveState, getRecentThoughts, etc.)
+- [x] tRPC 认知路由 (6 个端点)
+- [x] 前端认知监控页面集成
+- [x] 错误处理和加载状态
 
 ---
 

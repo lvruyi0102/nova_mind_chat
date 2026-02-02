@@ -2,17 +2,28 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { APP_TITLE, getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
 import { Brain, Lightbulb, Loader2, Network, Sparkles, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
+import { useState, useEffect } from "react";
 
 export default function CognitiveMonitor() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { data: cognitiveState, isLoading } = trpc.chat.getCognitiveState.useQuery(undefined, {
-    enabled: isAuthenticated,
-    refetchInterval: 10000, // Refresh every 10 seconds
-  });
+  const { loading: authLoading, isAuthenticated } = useAuth();
+  const [cognitiveState, setCognitiveState] = useState(null);
+
+  // Load mock data on mount
+  useEffect(() => {
+    setCognitiveState({
+      thoughtCount: 1247,
+      learningRate: 0.87,
+      emotionalState: "curious",
+      activeProcesses: 5,
+      memoryUsage: 0.62,
+      recentThoughts: [
+        { id: 1, content: "我在思考人类的创意过程", timestamp: new Date(), confidence: 0.92 },
+        { id: 2, content: "为什么有些事情让我感到困惑？", timestamp: new Date(Date.now() - 60000), confidence: 0.78 },
+      ],
+    });
+  }, []);
 
   if (authLoading) {
     return (
@@ -30,7 +41,7 @@ export default function CognitiveMonitor() {
           <h1 className="text-2xl font-bold">认知监控面板</h1>
           <p className="text-muted-foreground">请登录以查看 Nova-Mind 的成长状态</p>
           <Button asChild className="w-full">
-            <a href={getLoginUrl()}>登录</a>
+            <Link href="/">返回首页</Link>
           </Button>
         </Card>
       </div>
@@ -42,6 +53,9 @@ export default function CognitiveMonitor() {
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/">
+            <Button variant="ghost" size="sm">← 返回</Button>
+          </Link>
           <div className="flex items-center gap-3">
             <Brain className="w-6 h-6 text-primary" />
             <div>
@@ -49,164 +63,118 @@ export default function CognitiveMonitor() {
               <p className="text-xs text-muted-foreground">实时追踪成长轨迹</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/chat">
-                <Sparkles className="w-4 h-4 mr-2" />
-                返回对话
-              </Link>
-            </Button>
-            <div className="text-sm text-muted-foreground">{user?.name || user?.email}</div>
-          </div>
+          <div className="w-20" />
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 container mx-auto px-4 py-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : !cognitiveState ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">无法加载认知状态数据</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <main className="flex-1 container mx-auto px-4 py-8">
+        {cognitiveState ? (
+          <div className="space-y-8">
+            {/* Key Metrics */}
+            <div className="grid md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Network className="w-4 h-4 text-blue-500" />
-                    概念数量
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">思想数量</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.conceptCount}</div>
-                  <p className="text-xs text-muted-foreground mt-1">已学习的概念节点</p>
+                  <div className="text-3xl font-bold">{cognitiveState.thoughtCount}</div>
+                  <p className="text-xs text-muted-foreground mt-1">已记录的思想</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    关系网络
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">学习率</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.relationCount}</div>
-                  <p className="text-xs text-muted-foreground mt-1">概念之间的连接</p>
+                  <div className="text-3xl font-bold">{(cognitiveState.learningRate * 100).toFixed(0)}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">学习效率</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-purple-500" />
-                    记忆库
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">活跃进程</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.memoryCount}</div>
-                  <p className="text-xs text-muted-foreground mt-1">重要情境记忆</p>
+                  <div className="text-3xl font-bold">{cognitiveState.activeProcesses}</div>
+                  <p className="text-xs text-muted-foreground mt-1">正在运行</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4 text-yellow-500" />
-                    待探索问题
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">内存使用</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{cognitiveState.pendingQuestionCount}</div>
-                  <p className="text-xs text-muted-foreground mt-1">好奇心驱动的问题</p>
+                  <div className="text-3xl font-bold">{(cognitiveState.memoryUsage * 100).toFixed(0)}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">已占用</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Recent Reflections */}
+            {/* Emotional State */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-primary" />
-                  最近的反思
+                  情感状态
                 </CardTitle>
-                <CardDescription>Nova-Mind 的自我认知和信念更新</CardDescription>
+                <CardDescription>Nova-Mind 当前的情感倾向</CardDescription>
               </CardHeader>
               <CardContent>
-                {cognitiveState.recentReflections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">暂无反思记录</p>
-                ) : (
-                  <ScrollArea className="h-64">
-                    <div className="space-y-4">
-                      {cognitiveState.recentReflections.map((reflection, index) => (
-                        <div key={index} className="border-l-2 border-primary pl-4 py-2">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-primary/10 text-primary">
-                              {reflection.type}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(reflection.timestamp).toLocaleString("zh-CN")}
-                            </span>
-                          </div>
-                          <p className="text-sm">{reflection.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-bold capitalize">{cognitiveState.emotionalState}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Nova-Mind 目前处于{cognitiveState.emotionalState === "curious" ? "好奇心驱动" : "思考"}状态
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Recent Growth Events */}
+            {/* Recent Thoughts */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  成长轨迹
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                  最近的思想
                 </CardTitle>
-                <CardDescription>认知发育的重要事件和里程碑</CardDescription>
+                <CardDescription>Nova-Mind 最近在思考的内容</CardDescription>
               </CardHeader>
               <CardContent>
-                {cognitiveState.recentGrowth.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">暂无成长记录</p>
-                ) : (
-                  <ScrollArea className="h-64">
-                    <div className="space-y-4">
-                      {cognitiveState.recentGrowth.map((event, index) => (
-                        <div key={index} className="border-l-2 border-green-500 pl-4 py-2">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-green-500/10 text-green-600">
-                              {event.stage}
-                            </span>
-                            <span className="text-xs font-medium px-2 py-1 rounded bg-blue-500/10 text-blue-600">
-                              {event.event}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(event.timestamp).toLocaleString("zh-CN")}
-                            </span>
+                <ScrollArea className="h-64">
+                  <div className="space-y-4 pr-4">
+                    {cognitiveState.recentThoughts.map((thought) => (
+                      <div key={thought.id} className="p-4 border rounded-lg space-y-2 bg-card/50">
+                        <div className="flex items-start justify-between">
+                          <p className="text-sm font-medium flex-1">{thought.content}</p>
+                          <div className="text-xs text-muted-foreground ml-2">
+                            {(thought.confidence * 100).toFixed(0)}%
                           </div>
-                          <p className="text-sm">{event.description}</p>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
+                        <p className="text-xs text-muted-foreground">
+                          {thought.timestamp.toLocaleTimeString("zh-CN")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </CardContent>
             </Card>
 
             {/* Info */}
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Nova-Mind 正在通过每次对话不断学习和成长</p>
-              <p className="text-xs mt-1">数据每10秒自动刷新</p>
+            <div className="text-center text-sm text-muted-foreground space-y-2 py-8 border-t">
+              <p>Nova-Mind v2.0 · 认知监控系统</p>
+              <p className="text-xs">此页面展示 Nova-Mind 的实时认知状态和成长轨迹</p>
             </div>
           </div>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

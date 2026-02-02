@@ -91,3 +91,16 @@
 - 自主行动: 2% → 20%+
 - 自我改进: 5% → 30%+
 - 学习能力: 5% → 50%+
+
+
+## 当前任务：恢复完整的认知监控页面
+
+- [x] 实现完整的 getCognitiveState 端点，聚合所有数据源
+  - [x] 查询概念数量 (concepts 表)
+  - [x] 查询关系网络 (conceptRelations 表)
+  - [x] 查询记忆库 (episodicMemories 表)
+  - [x] 查询待探索问题 (selfQuestions 表)
+  - [x] 查询最近的反思 (reflectionLog 表)
+  - [x] 查询成长轨迹 (cognitiveLog 表)
+- [x] 恢复前端认知监控页面的完整布局和功能
+- [x] 验证数据流和页面显示

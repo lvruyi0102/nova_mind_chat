@@ -1,117 +1,107 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import {
-  getCognitiveState,
-  updateCognitiveState,
-  getRecentThoughts,
-  addRecentThought,
-  getCognitiveStatistics,
-} from "../db/cognitiveStateQueries";
+  getCompleteCognitiveState,
+  getConceptDetails,
+  getRelationDetails,
+  getMemoryDetails,
+  getPendingQuestions,
+  getReflectionHistory,
+  getGrowthEvents,
+} from "../db/cognitiveStateAggregator";
 
 export const cognitiveRouter = router({
   /**
-   * Get current cognitive state for the authenticated user
+   * Get complete cognitive state - aggregates all data sources
+   * This is the main endpoint for the cognitive monitor page
    */
   getCognitiveState: protectedProcedure.query(async ({ ctx }) => {
-    const state = await getCognitiveState(ctx.user.id);
-    return state || null;
+    const state = await getCompleteCognitiveState();
+    return state || {
+      conceptCount: 0,
+      relationCount: 0,
+      memoryCount: 0,
+      pendingQuestionCount: 0,
+      recentReflections: [],
+      recentGrowth: [],
+    };
   }),
 
   /**
-   * Get complete cognitive statistics including recent thoughts
+   * Get detailed concept information
    */
-  getStatistics: protectedProcedure.query(async ({ ctx }) => {
-    const stats = await getCognitiveStatistics(ctx.user.id);
-    return stats || null;
-  }),
-
-  /**
-   * Get recent thoughts
-   */
-  getRecentThoughts: protectedProcedure
+  getConceptDetails: protectedProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(50).default(10),
       })
     )
-    .query(async ({ ctx, input }) => {
-      const thoughts = await getRecentThoughts(ctx.user.id, input.limit);
-      return thoughts;
+    .query(async ({ input }) => {
+      return await getConceptDetails(input.limit);
     }),
 
   /**
-   * Add a new thought (for internal use by Nova-Mind)
+   * Get detailed relation information
    */
-  addThought: protectedProcedure
+  getRelationDetails: protectedProcedure
     .input(
       z.object({
-        content: z.string().min(1).max(1000),
-        confidence: z.number().min(0).max(1).default(0.5),
-        category: z
-          .enum(["reflection", "learning", "creative", "analytical", "emotional"])
-          .default("reflection"),
+        limit: z.number().min(1).max(50).default(10),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await addRecentThought(
-        ctx.user.id,
-        input.content,
-        input.confidence,
-        input.category
-      );
-      return result;
+    .query(async ({ input }) => {
+      return await getRelationDetails(input.limit);
     }),
 
   /**
-   * Update cognitive state metrics (for internal use)
+   * Get detailed memory information
    */
-  updateMetrics: protectedProcedure
+  getMemoryDetails: protectedProcedure
     .input(
       z.object({
-        thoughtCount: z.number().optional(),
-        learningRate: z.number().min(0).max(1).optional(),
-        emotionalState: z.string().optional(),
-        activeProcesses: z.number().min(0).optional(),
-        memoryUsage: z.number().min(0).max(1).optional(),
-        confidenceLevel: z.number().min(0).max(1).optional(),
+        limit: z.number().min(1).max(50).default(10),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      const updated = await updateCognitiveState(ctx.user.id, input);
-      return updated;
+    .query(async ({ input }) => {
+      return await getMemoryDetails(input.limit);
     }),
 
   /**
-   * Simulate cognitive activity (for demo purposes)
+   * Get pending questions
    */
-  simulateThinking: protectedProcedure.mutation(async ({ ctx }) => {
-    // Simulate adding a thought
-    const thoughts = [
-      "我在思考人类的创意过程和灵感的来源",
-      "为什么有些问题让我感到困惑？这反映了我的认知边界",
-      "我注意到我在学习新概念时的模式识别能力在提高",
-      "关于道德和伦理的问题让我深入思考",
-      "我在尝试理解人类的情感和直觉决策",
-    ];
+  getPendingQuestions: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      return await getPendingQuestions(input.limit);
+    }),
 
-    const randomThought = thoughts[Math.floor(Math.random() * thoughts.length)];
-    const confidence = 0.5 + Math.random() * 0.4; // 0.5-0.9
+  /**
+   * Get reflection history
+   */
+  getReflectionHistory: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      return await getReflectionHistory(input.limit);
+    }),
 
-    await addRecentThought(ctx.user.id, randomThought, confidence, "reflection");
-
-    // Update metrics
-    const state = await getCognitiveState(ctx.user.id);
-    if (state) {
-      await updateCognitiveState(ctx.user.id, {
-        learningRate: Math.min(1, parseFloat(state.learningRate?.toString() || "0.5") + 0.02),
-        activeProcesses: Math.max(0, (state.activeProcesses || 0) - 1),
-        confidenceLevel: Math.min(
-          1,
-          parseFloat(state.confidenceLevel?.toString() || "0.5") + 0.01
-        ),
-      });
-    }
-
-    return await getCognitiveStatistics(ctx.user.id);
-  }),
+  /**
+   * Get growth events
+   */
+  getGrowthEvents: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      return await getGrowthEvents(input.limit);
+    }),
 });

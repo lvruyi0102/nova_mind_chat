@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import superjson from "superjson";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { getLoginUrl } from "./const";
@@ -40,6 +41,7 @@ const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
+      transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),
@@ -48,6 +50,15 @@ const trpcClient = trpc.createClient({
       },
     }),
   ],
+});
+
+// 全局错误处理
+window.addEventListener('error', (event) => {
+  console.error('[Global Error]', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Unhandled Rejection]', event.reason);
 });
 
 createRoot(document.getElementById("root")!).render(

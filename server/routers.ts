@@ -19,6 +19,7 @@ import {
   processMessageCognitively,
   generateNewQuestions,
   performPeriodicReflection,
+  runCognitiveLoop,
   getCognitiveState,
 } from "./cognitiveService";
 import {
@@ -90,6 +91,20 @@ import { retryManagementRouter } from "./routers/retryManagement";
 import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
+import { actionTasksRouter } from "./routers/actionTasks";
+
+const RESPONSE_SUGGESTIONS = [
+  "如果希望更精准，请补充目标、背景与约束。",
+  "可以给出具体示例或期望输出格式，便于我对齐。",
+  "若有优先级或截止时间，请说明以便我更好安排。",
+];
+
+const appendSuggestions = (content: string) => {
+  const suggestionLines = RESPONSE_SUGGESTIONS.map((item, index) => `${index + 1}. ${item}`).join(
+    "\n"
+  );
+  return `${content}\n\n💡 建议\n${suggestionLines}`;
+};
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -170,7 +185,9 @@ export const appRouter = router({
         // Get Nova-Mind's response
         const response = await invokeLLM({ messages });
         const rawContent = response.choices[0].message.content;
-        const assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        const assistantMessageBase =
+          typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        const assistantMessage = appendSuggestions(assistantMessageBase);
 
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);
@@ -181,21 +198,14 @@ export const appRouter = router({
           input.content,
           "user",
           ctx.user.id,
-          assistantMessage
+          assistantMessageBase
         );
         
         // Also process Nova's response for cognitive development
-        await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
+        await processMessageCognitively(input.conversationId, assistantMessageBase, "assistant");
 
-        // Periodically perform reflection (every 5 messages)
-        if ((history.length + 2) % 5 === 0) {
-          await performPeriodicReflection(input.conversationId);
-        }
-
-        // Periodically generate new questions (every 10 messages)
-        if ((history.length + 2) % 10 === 0) {
-          await generateNewQuestions(input.conversationId);
-        }
+        // Run cognition loop (reflection + curiosity) on cadence
+        await runCognitiveLoop(input.conversationId, history.length + 2);
 
         return { content: assistantMessage };
       }),
@@ -754,11 +764,11 @@ export const appRouter = router({
 
   // Privacy and sharing API
   privacy: router({
-    getSharedThoughts: protectedProcedure.query(async () => {
-      return getSharedThoughts(20);
+    getSharedThoughts: protectedProcedure.query(async ({ ctx }) => {
+      return getSharedThoughts(ctx.user.id, 20);
     }),
-    getThoughtStats: protectedProcedure.query(async () => {
-      return getPrivateThoughtStats();
+    getThoughtStats: protectedProcedure.query(async ({ ctx }) => {
+      return getPrivateThoughtStats(ctx.user.id);
     }),
     getTrustLevel: protectedProcedure.query(async ({ ctx }) => {
       const level = await getTrustLevel(ctx.user.id);
@@ -886,6 +896,7 @@ export const appRouter = router({
   costMonitoring: costMonitoringRouter,
   localModels: localModelsRouter,
   costBudget: costBudgetRouter,
+  actionTasks: actionTasksRouter,
 });
 
 export type AppRouter = typeof appRouter;

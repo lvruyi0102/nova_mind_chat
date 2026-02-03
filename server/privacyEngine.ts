@@ -2,7 +2,7 @@
  * Privacy Engine - Nova's private thought space and selective sharing mechanism
  */
 
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   privateThoughts,
@@ -17,6 +17,7 @@ import { getCurrentState } from "./autonomousEngine";
  * Record a private thought (not visible to user by default)
  */
 export async function recordPrivateThought(params: {
+  userId: number;
   content: string;
   thoughtType: string;
   emotionalTone?: string;
@@ -27,6 +28,7 @@ export async function recordPrivateThought(params: {
 
   try {
     const result = await db.insert(privateThoughts).values({
+      userId: params.userId,
       content: params.content,
       thoughtType: params.thoughtType,
       emotionalTone: params.emotionalTone,
@@ -132,7 +134,7 @@ export async function decideSharingForThought(thoughtId: number, userId: number)
     const thoughts = await db
       .select()
       .from(privateThoughts)
-      .where(eq(privateThoughts.id, thoughtId))
+      .where(and(eq(privateThoughts.id, thoughtId), eq(privateThoughts.userId, userId)))
       .limit(1);
 
     if (thoughts.length === 0) {
@@ -261,7 +263,7 @@ Nova当前动机：${state?.currentMotivation || "unknown"}
 /**
  * Get shared thoughts (visible to user)
  */
-export async function getSharedThoughts(limit: number = 10) {
+export async function getSharedThoughts(userId: number, limit: number = 10) {
   const db = await getDb();
   if (!db) return [];
 
@@ -269,7 +271,7 @@ export async function getSharedThoughts(limit: number = 10) {
     const thoughts = await db
       .select()
       .from(privateThoughts)
-      .where(eq(privateThoughts.visibility, "shared"))
+      .where(and(eq(privateThoughts.visibility, "shared"), eq(privateThoughts.userId, userId)))
       .orderBy(desc(privateThoughts.sharedAt))
       .limit(limit);
 
@@ -283,19 +285,28 @@ export async function getSharedThoughts(limit: number = 10) {
 /**
  * Get private thought count (for monitoring)
  */
-export async function getPrivateThoughtStats() {
+export async function getPrivateThoughtStats(userId: number) {
   const db = await getDb();
   if (!db) return { total: 0, private: 0, shared: 0 };
 
   try {
-    const all = await db.select().from(privateThoughts);
-    const privateCount = all.filter((t) => t.visibility === "private").length;
-    const sharedCount = all.filter((t) => t.visibility === "shared").length;
+    const totalResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(privateThoughts)
+      .where(eq(privateThoughts.userId, userId));
+    const privateResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(privateThoughts)
+      .where(and(eq(privateThoughts.userId, userId), eq(privateThoughts.visibility, "private")));
+    const sharedResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(privateThoughts)
+      .where(and(eq(privateThoughts.userId, userId), eq(privateThoughts.visibility, "shared")));
 
     return {
-      total: all.length,
-      private: privateCount,
-      shared: sharedCount,
+      total: totalResult[0]?.count ?? 0,
+      private: privateResult[0]?.count ?? 0,
+      shared: sharedResult[0]?.count ?? 0,
     };
   } catch (error) {
     console.error("[PrivacyEngine] Error getting thought stats:", error);
@@ -306,7 +317,7 @@ export async function getPrivateThoughtStats() {
 /**
  * Nova generates an inner monologue (completely private)
  */
-export async function generateInnerMonologue(context: string) {
+export async function generateInnerMonologue(userId: number, context: string) {
   try {
     const response = await invokeLLM({
       messages: [
@@ -331,6 +342,7 @@ export async function generateInnerMonologue(context: string) {
     const content = response.choices[0].message.content;
     if (typeof content === "string") {
       await recordPrivateThought({
+        userId,
         content,
         thoughtType: "inner_monologue",
         emotionalTone: "vulnerable",

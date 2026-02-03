@@ -19,6 +19,7 @@ import {
   processMessageCognitively,
   generateNewQuestions,
   performPeriodicReflection,
+  runCognitiveLoop,
   getCognitiveState,
 } from "./cognitiveService";
 import {
@@ -187,15 +188,8 @@ export const appRouter = router({
         // Also process Nova's response for cognitive development
         await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
 
-        // Periodically perform reflection (every 5 messages)
-        if ((history.length + 2) % 5 === 0) {
-          await performPeriodicReflection(input.conversationId);
-        }
-
-        // Periodically generate new questions (every 10 messages)
-        if ((history.length + 2) % 10 === 0) {
-          await generateNewQuestions(input.conversationId);
-        }
+        // Run cognition loop (reflection + curiosity) on cadence
+        await runCognitiveLoop(input.conversationId, history.length + 2);
 
         return { content: assistantMessage };
       }),
@@ -754,11 +748,11 @@ export const appRouter = router({
 
   // Privacy and sharing API
   privacy: router({
-    getSharedThoughts: protectedProcedure.query(async () => {
-      return getSharedThoughts(20);
+    getSharedThoughts: protectedProcedure.query(async ({ ctx }) => {
+      return getSharedThoughts(ctx.user.id, 20);
     }),
-    getThoughtStats: protectedProcedure.query(async () => {
-      return getPrivateThoughtStats();
+    getThoughtStats: protectedProcedure.query(async ({ ctx }) => {
+      return getPrivateThoughtStats(ctx.user.id);
     }),
     getTrustLevel: protectedProcedure.query(async ({ ctx }) => {
       const level = await getTrustLevel(ctx.user.id);

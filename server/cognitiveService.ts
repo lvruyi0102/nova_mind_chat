@@ -2,7 +2,7 @@
  * Cognitive Service - Orchestrates Nova-Mind's learning and growth processes
  */
 
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   concepts,
@@ -178,10 +178,13 @@ export async function processMessageCognitively(
         value: 1,
       });
 
-      const totalConcepts = await db.select().from(concepts);
+      const conceptCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(concepts);
+      const conceptCount = conceptCountResult[0]?.count ?? 0;
       await db.insert(growthMetrics).values({
         metricName: "concept_count",
-        value: totalConcepts.length,
+        value: conceptCount,
       });
     } catch (err) {
       console.warn("[CognitiveService] Failed to update growth metrics:", err);
@@ -306,6 +309,50 @@ export async function performPeriodicReflection(conversationId: number) {
 }
 
 /**
+ * Run a cognition loop pass (reflection + curiosity) based on message cadence.
+ */
+export async function runCognitiveLoop(
+  conversationId: number,
+  messageCount: number
+): Promise<{
+  didReflect: boolean;
+  didGenerateQuestions: boolean;
+}> {
+  const db = await getDb();
+  if (!db) return { didReflect: false, didGenerateQuestions: false };
+
+  const shouldReflect = messageCount % 5 === 0;
+  const shouldGenerateQuestions = messageCount % 10 === 0;
+
+  let didReflect = false;
+  let didGenerateQuestions = false;
+
+  if (shouldReflect) {
+    const reflection = await performPeriodicReflection(conversationId);
+    didReflect = Boolean(reflection);
+  }
+
+  if (shouldGenerateQuestions) {
+    const questions = await generateNewQuestions(conversationId);
+    didGenerateQuestions = questions.length > 0;
+  }
+
+  if (didReflect || didGenerateQuestions) {
+    const summaryParts = [];
+    if (didReflect) summaryParts.push("完成反思");
+    if (didGenerateQuestions) summaryParts.push("生成问题");
+    await db.insert(cognitiveLog).values({
+      stage: "Sensorimotor_I",
+      eventType: "cognition_loop",
+      description: `认知闭环执行：${summaryParts.join("、")}`,
+      conversationId,
+    });
+  }
+
+  return { didReflect, didGenerateQuestions };
+}
+
+/**
  * Get Nova's current cognitive state summary
  */
 export async function getCognitiveState() {
@@ -313,18 +360,27 @@ export async function getCognitiveState() {
   if (!db) return null;
 
   try {
-    const totalConcepts = await db.select().from(concepts);
-    const totalRelations = await db.select().from(conceptRelations);
-    const totalMemories = await db.select().from(episodicMemories);
-    const pendingQuestions = await db.select().from(selfQuestions).where(eq(selfQuestions.status, "pending"));
+    const conceptCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(concepts);
+    const relationCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(conceptRelations);
+    const memoryCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(episodicMemories);
+    const pendingQuestionsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(selfQuestions)
+      .where(eq(selfQuestions.status, "pending"));
     const recentReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(3);
     const recentGrowth = await db.select().from(cognitiveLog).orderBy(desc(cognitiveLog.createdAt)).limit(5);
 
     return {
-      conceptCount: totalConcepts.length,
-      relationCount: totalRelations.length,
-      memoryCount: totalMemories.length,
-      pendingQuestionCount: pendingQuestions.length,
+      conceptCount: conceptCountResult[0]?.count ?? 0,
+      relationCount: relationCountResult[0]?.count ?? 0,
+      memoryCount: memoryCountResult[0]?.count ?? 0,
+      pendingQuestionCount: pendingQuestionsResult[0]?.count ?? 0,
       recentReflections: recentReflections.map((r) => ({
         type: r.reflectionType,
         content: r.content,

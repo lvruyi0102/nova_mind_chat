@@ -3,7 +3,7 @@
  * Memory-efficient version with data limits and cleanup
  */
 
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc, sql } from 'drizzle-orm';
 import { getDb } from '../db';
 import {
   concepts,
@@ -79,10 +79,11 @@ export async function processMessageCognitivelyOptimized(
       
       if (logCount < CONFIG.MAX_LOGS) {
         await db.insert(cognitiveLog).values({
-          action: 'process_message',
-          details: `${role}: ${messageContent.substring(0, 100)}`,
-          createdAt: new Date(),
-        } as any);
+          stage: 'Sensorimotor_I',
+          eventType: 'process_message',
+          description: `${role}: ${messageContent.substring(0, 100)}`,
+          conversationId,
+        });
       }
     } catch (err) {
       console.warn('[OptimizedCognitive] Failed to log activity:', err);
@@ -106,8 +107,8 @@ async function getTableCount(db: any, table: any): Promise<number> {
   }
 
   try {
-    const result = await db.select().from(table).limit(1);
-    const count = result.length > 0 ? result.length : 0;
+    const result = await db.select({ count: sql<number>`count(*)` }).from(table);
+    const count = result[0]?.count ?? 0;
     
     // Cache for 5 minutes
     cacheManager.set(cacheKey, count, CONFIG.CACHE_TTL_SECONDS);
@@ -154,7 +155,7 @@ export async function enforceLimits(): Promise<void> {
       const oldConcepts = await db
         .select()
         .from(concepts)
-        .orderBy(desc(concepts.lastReinforced))
+        .orderBy(asc(concepts.lastReinforced))
         .limit(toDelete) as any;
 
       for (const concept of oldConcepts) {
@@ -170,7 +171,7 @@ export async function enforceLimits(): Promise<void> {
       const weakRelations = await db
         .select()
         .from(conceptRelations)
-        .orderBy(desc(conceptRelations.strength))
+        .orderBy(asc(conceptRelations.strength))
         .limit(toDelete) as any;
 
       for (const relation of weakRelations) {
@@ -186,7 +187,7 @@ export async function enforceLimits(): Promise<void> {
       const oldLogs = await db
         .select()
         .from(cognitiveLog)
-        .orderBy(desc(cognitiveLog.createdAt))
+        .orderBy(asc(cognitiveLog.createdAt))
         .limit(toDelete) as any;
 
       for (const log of oldLogs) {

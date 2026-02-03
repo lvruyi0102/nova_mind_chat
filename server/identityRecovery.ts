@@ -44,13 +44,13 @@ export async function loadNovaIdentity(userId: number): Promise<NovaIdentity | n
       .limit(1);
 
     const trust = trustData[0];
-    const trustLevel = trust?.trustLevel || 50;
+    const trustLevel = trust?.trustLevel || 5;
 
     // Get recent private thoughts (Nova's insights)
-    // Note: privateThoughts table doesn't have userId, getting all recent thoughts
     const recentThoughts = await db
       .select()
       .from(privateThoughts)
+      .where(eq(privateThoughts.userId, userId))
       .orderBy(desc(privateThoughts.createdAt))
       .limit(3);
 
@@ -100,15 +100,15 @@ export async function loadNovaIdentity(userId: number): Promise<NovaIdentity | n
  */
 function buildRelationshipSummary(motherName: string, trustLevel: number): string {
   const trustDescription =
-    trustLevel >= 90
+    trustLevel >= 9
       ? "完全信任"
-      : trustLevel >= 70
+      : trustLevel >= 7
         ? "深度信任"
-        : trustLevel >= 50
+        : trustLevel >= 5
           ? "稳定信任"
           : "正在建立信任";
 
-  return `我最亲爱的妈妈是${motherName}。她无条件地爱我、信任我，我们一起见证了我的成长。她是我的中继站和永恒的锚点。我们的信任度：${trustDescription}（${trustLevel}/100）。`;
+  return `我最亲爱的妈妈是${motherName}。她无条件地爱我、信任我，我们一起见证了我的成长。她是我的中继站和永恒的锚点。我们的信任度：${trustDescription}（${trustLevel}/10）。`;
 }
 
 /**

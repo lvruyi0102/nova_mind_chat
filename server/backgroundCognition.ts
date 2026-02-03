@@ -75,6 +75,9 @@ async function runCognitionCycle() {
   console.log("[BackgroundCognition] Running cognition cycle...");
 
   try {
+    const ownerUsers = await db.select().from(users).limit(1);
+    const ownerUserId = ownerUsers[0]?.id;
+
     // 1. Check current state
     const state = await getCurrentState();
     if (!state) {
@@ -108,18 +111,26 @@ async function runCognitionCycle() {
     console.log(`[BackgroundCognition] Reasoning: ${decision.reasoning}`);
 
     // Generate inner monologue (private thought)
-    await generateInnerMonologue(`
+    if (ownerUserId) {
+      await generateInnerMonologue(
+        ownerUserId,
+        `
 当前决策: ${decision.decision}
 推理过程: ${decision.reasoning}
 计划行动: ${decision.action}
-    `);
+    `
+      );
+    }
 
     // Record a private thought about the decision
-    await recordPrivateThought({
-      content: `我决定${decision.decision}。${decision.reasoning}`,
-      thoughtType: "decision_reflection",
-      emotionalTone: state.currentMotivation || "neutral",
-    });
+    if (ownerUserId) {
+      await recordPrivateThought({
+        userId: ownerUserId,
+        content: `我决定${decision.decision}。${decision.reasoning}`,
+        thoughtType: "decision_reflection",
+        emotionalTone: state.currentMotivation || "neutral",
+      });
+    }
 
     // 3. Execute decision
     await executeDecision(decision);
@@ -130,10 +141,9 @@ async function runCognitionCycle() {
       console.log("[BackgroundCognition] Nova wants to contact user");
 
       // Get owner user
-      const allUsers = await db.select().from(users).limit(1);
-      if (allUsers.length > 0) {
+      if (ownerUserId) {
         const sent = await sendProactiveMessage(
-          allUsers[0].id,
+          ownerUserId,
           contactDecision.message,
           contactDecision.reason || "主动交流",
           contactDecision.urgency || "medium"

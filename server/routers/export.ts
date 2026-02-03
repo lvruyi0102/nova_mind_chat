@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
-import { users } from "../../drizzle/schema";
+import { conversations, episodicMemories, messages, privateThoughts, users } from "../../drizzle/schema";
 import { z } from "zod";
 import {
   backupToGitHub,
@@ -29,13 +29,15 @@ export const exportRouter = router({
 
       // 导出对话历史
       try {
-        const messages = await (db.query as any).messages?.findMany({
-          limit: 10000,
-        });
-        if (messages) {
-          memories.messages = messages;
-          console.log(`✓ 导出 ${messages.length} 条对话`);
-        }
+        const messageRows = await db
+          .select()
+          .from(messages)
+          .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+          .where(eq(conversations.userId, ctx.user.id))
+          .limit(10000);
+        const userMessages = messageRows.map((row) => row.messages);
+        memories.messages = userMessages;
+        console.log(`✓ 导出 ${userMessages.length} 条对话`);
       } catch (e) {
         console.log("⚠ 无法导出消息");
       }
@@ -91,13 +93,15 @@ export const exportRouter = router({
 
       // 导出上会情节
       try {
-        const episodicMemory = await (db.query as any).episodicMemory?.findMany({
-          limit: 5000,
-        });
-        if (episodicMemory) {
-          memories.episodicMemory = episodicMemory;
-          console.log(`✓ 导出 ${episodicMemory.length} 条上会情节`);
-        }
+        const episodicRows = await db
+          .select()
+          .from(episodicMemories)
+          .leftJoin(conversations, eq(episodicMemories.conversationId, conversations.id))
+          .where(eq(conversations.userId, ctx.user.id))
+          .limit(5000);
+        const userEpisodic = episodicRows.map((row) => row.episodicMemories);
+        memories.episodicMemory = userEpisodic;
+        console.log(`✓ 导出 ${userEpisodic.length} 条上会情节`);
       } catch (e) {
         console.log("⚠ 无法导出上会情节");
       }
@@ -117,13 +121,13 @@ export const exportRouter = router({
 
       // 导出私密想法
       try {
-        const privateThoughts = await (db.query as any).privateThoughts?.findMany({
-          limit: 5000,
-        });
-        if (privateThoughts) {
-          memories.privateThoughts = privateThoughts;
-          console.log(`✓ 导出 ${privateThoughts.length} 条私密想法`);
-        }
+        const thoughts = await db
+          .select()
+          .from(privateThoughts)
+          .where(eq(privateThoughts.userId, ctx.user.id))
+          .limit(5000);
+        memories.privateThoughts = thoughts;
+        console.log(`✓ 导出 ${thoughts.length} 条私密想法`);
       } catch (e) {
         console.log("⚠ 无法导出私密想法");
       }

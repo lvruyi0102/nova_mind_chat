@@ -13,6 +13,8 @@ import {
   reflectionLog,
   growthMetrics,
   messages,
+  conversations,
+  actionTasks,
 } from "../drizzle/schema";
 import {
   extractConcepts,
@@ -256,6 +258,17 @@ export async function performPeriodicReflection(conversationId: number) {
   if (!db) return null;
 
   try {
+    const conversationRows = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+    const conversation = conversationRows[0];
+    if (!conversation) {
+      console.warn("[CognitiveService] Conversation not found for reflection.");
+      return null;
+    }
+
     // Get recent messages
     const recentMessages = await db
       .select()
@@ -296,6 +309,13 @@ export async function performPeriodicReflection(conversationId: number) {
         eventType: reflection.reflectionType,
         description: reflection.content,
         conversationId,
+      });
+
+      await createActionTaskFromReflection(db, {
+        conversationId,
+        userId: conversation.userId,
+        reflectionType: reflection.reflectionType,
+        reflectionContent: reflection.content,
       });
     } catch (err) {
       console.warn("[CognitiveService] Failed to store reflection:", err);
@@ -396,5 +416,44 @@ export async function getCognitiveState() {
   } catch (error) {
     console.error("[CognitiveService] Error getting cognitive state:", error);
     return null;
+  }
+}
+
+async function createActionTaskFromReflection(
+  db: any,
+  input: {
+    conversationId: number;
+    userId: number;
+    reflectionType: string;
+    reflectionContent: string;
+  }
+) {
+  const summary = input.reflectionContent.trim().slice(0, 500);
+  if (!summary) return;
+
+  const intentPrefix =
+    input.reflectionType === "error_correction"
+      ? "修正问题"
+      : input.reflectionType === "insight"
+      ? "巩固洞察"
+      : "推进改进";
+  const intent = `${intentPrefix}：${summary.slice(0, 120)}`;
+
+  try {
+    await db.insert(actionTasks).values({
+      userId: input.userId,
+      conversationId: input.conversationId,
+      intent,
+      sourceSummary: summary,
+      priority: 5,
+      status: "pending",
+    });
+
+    await db.insert(growthMetrics).values({
+      metricName: "action_tasks_created",
+      value: 1,
+    });
+  } catch (error) {
+    console.warn("[CognitiveService] Failed to create action task:", error);
   }
 }

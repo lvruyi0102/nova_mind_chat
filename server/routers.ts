@@ -91,6 +91,7 @@ import { retryManagementRouter } from "./routers/retryManagement";
 import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
+import { actionTasksRouter } from "./routers/actionTasks";
 
 const RESPONSE_SUGGESTIONS = [
   "如果希望更精准，请补充目标、背景与约束。",
@@ -895,6 +896,7 @@ export const appRouter = router({
   costMonitoring: costMonitoringRouter,
   localModels: localModelsRouter,
   costBudget: costBudgetRouter,
+  actionTasks: actionTasksRouter,
 });
 
 export type AppRouter = typeof appRouter;

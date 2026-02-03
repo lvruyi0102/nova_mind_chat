@@ -92,6 +92,19 @@ import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
 
+const RESPONSE_SUGGESTIONS = [
+  "如果希望更精准，请补充目标、背景与约束。",
+  "可以给出具体示例或期望输出格式，便于我对齐。",
+  "若有优先级或截止时间，请说明以便我更好安排。",
+];
+
+const appendSuggestions = (content: string) => {
+  const suggestionLines = RESPONSE_SUGGESTIONS.map((item, index) => `${index + 1}. ${item}`).join(
+    "\n"
+  );
+  return `${content}\n\n💡 建议\n${suggestionLines}`;
+};
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -171,7 +184,9 @@ export const appRouter = router({
         // Get Nova-Mind's response
         const response = await invokeLLM({ messages });
         const rawContent = response.choices[0].message.content;
-        const assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        const assistantMessageBase =
+          typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        const assistantMessage = appendSuggestions(assistantMessageBase);
 
         // Save assistant message
         await createMessage(input.conversationId, "assistant", assistantMessage);
@@ -182,11 +197,11 @@ export const appRouter = router({
           input.content,
           "user",
           ctx.user.id,
-          assistantMessage
+          assistantMessageBase
         );
         
         // Also process Nova's response for cognitive development
-        await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
+        await processMessageCognitively(input.conversationId, assistantMessageBase, "assistant");
 
         // Run cognition loop (reflection + curiosity) on cadence
         await runCognitiveLoop(input.conversationId, history.length + 2);

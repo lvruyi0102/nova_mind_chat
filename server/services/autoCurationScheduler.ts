@@ -303,16 +303,11 @@ Please curate this thought.`;
         userId: userId as number,
         title: curatedData.title || "Untitled",
         content: curatedData.refinedContent || truncatedContent,
-        summary: truncatedContent,
-        sourceThoughtId: thoughtId,
-        keywords: curatedData.tags ? (Array.isArray(curatedData.tags) ? curatedData.tags.join(",") : curatedData.tags) : "",
-        topics: curatedData.category || "thought",
-        qualityScore: "0.75" as any,
-        relevanceScore: "0.80" as any,
-        noveltyScore: "0.70" as any,
-        commercializationLevel: "internal",
-        isPublished: false,
-      });
+        originalContent: truncatedContent,
+        sourcePrivateThoughtId: thoughtId,
+        tags: curatedData.tags ? (Array.isArray(curatedData.tags) ? curatedData.tags.join(",") : curatedData.tags) : "",
+        category: curatedData.category || "thought",
+      } as any);
 
       const curatedThoughtId = (result as any)?.[0]?.insertId || (result as any)?.insertId;
       if (curatedThoughtId) {

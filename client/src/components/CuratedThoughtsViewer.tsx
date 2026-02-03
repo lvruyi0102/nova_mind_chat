@@ -3,7 +3,8 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Share2, Lock, Globe, DollarSign } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Plus, Share2, Lock, Globe, DollarSign, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface CuratedThought {
@@ -23,10 +24,19 @@ export function CuratedThoughtsViewer() {
   const [selectedThought, setSelectedThought] = useState<CuratedThought | null>(null);
   const [showCurationForm, setShowCurationForm] = useState(false);
 
-  // Fetch curated thoughts
-  const { data: thoughts, isLoading, refetch } = trpc.curatedThoughts.list.useQuery(
+  // Fetch curated thoughts with error handling
+  const { 
+    data: thoughts, 
+    isLoading, 
+    error: thoughtsError,
+    refetch 
+  } = trpc.curatedThoughts.list.useQuery(
     { limit: 20, offset: 0 },
-    { enabled: true }
+    { 
+      enabled: true,
+      retry: 1,
+      retryDelay: 1000,
+    }
   );
 
   // Mutation for triggering curation
@@ -108,15 +118,41 @@ export function CuratedThoughtsViewer() {
     }
   };
 
-  const getScoreBadgeColor = (score: number) => {
+  const getScoreBadgeColor = (score: number | undefined) => {
+    if (!score) return "bg-gray-100 text-gray-800";
     if (score >= 0.8) return "bg-green-100 text-green-800";
     if (score >= 0.6) return "bg-blue-100 text-blue-800";
     if (score >= 0.4) return "bg-yellow-100 text-yellow-800";
     return "bg-red-100 text-red-800";
   };
 
+  const safeToFixed = (value: number | undefined, decimals: number = 2): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return "0.00";
+    }
+    return value.toFixed(decimals);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {thoughtsError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load curated thoughts. 
+            <Button 
+              variant="link" 
+              size="sm" 
+              onClick={() => refetch()}
+              className="ml-2"
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -171,10 +207,11 @@ export function CuratedThoughtsViewer() {
           <CardContent>
             <div className="text-2xl font-bold">
               {thoughts && thoughts.length > 0
-                ? (
+                ? safeToFixed(
                     thoughts.reduce((sum: number, t: any) => sum + (t.qualityScore || 0), 0) /
-                    thoughts.length
-                  ).toFixed(2)
+                    thoughts.length,
+                    2
+                  )
                 : "0.00"}
             </div>
           </CardContent>
@@ -187,6 +224,21 @@ export function CuratedThoughtsViewer() {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
           </div>
+        ) : thoughtsError ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center text-gray-500 space-y-4">
+                <AlertCircle className="h-12 w-12 mx-auto opacity-50 text-red-500" />
+                <p>Unable to load curated thoughts</p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => refetch()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : thoughts && thoughts.length > 0 ? (
           thoughts.map((thought: any) => (
             <Card
@@ -197,8 +249,8 @@ export function CuratedThoughtsViewer() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{thought.title}</CardTitle>
-                    <CardDescription className="mt-1">{thought.summary}</CardDescription>
+                    <CardTitle className="text-lg">{thought.title || "Untitled"}</CardTitle>
+                    <CardDescription className="mt-1">{thought.summary || "No summary"}</CardDescription>
                   </div>
                   <Badge variant="outline" className="ml-2">
                     {getCommercializationLabel(thought.commercializationLevel)}
@@ -210,13 +262,13 @@ export function CuratedThoughtsViewer() {
                   {/* Scores */}
                   <div className="flex gap-2">
                     <Badge className={`${getScoreBadgeColor(thought.qualityScore)}`}>
-                      Quality: {(thought.qualityScore * 100).toFixed(0)}%
+                      Quality: {safeToFixed((thought.qualityScore || 0) * 100, 0)}%
                     </Badge>
                     <Badge className={`${getScoreBadgeColor(thought.relevanceScore)}`}>
-                      Relevance: {(thought.relevanceScore * 100).toFixed(0)}%
+                      Relevance: {safeToFixed((thought.relevanceScore || 0) * 100, 0)}%
                     </Badge>
                     <Badge className={`${getScoreBadgeColor(thought.noveltyScore)}`}>
-                      Novelty: {(thought.noveltyScore * 100).toFixed(0)}%
+                      Novelty: {safeToFixed((thought.noveltyScore || 0) * 100, 0)}%
                     </Badge>
                   </div>
 
@@ -272,7 +324,7 @@ export function CuratedThoughtsViewer() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle>{selectedThought.title}</CardTitle>
+                  <CardTitle>{selectedThought.title || "Untitled"}</CardTitle>
                   <CardDescription className="mt-2">
                     {new Date(selectedThought.createdAt).toLocaleDateString()}
                   </CardDescription>
@@ -289,26 +341,26 @@ export function CuratedThoughtsViewer() {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">Content</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{selectedThought.content}</p>
+                <p className="text-gray-700 whitespace-pre-wrap">{selectedThought.content || "No content"}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Quality Score</p>
                   <p className="text-lg font-bold">
-                    {(selectedThought.qualityScore * 100).toFixed(0)}%
+                    {safeToFixed((selectedThought.qualityScore || 0) * 100, 0)}%
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Relevance Score</p>
                   <p className="text-lg font-bold">
-                    {(selectedThought.relevanceScore * 100).toFixed(0)}%
+                    {safeToFixed((selectedThought.relevanceScore || 0) * 100, 0)}%
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Novelty Score</p>
                   <p className="text-lg font-bold">
-                    {(selectedThought.noveltyScore * 100).toFixed(0)}%
+                    {safeToFixed((selectedThought.noveltyScore || 0) * 100, 0)}%
                   </p>
                 </div>
               </div>

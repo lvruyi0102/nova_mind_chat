@@ -106,6 +106,13 @@
       "when": 1768790417896,
       "tag": "0024_fat_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1770081383263,
+      "tag": "0025_living_red_hulk",
+      "breakpoints": true
     }
   ]
 }

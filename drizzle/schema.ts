@@ -1554,31 +1554,29 @@ export const curatedThoughts = mysqlTable("curatedThoughts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
   
-  // Content fields (in Simplified Chinese)
-  title: varchar("title", { length: 255 }).notNull(), // Curated title
-  content: text("content").notNull(), // Curated, abstracted content
-  summary: text("summary"), // Brief summary for preview
+  // Content fields
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  originalContent: text("originalContent"),
   
   // Source and metadata
-  sourceThoughtId: int("sourceThoughtId"), // Reference to original privateThought (if applicable)
-  keywords: varchar("keywords", { length: 500 }), // Comma-separated keywords
-  topics: varchar("topics", { length: 500 }), // Comma-separated topics
-  
-  // Quality metrics
-  qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
-  relevanceScore: decimal("relevanceScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
-  noveltyScore: decimal("noveltyScore", { precision: 3, scale: 2 }).default("0.00"), // 0.00-1.00
+  sourcePrivateThoughtId: int("sourcePrivateThoughtId"),
+  category: varchar("category", { length: 100 }).default("thought").notNull(),
+  tags: text("tags"),
+  sentiment: varchar("sentiment", { length: 50 }).default("neutral").notNull(),
   
   // Commercialization and sharing
-  commercializationLevel: mysqlEnum("commercializationLevel", ["internal", "public", "paid"]).default("internal").notNull(),
-  isPublished: boolean("isPublished").default(false).notNull(),
+  commercializationStatus: mysqlEnum("commercializationStatus", ["private", "public", "paid"]).default("private").notNull(),
+  isApprovedByOwner: boolean("isApprovedByOwner").default(false).notNull(),
+  ownerNotes: text("ownerNotes"),
+  ownerApprovedAt: timestamp("ownerApprovedAt"),
   viewCount: int("viewCount").notNull().default(0),
   shareCount: int("shareCount").notNull().default(0),
   
   // Timestamps
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  curatedAt: timestamp("curatedAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  publishedAt: timestamp("publishedAt"),
 });
 
 export type CuratedThought = typeof curatedThoughts.$inferSelect;

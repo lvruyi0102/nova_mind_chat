@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, BookOpen, TrendingUp, Lightbulb, Tag } from "lucide-react";
+import { Loader2, Search, BookOpen, TrendingUp, Lightbulb, Tag, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 interface LearningLog {
@@ -34,18 +35,43 @@ export default function LearningLogsViewer() {
   const [filterType, setFilterType] = useState<"all" | "local" | "monthly_llm">("all");
 
   // 获取学习日志列表
-  const { data: logsData, isLoading: logsLoading, refetch } = trpc.learningLogs.getLogs.useQuery({
-    limit: 50,
-    offset: 0,
-  });
+  const { 
+    data: logsData, 
+    isLoading: logsLoading, 
+    error: logsError,
+    refetch 
+  } = trpc.learningLogs.getLogs.useQuery(
+    {
+      limit: 50,
+      offset: 0,
+    },
+    {
+      retry: 1,
+      retryDelay: 1000,
+    }
+  );
 
   // 获取学习统计
-  const { data: statsData } = trpc.learningLogs.getStats.useQuery();
+  const { 
+    data: statsData,
+    error: statsError
+  } = trpc.learningLogs.getStats.useQuery(undefined, {
+    retry: 1,
+    retryDelay: 1000,
+  });
 
   // 搜索学习日志
-  const { data: searchData, isLoading: searchLoading } = trpc.learningLogs.search.useQuery(
+  const { 
+    data: searchData, 
+    isLoading: searchLoading,
+    error: searchError
+  } = trpc.learningLogs.search.useQuery(
     { query: searchQuery, limit: 50 },
-    { enabled: searchQuery.length > 0 }
+    { 
+      enabled: searchQuery.length > 0,
+      retry: 1,
+      retryDelay: 1000,
+    }
   );
 
   // 过滤日志
@@ -61,6 +87,7 @@ export default function LearningLogsViewer() {
 
   const isLoading = logsLoading || searchLoading;
   const stats = statsData?.data;
+  const hasError = logsError || statsError || searchError;
 
   const getDepthColor = (depth: string) => {
     switch (depth) {
@@ -81,13 +108,23 @@ export default function LearningLogsViewer() {
 
   return (
     <div className="space-y-6">
+      {/* 错误提示 */}
+      {hasError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            加载学习日志失败。请稍后重试或检查网络连接。
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* 统计卡片 */}
-      {stats && (
+      {stats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{stats.totalLogs}</div>
+                <div className="text-3xl font-bold text-blue-600">{stats.totalLogs || 0}</div>
                 <p className="text-sm text-gray-600 mt-1">总学习日志</p>
               </div>
             </CardContent>
@@ -95,7 +132,7 @@ export default function LearningLogsViewer() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{stats.localLearningCount}</div>
+                <div className="text-3xl font-bold text-green-600">{stats.localLearningCount || 0}</div>
                 <p className="text-sm text-gray-600 mt-1">本地学习</p>
               </div>
             </CardContent>
@@ -103,7 +140,7 @@ export default function LearningLogsViewer() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600">{stats.monthlyLLMLearningCount}</div>
+                <div className="text-3xl font-bold text-purple-600">{stats.monthlyLLMLearningCount || 0}</div>
                 <p className="text-sm text-gray-600 mt-1">月度 LLM</p>
               </div>
             </CardContent>
@@ -111,11 +148,24 @@ export default function LearningLogsViewer() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-600">{stats.totalConceptsExtracted}</div>
+                <div className="text-3xl font-bold text-amber-600">{stats.totalConceptsExtracted || 0}</div>
                 <p className="text-sm text-gray-600 mt-1">概念提取</p>
               </div>
             </CardContent>
           </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <p className="text-sm text-gray-600">加载中...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -169,6 +219,19 @@ export default function LearningLogsViewer() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
             </div>
+          ) : hasError ? (
+            <div className="text-center py-8 text-gray-500">
+              <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50 text-red-500" />
+              <p>无法加载学习日志</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetch()}
+                className="mt-4"
+              >
+                重试
+              </Button>
+            </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <BookOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -185,15 +248,15 @@ export default function LearningLogsViewer() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-medium text-sm">{log.title}</h4>
-                        <Badge className={getDepthColor(log.depth)}>
+                        <h4 className="font-medium text-sm">{log.title || "无标题"}</h4>
+                        <Badge className={getDepthColor(log.depth || "medium")}>
                           {log.depth === "shallow" ? "浅层" : log.depth === "medium" ? "中等" : "深层"}
                         </Badge>
-                        <Badge variant="outline">{getTypeLabel(log.learningType)}</Badge>
+                        <Badge variant="outline">{getTypeLabel(log.learningType || "local")}</Badge>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{log.summary}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2">{log.summary || "无摘要"}</p>
                       <div className="flex gap-2 mt-2 flex-wrap">
-                        {log.topicsIdentified.slice(0, 3).map((topic, idx) => (
+                        {(log.topicsIdentified || []).slice(0, 3).map((topic, idx) => (
                           <span key={idx} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">
                             {topic}
                           </span>
@@ -219,7 +282,7 @@ export default function LearningLogsViewer() {
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle>{selectedLog.title}</CardTitle>
+                <CardTitle>{selectedLog.title || "无标题"}</CardTitle>
                 <CardDescription>
                   {new Date(selectedLog.sessionDate).toLocaleString("zh-CN")}
                 </CardDescription>
@@ -238,7 +301,7 @@ export default function LearningLogsViewer() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-600">学习类型</p>
-                <p className="text-sm">{getTypeLabel(selectedLog.learningType)}</p>
+                <p className="text-sm">{getTypeLabel(selectedLog.learningType || "local")}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">学习深度</p>
@@ -246,31 +309,35 @@ export default function LearningLogsViewer() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">分析消息数</p>
-                <p className="text-sm">{selectedLog.messageCount}</p>
+                <p className="text-sm">{selectedLog.messageCount || 0}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">提取概念数</p>
-                <p className="text-sm">{selectedLog.conceptsExtracted}</p>
+                <p className="text-sm">{selectedLog.conceptsExtracted || 0}</p>
               </div>
             </div>
 
             {/* 摘要 */}
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-2">学习摘要</p>
-              <p className="text-sm text-gray-700">{selectedLog.summary}</p>
-            </div>
+            {selectedLog.summary && (
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-2">学习摘要</p>
+                <p className="text-sm text-gray-700">{selectedLog.summary}</p>
+              </div>
+            )}
 
             {/* 主要洞察 */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="h-4 w-4 text-amber-500" />
-                <p className="text-sm font-medium text-gray-600">主要洞察</p>
+            {selectedLog.mainInsight && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  <p className="text-sm font-medium text-gray-600">主要洞察</p>
+                </div>
+                <p className="text-sm text-gray-700">{selectedLog.mainInsight}</p>
               </div>
-              <p className="text-sm text-gray-700">{selectedLog.mainInsight}</p>
-            </div>
+            )}
 
             {/* 关键词 */}
-            {selectedLog.keywordsList.length > 0 && (
+            {selectedLog.keywordsList && selectedLog.keywordsList.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-2">关键词</p>
                 <div className="flex flex-wrap gap-2">
@@ -284,7 +351,7 @@ export default function LearningLogsViewer() {
             )}
 
             {/* 概念 */}
-            {selectedLog.conceptsList.length > 0 && (
+            {selectedLog.conceptsList && selectedLog.conceptsList.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Tag className="h-4 w-4 text-blue-500" />
@@ -301,7 +368,7 @@ export default function LearningLogsViewer() {
             )}
 
             {/* 主题 */}
-            {selectedLog.topicsIdentified.length > 0 && (
+            {selectedLog.topicsIdentified && selectedLog.topicsIdentified.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-2">识别主题</p>
                 <div className="flex flex-wrap gap-2">

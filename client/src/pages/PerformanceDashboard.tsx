@@ -59,6 +59,8 @@ export default function PerformanceDashboard() {
       if (memoryResponse.ok) {
         const memoryData = await memoryResponse.json();
         setMemoryMetrics(memoryData);
+      } else {
+        console.warn('[PerformanceDashboard] Memory API not available');
       }
 
       // 获取自适应间隔信息
@@ -66,6 +68,8 @@ export default function PerformanceDashboard() {
       if (intervalResponse.ok) {
         const intervalData = await intervalResponse.json();
         setAdaptiveInterval(intervalData);
+      } else {
+        console.warn('[PerformanceDashboard] Adaptive interval API not available');
       }
 
       // 获取缓存统计
@@ -75,9 +79,12 @@ export default function PerformanceDashboard() {
         if (cognitionData.cache) {
           setCacheStats(cognitionData.cache);
         }
+      } else {
+        console.warn('[PerformanceDashboard] Cache stats API not available');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取监控数据失败');
+      console.error('[PerformanceDashboard] Error fetching data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -89,21 +96,23 @@ export default function PerformanceDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const getMemoryStatusColor = (percent: number) => {
+  const getMemoryStatusColor = (percent: number | undefined) => {
+    if (!percent) return 'bg-gray-500';
     if (percent < 50) return 'bg-green-500';
     if (percent < 70) return 'bg-yellow-500';
     if (percent < 85) return 'bg-orange-500';
     return 'bg-red-500';
   };
 
-  const getMemoryStatusText = (percent: number) => {
+  const getMemoryStatusText = (percent: number | undefined) => {
+    if (!percent) return '未知';
     if (percent < 50) return '正常';
     if (percent < 70) return '良好';
     if (percent < 85) return '警告';
     return '严重';
   };
 
-  const getLevelColor = (level: string) => {
+  const getLevelColor = (level: string | undefined) => {
     switch (level) {
       case 'low':
         return 'bg-green-100 text-green-800';
@@ -118,14 +127,21 @@ export default function PerformanceDashboard() {
     }
   };
 
-  const getLevelLabel = (level: string) => {
+  const getLevelLabel = (level: string | undefined) => {
     const labels: Record<string, string> = {
       low: '低压力',
       medium: '中等压力',
       high: '高压力',
       critical: '严重压力',
     };
-    return labels[level] || level;
+    return labels[level || ''] || level || '未知';
+  };
+
+  const safeToFixed = (value: number | undefined, decimals: number = 1): string => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return '0.00';
+    }
+    return value.toFixed(decimals);
   };
 
   return (
@@ -142,7 +158,7 @@ export default function PerformanceDashboard() {
         </Alert>
       )}
 
-      {isLoading && !memoryMetrics ? (
+      {isLoading && !memoryMetrics && !adaptiveInterval && !cacheStats ? (
         <div className="text-center py-12">
           <Activity className="h-8 w-8 animate-spin mx-auto mb-2" />
           <p>加载监控数据中...</p>
@@ -150,7 +166,7 @@ export default function PerformanceDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* 内存使用率卡片 */}
-          {memoryMetrics && (
+          {memoryMetrics ? (
             <Card>
               <CardHeader>
                 <CardTitle>内存使用率</CardTitle>
@@ -159,7 +175,7 @@ export default function PerformanceDashboard() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {memoryMetrics.usagePercent.toFixed(1)}%
+                    {safeToFixed(memoryMetrics.usagePercent, 1)}%
                   </span>
                   <Badge className={getLevelColor(
                     memoryMetrics.usagePercent < 50 ? 'low' :
@@ -176,7 +192,7 @@ export default function PerformanceDashboard() {
                     className={`h-2 rounded-full transition-all ${getMemoryStatusColor(
                       memoryMetrics.usagePercent
                     )}`}
-                    style={{ width: `${memoryMetrics.usagePercent}%` }}
+                    style={{ width: `${Math.min(memoryMetrics.usagePercent || 0, 100)}%` }}
                   />
                 </div>
 
@@ -185,13 +201,13 @@ export default function PerformanceDashboard() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">已用</span>
                     <span className="font-mono">
-                      {(memoryMetrics.heapUsed / 1024 / 1024).toFixed(2)} MB
+                      {safeToFixed((memoryMetrics.heapUsed || 0) / 1024 / 1024, 2)} MB
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">总量</span>
                     <span className="font-mono">
-                      {(memoryMetrics.heapTotal / 1024 / 1024).toFixed(2)} MB
+                      {safeToFixed((memoryMetrics.heapTotal || 0) / 1024 / 1024, 2)} MB
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -206,20 +222,30 @@ export default function PerformanceDashboard() {
                       {memoryMetrics.trend === 'stable' && (
                         <Activity className="h-4 w-4 text-blue-500" />
                       )}
-                      {memoryMetrics.trend}
+                      {memoryMetrics.trend || '未知'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">GC 次数</span>
-                    <span className="font-mono">{memoryMetrics.gcCount}</span>
+                    <span className="font-mono">{memoryMetrics.gcCount || 0}</span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>内存使用率</CardTitle>
+                <CardDescription>堆内存使用情况</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-500 text-sm">内存监控数据不可用</p>
               </CardContent>
             </Card>
           )}
 
           {/* 自适应间隔卡片 */}
-          {adaptiveInterval && (
+          {adaptiveInterval ? (
             <Card>
               <CardHeader>
                 <CardTitle>自适应循环间隔</CardTitle>
@@ -228,7 +254,7 @@ export default function PerformanceDashboard() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {adaptiveInterval.currentInterval} 分钟
+                    {adaptiveInterval.currentInterval || 0} 分钟
                   </span>
                   <Badge className={getLevelColor(adaptiveInterval.currentLevel)}>
                     {getLevelLabel(adaptiveInterval.currentLevel)}
@@ -240,25 +266,25 @@ export default function PerformanceDashboard() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">平均间隔</span>
                     <span className="font-mono">
-                      {adaptiveInterval.stats.averageInterval.toFixed(1)} 分钟
+                      {safeToFixed(adaptiveInterval.stats?.averageInterval, 1)} 分钟
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">最小间隔</span>
                     <span className="font-mono">
-                      {adaptiveInterval.stats.minInterval} 分钟
+                      {adaptiveInterval.stats?.minInterval || 0} 分钟
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">最大间隔</span>
                     <span className="font-mono">
-                      {adaptiveInterval.stats.maxInterval} 分钟
+                      {adaptiveInterval.stats?.maxInterval || 0} 分钟
                     </span>
                   </div>
                 </div>
 
                 {/* 最近调整 */}
-                {adaptiveInterval.adjustmentHistory.length > 0 && (
+                {adaptiveInterval.adjustmentHistory && adaptiveInterval.adjustmentHistory.length > 0 && (
                   <div className="border-t pt-3">
                     <p className="text-xs font-semibold text-gray-600 mb-2">最近调整</p>
                     <div className="space-y-1">
@@ -272,10 +298,20 @@ export default function PerformanceDashboard() {
                 )}
               </CardContent>
             </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>自适应循环间隔</CardTitle>
+                <CardDescription>根据内存压力动态调整</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-500 text-sm">自适应间隔数据不可用</p>
+              </CardContent>
+            </Card>
           )}
 
           {/* 缓存统计卡片 */}
-          {cacheStats && (
+          {cacheStats ? (
             <Card>
               <CardHeader>
                 <CardTitle>缓存性能</CardTitle>
@@ -284,7 +320,7 @@ export default function PerformanceDashboard() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold">
-                    {(cacheStats.hitRate * 100).toFixed(1)}%
+                    {safeToFixed((cacheStats.hitRate || 0) * 100, 1)}%
                   </span>
                   <Badge variant="outline">命中率</Badge>
                 </div>
@@ -294,7 +330,7 @@ export default function PerformanceDashboard() {
                   <div
                     className="h-2 rounded-full bg-blue-500 transition-all"
                     style={{
-                      width: `${(cacheStats.cacheSize / cacheStats.maxSize) * 100}%`,
+                      width: `${Math.min(((cacheStats.cacheSize || 0) / (cacheStats.maxSize || 1)) * 100, 100)}%`,
                     }}
                   />
                 </div>
@@ -304,29 +340,39 @@ export default function PerformanceDashboard() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">命中</span>
                     <span className="font-mono">
-                      {(cacheStats.hitRate * 100).toFixed(1)}%
+                      {safeToFixed((cacheStats.hitRate || 0) * 100, 1)}%
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">未命中</span>
                     <span className="font-mono">
-                      {(cacheStats.missRate * 100).toFixed(1)}%
+                      {safeToFixed((cacheStats.missRate || 0) * 100, 1)}%
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">总请求</span>
                     <span className="font-mono">
-                      {cacheStats.totalRequests.toLocaleString()}
+                      {(cacheStats.totalRequests || 0).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">缓存大小</span>
                     <span className="font-mono">
-                      {(cacheStats.cacheSize / 1024 / 1024).toFixed(2)} MB /
-                      {(cacheStats.maxSize / 1024 / 1024).toFixed(2)} MB
+                      {safeToFixed((cacheStats.cacheSize || 0) / 1024 / 1024, 2)} MB /
+                      {safeToFixed((cacheStats.maxSize || 0) / 1024 / 1024, 2)} MB
                     </span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>缓存性能</CardTitle>
+                <CardDescription>缓存命中率和大小</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-500 text-sm">缓存统计数据不可用</p>
               </CardContent>
             </Card>
           )}

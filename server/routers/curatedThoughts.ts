@@ -51,7 +51,7 @@ export const curatedThoughtsRouter = router({
     .input(
       z.object({
         thoughtId: z.number(),
-        level: z.enum(["internal", "public", "paid"]),
+        level: z.enum(["private", "public", "paid"]),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -250,11 +250,8 @@ export async function curateThoughtsBatch(
           userId,
           title,
           content,
-          summary,
-          sourceThoughtId: thought.id,
-          qualityScore: parseFloat(qualityScore.toFixed(2)),
-          relevanceScore: parseFloat(relevanceScore.toFixed(2)),
-          noveltyScore: parseFloat(noveltyScore.toFixed(2)),
+          originalContent: summary,
+          sourcePrivateThoughtId: thought.id,
         } as any);
 
       const insertedId = (inserted as any).insertId || 0;
@@ -311,7 +308,7 @@ export async function getCuratedThoughts(
 export async function updateCommercializationLevel(
   thoughtId: number,
   userId: number,
-  level: "internal" | "public" | "paid"
+  level: "private" | "public" | "paid"
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -319,7 +316,7 @@ export async function updateCommercializationLevel(
   return await db
     .update(curatedThoughts)
     .set({
-      commercializationLevel: level,
+      commercializationStatus: level,
     } as any)
     .where(
       and(
@@ -342,8 +339,8 @@ export async function publishCuratedThought(
   return await db
     .update(curatedThoughts)
     .set({
-      isPublished: true,
-      publishedAt: new Date(),
+      isApprovedByOwner: true,
+      ownerApprovedAt: new Date(),
     } as any)
     .where(
       and(

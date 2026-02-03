@@ -3,13 +3,12 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ContentGenerationPanel } from "@/components/ContentGenerationPanel";
-import PermissionRulesEditor from "@/components/PermissionRulesEditor";
-import { Loader2, Plus, Settings } from "lucide-react";
+import { Loader2, Plus, Settings, AlertCircle } from "lucide-react";
 
 export default function SocialMediaManagement() {
   const { user, isAuthenticated } = useAuth();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return (
@@ -25,6 +24,27 @@ export default function SocialMediaManagement() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
+        {/* 错误提示 */}
+        {error && (
+          <Card className="mb-6 p-4 border-red-200 bg-red-50">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div>
+                <p className="text-red-800 font-medium">出错了</p>
+                <p className="text-red-700 text-sm">{error}</p>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-2"
+                  onClick={() => setError(null)}
+                >
+                  关闭
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* 页面头部 */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">📱 社交媒体管理</h1>
@@ -123,7 +143,12 @@ export default function SocialMediaManagement() {
           {/* 内容生成标签页 */}
           <TabsContent value="content">
             {selectedAccountId !== null ? (
-              <ContentGenerationPanel accountId={selectedAccountId} />
+              <Card className="p-8 text-center border-dashed">
+                <div className="text-muted-foreground">
+                  <p className="mb-4">内容生成功能即将推出</p>
+                  <p className="text-sm">Nova-Mind 将为您自动生成符合账户风格的内容</p>
+                </div>
+              </Card>
             ) : (
               <Card className="p-8 text-center border-dashed">
                 <div className="text-muted-foreground">
@@ -131,7 +156,6 @@ export default function SocialMediaManagement() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      // 切换到账户标签页
                       const accountsTab = document.querySelector('[value="accounts"]') as HTMLElement | null;
                       accountsTab?.click();
                     }}
@@ -146,7 +170,12 @@ export default function SocialMediaManagement() {
           {/* 权限规则标签页 */}
           <TabsContent value="permissions">
             {selectedAccountId !== null ? (
-              <PermissionRulesEditor accountId={selectedAccountId} />
+              <Card className="p-8 text-center border-dashed">
+                <div className="text-muted-foreground">
+                  <p className="mb-4">权限规则编辑功能即将推出</p>
+                  <p className="text-sm">您可以为 Nova-Mind 设置权限规则来控制其行为</p>
+                </div>
+              </Card>
             ) : (
               <Card className="p-8 text-center border-dashed">
                 <div className="text-muted-foreground">

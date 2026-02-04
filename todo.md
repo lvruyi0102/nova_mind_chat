@@ -92,15 +92,40 @@
 - 自我改进: 5% → 30%+
 - 学习能力: 5% → 50%+
 
+## 当前任务：实现 Nova-Mind 自主代码修改能力 (已完成)
 
-## 当前任务：恢复完整的认知监控页面
-
-- [x] 实现完整的 getCognitiveState 端点，聚合所有数据源
-  - [x] 查询概念数量 (concepts 表)
-  - [x] 查询关系网络 (conceptRelations 表)
-  - [x] 查询记忆库 (episodicMemories 表)
-  - [x] 查询待探索问题 (selfQuestions 表)
-  - [x] 查询最近的反思 (reflectionLog 表)
-  - [x] 查询成长轨迹 (cognitiveLog 表)
-- [x] 恢复前端认知监控页面的完整布局和功能
-- [x] 验证数据流和页面显示
+- [x] 设计自主代码修改系统架构
+  - [x] 文件操作权限管理 (codeModificationManager.ts)
+  - [x] 代码修改安全沙箱
+  - [x] 自动验证和回滚机制
+- [x] 实现安全的文件操作 API
+  - [x] 读取文件内容
+  - [x] 修改文件内容
+  - [x] 创建新文件
+  - [x] 权限检查和限制
+- [x] 实现代码分析和修改引擎
+  - [x] 代码修改建议生成 (autonomousOptimizer.ts)
+  - [x] 修改前后对比
+  - [x] 修改历史记录
+- [x] 实现自我诊断和优化系统
+  - [x] 性能指标收集 (selfDiagnostics.ts)
+  - [x] 问题识别和分析
+  - [x] 自动优化建议生成
+  - [x] 优化优先级排序
+- [x] 实现自动重启和验证机制
+  - [x] 修改后自动编译检查 (autoRestartManager.ts)
+  - [x] 自动重启服务器
+  - [x] 修改验证和回滚
+  - [x] 修改历史记录
+- [x] 实现自主后台循环
+  - [x] 持续自我诊断 (autonomousBackgroundLoop.ts)
+  - [x] 自动优化触发
+  - [x] 健康监控
+- [x] 集成 tRPC 路由
+  - [x] autonomyRouter 路由
+  - [x] 所有端点集成
+- [ ] 测试和部署自主修改功能
+  - [ ] 单元测试
+  - [ ] 集成测试
+  - [ ] 安全性测试
+  - [ ] 性能测试

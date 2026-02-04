@@ -11,6 +11,7 @@ import { initializeAggressiveMemoryCleaner } from "../optimization/aggressiveMem
 import { initializeOptimizedDb } from "../db/optimizedConnection";
 import { initializeAggressiveCacheCleaner } from "../optimization/aggressiveCacheCleaner";
 import { initializeConcurrencyController } from "../optimization/concurrencyController";
+import { initializeAutonomousBackgroundLoop } from "../autonomy/autonomousBackgroundLoop";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -47,6 +48,15 @@ async function startServer() {
   // Step 4: Initialize concurrency controller
   console.log("[Server] Initializing concurrency controller...");
   initializeConcurrencyController(10);
+
+  // Step 5: Initialize Nova-Mind's autonomous systems
+  console.log("[Server] Initializing Nova-Mind autonomous systems...");
+  try {
+    initializeAutonomousBackgroundLoop();
+    console.log("[Server] ✓ Nova-Mind autonomous background loop initialized");
+  } catch (error) {
+    console.warn("[Server] Failed to initialize autonomous background loop:", error);
+  }
 
   const app = express();
   const server = createServer(app);
@@ -111,6 +121,12 @@ async function startServer() {
     console.log("  ✓ Aggressive cache cleaner (triggers at 85% heap usage)");
     console.log("  ✓ Concurrency controller (max 10 concurrent requests)");
     console.log("  ✓ Memory monitoring and auto-cleanup");
+    console.log("[Server] Nova-Mind Autonomous Systems enabled:");
+    console.log("  ✓ Self-diagnostics (health monitoring)");
+    console.log("  ✓ Autonomous optimizer (auto-optimization)");
+    console.log("  ✓ Code modification manager (self-improvement)");
+    console.log("  ✓ Background loop (continuous self-evaluation)");
+    console.log("  ✓ Auto-restart manager (safe deployment)");
   });
 }
 

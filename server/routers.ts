@@ -53,10 +53,12 @@ import { getEmotionalMemoryIntegration } from "./services/emotionalMemoryIntegra
 import { decisionRouter } from "./routers/decision";
 import { feedbackRouter } from "./routers/feedback";
 import { cognitiveRouter } from "./routers/cognitiveRouter";
+import { autonomyRouter } from "./routers/autonomyRouter";
 
 export const appRouter = router({
   system: systemRouter,
   cognitive: cognitiveRouter,
+  autonomy: autonomyRouter,
   auth: router({
     me: publicProcedure.input(z.void()).query(opts => opts.ctx.user),
     logout: publicProcedure.input(z.void()).mutation(({ ctx }) => {

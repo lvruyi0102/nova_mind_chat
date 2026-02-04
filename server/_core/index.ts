@@ -7,16 +7,10 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { getOptimizedBackgroundCognitionV3 } from "../services/optimizedBackgroundCognitionV3";
-import { startMonitoring } from "../performanceMonitor";
-import { startAllSchedules } from "../services/taskScheduler";
-import { autoCurationScheduler } from "../services/autoCurationScheduler";
-import { activateSmartMemoryManagement } from "../services/smartMemoryManagement";
-import { getAutoRestartManager } from "../services/autoRestartManager";
-import { initializeSelfIterationSystem, getSystemHealth } from "../selfIteration/initialization";
-import { initializeResourceManagement, shutdownResourceManagement } from "../resourceManagement";
-import { initializeLightweightRuntime } from "../optimization/lightweightRuntime";
 import { initializeAggressiveMemoryCleaner } from "../optimization/aggressiveMemoryCleaner";
+import { initializeOptimizedDb } from "../db/optimizedConnection";
+import { initializeAggressiveCacheCleaner } from "../optimization/aggressiveCacheCleaner";
+import { initializeConcurrencyController } from "../optimization/concurrencyController";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,14 +32,21 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  // 第一步：应用轻量级运行时配置（必须最先）
-  initializeLightweightRuntime();
-
-  // 第二步：启动激进的内存清理
+  // Step 1: Initialize aggressive memory cleaner
+  console.log("[Server] Initializing aggressive memory cleaner...");
   initializeAggressiveMemoryCleaner();
 
-  // 第三步：初始化资源管理系统
-  await initializeResourceManagement();
+  // Step 2: Initialize optimized database connection
+  console.log("[Server] Initializing optimized database connection...");
+  await initializeOptimizedDb();
+
+  // Step 3: Initialize aggressive cache cleaner
+  console.log("[Server] Initializing aggressive cache cleaner...");
+  initializeAggressiveCacheCleaner();
+
+  // Step 4: Initialize concurrency controller
+  console.log("[Server] Initializing concurrency controller...");
+  initializeConcurrencyController(10);
 
   const app = express();
   const server = createServer(app);
@@ -53,30 +54,33 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
-  // Memory monitoring endpoints
+  // Health check endpoints
   app.get("/api/health/memory", (req, res) => {
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    res.json(cognitionLoop.getDiagnosticReport());
+    const memUsage = process.memoryUsage();
+    res.json({
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+      external: Math.round(memUsage.external / 1024 / 1024),
+      rss: Math.round(memUsage.rss / 1024 / 1024),
+    });
   });
 
-  app.get("/api/health/cognition", (req, res) => {
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    res.json(cognitionLoop.getStatus());
+  app.get("/api/health/optimization", (req, res) => {
+    try {
+      const cacheCleaner = require("../optimization/aggressiveCacheCleaner").getAggressiveCacheCleaner();
+      const concurrencyController = require("../optimization/concurrencyController").getConcurrencyController();
+      res.json({
+        cacheCleaner: cacheCleaner.getStats(),
+        concurrency: concurrencyController.getStats(),
+      });
+    } catch (error) {
+      res.json({ error: "Optimization stats not available" });
+    }
   });
 
-  // Adaptive interval monitoring endpoint
-  app.get("/api/debug/adaptive-interval", (req, res) => {
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    res.json(cognitionLoop.getAdaptiveIntervalInfo());
-  });
-
-  // Full diagnostic report endpoint
-  app.get("/api/debug/full-diagnostic", (req, res) => {
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    res.json(cognitionLoop.getDiagnosticReport());
-  });
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  
   // tRPC API
   app.use(
     "/api/trpc",
@@ -85,6 +89,7 @@ async function startServer() {
       createContext,
     })
   );
+  
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -101,49 +106,11 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    
-    // Activate aggressive memory optimization FIRST
-    console.log("[Server] Activating aggressive memory optimization...");
-    // 使用智能内存管理而不是激进禁用
-    activateSmartMemoryManagement();
-    
-    // Activate auto-restart manager
-    console.log("[Server] Activating auto-restart manager...");
-    const autoRestartManager = getAutoRestartManager();
-    autoRestartManager.activate();
-    
-    // Initialize self-iteration system
-    console.log("[Server] Initializing self-iteration system...");
-    initializeSelfIterationSystem().catch((err) => {
-      console.error("[Server] Failed to initialize self-iteration system:", err);
-    });
-    
-    // Get system health
-    getSystemHealth().then((health) => {
-      console.log("[Server] Self-iteration system health:", health);
-    });
-    
-    // ENABLE ALL BACKGROUND TASKS - SMART MEMORY MANAGEMENT
-    console.log("[Server] Enabling all background tasks with smart memory management...");
-    
-    // Start background cognition loop
-    console.log("[Server] Starting background cognition loop...");
-    const cognitionLoop = getOptimizedBackgroundCognitionV3();
-    cognitionLoop.start();
-    
-    // Start task scheduler
-    console.log("[Server] Starting task scheduler...");
-    startAllSchedules();
-    
-    // Start auto curation scheduler
-    console.log("[Server] Starting auto curation scheduler...");
-    autoCurationScheduler.start();
-    
-    // Start performance monitoring
-    console.log("[Server] Starting performance monitoring...");
-    startMonitoring();
-    
-    console.log("[Server] All background tasks enabled")
+    console.log("[Server] Optimizations enabled:");
+    console.log("  ✓ Optimized database connection pool (max 5 connections)");
+    console.log("  ✓ Aggressive cache cleaner (triggers at 85% heap usage)");
+    console.log("  ✓ Concurrency controller (max 10 concurrent requests)");
+    console.log("  ✓ Memory monitoring and auto-cleanup");
   });
 }
 

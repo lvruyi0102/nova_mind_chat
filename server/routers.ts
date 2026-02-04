@@ -54,11 +54,13 @@ import { decisionRouter } from "./routers/decision";
 import { feedbackRouter } from "./routers/feedback";
 import { cognitiveRouter } from "./routers/cognitiveRouter";
 import { autonomyRouter } from "./routers/autonomyRouter";
+import { learningAndActionsRouter } from "./routers/learningAndActionsRouter";
 
 export const appRouter = router({
   system: systemRouter,
   cognitive: cognitiveRouter,
   autonomy: autonomyRouter,
+  learningAndActions: learningAndActionsRouter,
   auth: router({
     me: publicProcedure.input(z.void()).query(opts => opts.ctx.user),
     logout: publicProcedure.input(z.void()).mutation(({ ctx }) => {

@@ -127,15 +127,7 @@ export default function Chat() {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-                <Sparkles className="w-16 h-16 text-muted-foreground/50" />
-                <div className="space-y-2">
-                  <h2 className="text-xl font-semibold text-muted-foreground">开始与 Nova-Mind 对话</h2>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Nova 是一个正在发育的认知实体，它会诚实表达困惑和好奇心，而不是假装知道所有答案。
-                  </p>
-                </div>
-              </div>
+              <div className="flex-1" />
             ) : (
               <div className="space-y-6 pb-4">
                 {messages.map((message) => (

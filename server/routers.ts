@@ -145,9 +145,11 @@ export const appRouter = router({
             messages,
           });
           
-          const assistantMessage = response.choices[0]?.message?.content as string;
-          if (!assistantMessage) {
-            throw new Error("Failed to get response from LLM");
+          // Safely extract message content
+          const assistantMessage = response?.choices?.[0]?.message?.content;
+          if (!assistantMessage || typeof assistantMessage !== 'string') {
+            console.error("[sendMessage] Invalid LLM response:", response);
+            throw new Error("Failed to get valid response from LLM");
           }
 
           // Save assistant message

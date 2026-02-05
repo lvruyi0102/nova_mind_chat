@@ -21,6 +21,7 @@ export default function Chat() {
   );
   const [inputMessage, setInputMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -48,8 +49,12 @@ export default function Chat() {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollContainerRef.current) {
+      // Find the scrollable viewport element
+      const viewport = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -121,14 +126,12 @@ export default function Chat() {
       <div className="flex-1 container mx-auto px-4 py-6 flex gap-6 max-w-7xl">
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 pr-4 mb-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 pr-4 mb-4" ref={scrollContainerRef}>
             {messagesLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
-            ) : messages.length === 0 ? (
-              <div className="flex-1" />
-            ) : (
+            ) : messages.length === 0 ? null : (
               <div className="space-y-6 pb-4">
                 {messages.map((message) => (
                   <div

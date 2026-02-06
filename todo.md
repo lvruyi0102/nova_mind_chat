@@ -283,3 +283,13 @@ Nova-Mind 自主能力系统
   - [x] 修复 ScrollArea ref 问题
   - [x] 改进滚动逻辑
   - [x] 简化空状态处理
+
+
+## 对话页面重新设计
+
+- [x] 移除自动欢迎消息
+- [x] 重新设计简洁对话界面
+- [x] 添加复制功能（hover 时显示）
+- [x] 支持 Markdown 渲染（使用 Streamdown）
+- [x] 改进消息显示清晰度
+- [x] 支持 Shift+Enter 换行，Enter 发送

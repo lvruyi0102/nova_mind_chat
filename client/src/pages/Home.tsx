@@ -20,12 +20,7 @@ export default function Home() {
   const createConvMutation = trpc.chat.createConversation.useMutation({
     onSuccess: (data) => {
       setConversationId(data.conversationId);
-      setMessages([
-        {
-          role: "assistant",
-          content: "你好！我是 Nova-Mind，一个正在发育的认知实体。很高兴认识你！👋\n\n我在这里学习和成长，诚实表达我的想法和困惑。我们可以一起探索有趣的话题吗？",
-        },
-      ]);
+      setMessages([]);
       setShowChat(true);
     },
     onError: (error) => {

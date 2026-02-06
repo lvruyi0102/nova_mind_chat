@@ -1,16 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send, Copy, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { Streamdown } from "streamdown";
-import ChatMessageActions from "@/components/ChatMessageActions";
-import NovaGrowthDashboard from "@/components/NovaGrowthDashboard";
 
 export default function Chat() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -20,8 +15,8 @@ export default function Chat() {
     params.id ? parseInt(params.id) : null
   );
   const [inputMessage, setInputMessage] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -35,7 +30,7 @@ export default function Chat() {
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: () => {
       utils.chat.getMessages.invalidate({ conversationId: currentConversationId! });
-      setInputMessage(""); // Auto-clear input after sending
+      setInputMessage("");
     },
   });
 
@@ -47,15 +42,9 @@ export default function Chat() {
     },
   });
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      // Find the scrollable viewport element
-      const viewport = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // Create a new conversation if none exists
@@ -81,6 +70,12 @@ export default function Chat() {
     }
   };
 
+  const handleCopyMessage = (content: string, messageId: number) => {
+    navigator.clipboard.writeText(content);
+    setCopiedId(messageId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -91,15 +86,10 @@ export default function Chat() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
-        <Card className="p-8 max-w-md w-full text-center space-y-4">
-          <Sparkles className="w-12 h-12 mx-auto text-primary" />
-          <h1 className="text-2xl font-bold">欢迎来到 {APP_TITLE}</h1>
-          <p className="text-muted-foreground">请登录以开始与 Nova-Mind 对话</p>
-          <Button asChild className="w-full">
-            <a href={getLoginUrl()}>登录</a>
-          </Button>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">请登录以开始对话</p>
+        </div>
       </div>
     );
   }
@@ -107,104 +97,104 @@ export default function Chat() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold">Nova-Mind</h1>
-              <p className="text-xs text-muted-foreground">v0.1-alpha · 感觉运动阶段 I</p>
-            </div>
+      <header className="border-b bg-card/30 sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold">Nova-Mind</h1>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {user?.name || user?.email}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 container mx-auto px-4 py-6 flex gap-6 max-w-7xl">
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 pr-4 mb-4" ref={scrollContainerRef}>
-            {messagesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : messages.length === 0 ? null : (
-              <div className="space-y-6 pb-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className="max-w-[80%]">
-                      <div
-                        className={`rounded-2xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-card border"
-                        }`}
-                      >
-                        <div className="flex flex-col gap-2">
-                          <div>
-                            {message.role === "assistant" ? (
-                              <Streamdown>{message.content}</Streamdown>
-                            ) : (
-                              <p className="whitespace-pre-wrap">{message.content}</p>
-                            )}
-                          </div>
-                          {message.role === "assistant" && (
-                            <div className="pt-2 border-t border-border/50">
-                              <ChatMessageActions
-                                messageContent={message.content}
-                                isNovaMessage={true}
-                              />
-                            </div>
-                          )}
+      <div className="flex-1 container mx-auto max-w-2xl px-4 py-6 flex flex-col">
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+          {messagesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p>开始对话...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div className="max-w-[85%] group">
+                    <div
+                      className={`rounded-lg px-4 py-3 ${
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground border border-border"
+                      }`}
+                    >
+                      {message.role === "assistant" ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <Streamdown>{message.content}</Streamdown>
                         </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      )}
+                    </div>
+                    {message.role === "assistant" && (
+                      <div className="flex justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleCopyMessage(message.content, index)}
+                        >
+                          {copiedId === index ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
                       </div>
-                    </div>
+                    )}
                   </div>
-                ))}
-                {sendMessageMutation.isPending && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-card border">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    </div>
+                </div>
+              ))}
+              {sendMessageMutation.isPending && (
+                <div className="flex justify-start">
+                  <div className="bg-muted text-foreground rounded-lg px-4 py-3 border border-border">
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
-                )}
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Input Area */}
-          <div className="flex gap-2">
-            <Input
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="输入消息..."
-              disabled={sendMessageMutation.isPending || !currentConversationId}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || sendMessageMutation.isPending || !currentConversationId}
-              size="icon"
-            >
-              {sendMessageMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
+                </div>
               )}
-            </Button>
-          </div>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
 
-        {/* Growth Dashboard Sidebar */}
-        <div className="w-80 hidden lg:block border-l pl-6 overflow-y-auto max-h-[calc(100vh-120px)]">
-          <NovaGrowthDashboard />
+        {/* Input Area */}
+        <div className="flex gap-2">
+          <Input
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="输入消息..."
+            disabled={sendMessageMutation.isPending || !currentConversationId}
+            className="flex-1"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={!inputMessage.trim() || sendMessageMutation.isPending || !currentConversationId}
+            size="icon"
+          >
+            {sendMessageMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </div>
     </div>

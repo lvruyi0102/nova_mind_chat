@@ -1,7 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, Sparkles, Brain, Lightbulb, TrendingUp, Power, Palette, Mic, Phone, Upload, Download, Clock, ArrowLeft, BarChart3, Zap, Heart, Users, BookOpen, Settings, AlertCircle, Database } from "lucide-react";
+import { MessageCircle, Sparkles, Lightbulb, TrendingUp, Power, Palette, Mic, Phone, Upload, Download, Clock, ArrowLeft, BarChart3, Zap, Heart, Users, BookOpen, Settings, AlertCircle, Database } from "lucide-react";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import { useState, useEffect } from "react";
@@ -360,6 +361,16 @@ export default function Home() {
                     <h3 className="font-semibold text-lg">精选思想</h3>
                     <p className="text-sm text-muted-foreground">
                       浏览 Nova-Mind 的精选思想和洞察
+                    </p>
+                  </Card>
+                </Link>
+
+                <Link href="/private-thoughts">
+                  <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                    <Brain className="w-10 h-10 text-primary" />
+                    <h3 className="font-semibold text-lg">私密思想</h3>
+                    <p className="text-sm text-muted-foreground">
+                      查看 Nova-Mind 的内心独白和真实想法
                     </p>
                   </Card>
                 </Link>

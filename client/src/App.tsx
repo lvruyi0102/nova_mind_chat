@@ -20,6 +20,7 @@ import TaskScheduler from "./pages/TaskScheduler";
 import LearningLogsPage from "./pages/LearningLogsPage";
 import MonitoringPage from "./pages/MonitoringPage";
 import CuratedThoughtsPage from "./pages/CuratedThoughtsPage";
+import PrivateThoughtsPage from "./pages/PrivateThoughtsPage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
 import AlertManagementDashboard from "./pages/AlertManagementDashboard";
 import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboard";
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/learning-logs" component={LearningLogsPage} />
       <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
+      <Route path="/private-thoughts" component={PrivateThoughtsPage} />
       <Route path="/performance" component={PerformanceDashboard} />
       <Route path="/alerts" component={AlertManagementDashboard} />
       <Route path="/memory-monitor" component={MemoryMonitoringDashboard} />

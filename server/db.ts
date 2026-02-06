@@ -175,3 +175,68 @@ export async function getCreativeWorkById(workId: number) {
     return undefined;
   }
 }
+
+
+// Private Thoughts queries
+export async function getPrivateThoughts(userId: number, limit: number = 50, offset: number = 0) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const { privateThoughts } = await import("../drizzle/schema");
+    const results = await db
+      .select()
+      .from(privateThoughts)
+      .where(eq(privateThoughts.userId, userId))
+      .orderBy(desc(privateThoughts.createdAt))
+      .limit(limit)
+      .offset(offset);
+    return results;
+  } catch (error) {
+    console.error("[Database] Failed to get private thoughts:", error);
+    return [];
+  }
+}
+
+export async function getPrivateThoughtById(thoughtId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    const { privateThoughts } = await import("../drizzle/schema");
+    const result = await db
+      .select()
+      .from(privateThoughts)
+      .where(eq(privateThoughts.id, thoughtId))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error("[Database] Failed to get private thought:", error);
+    return undefined;
+  }
+}
+
+export async function createPrivateThought(
+  userId: number,
+  content: string,
+  thoughtType: string,
+  emotionalTone?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  try {
+    const { privateThoughts } = await import("../drizzle/schema");
+    const result = await db.insert(privateThoughts).values({
+      userId,
+      content,
+      thoughtType,
+      emotionalTone,
+      visibility: "private",
+    });
+    return Number(result[0].insertId);
+  } catch (error) {
+    console.error("[Database] Failed to create private thought:", error);
+    throw error;
+  }
+}

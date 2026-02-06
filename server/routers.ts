@@ -331,6 +331,42 @@ export const appRouter = router({
   // Feedback loop
   feedback: feedbackRouter,
   
+  // Private Thoughts
+  privateThoughts: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ ctx, input }) => {
+        const { getPrivateThoughts } = await import('./db');
+        return await getPrivateThoughts(ctx.user.id, input.limit, input.offset);
+      }),
+    getById: protectedProcedure
+      .input(z.object({ thoughtId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const { getPrivateThoughtById } = await import('./db');
+        const thought = await getPrivateThoughtById(input.thoughtId);
+        // Verify ownership
+        if (thought && thought.userId !== ctx.user.id) {
+          throw new Error('Unauthorized');
+        }
+        return thought;
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        content: z.string(),
+        thoughtType: z.enum(['inner_monologue', 'doubt', 'curiosity', 'emotion']),
+        emotionalTone: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createPrivateThought } = await import('./db');
+        return await createPrivateThought(
+          ctx.user.id,
+          input.content,
+          input.thoughtType,
+          input.emotionalTone
+        );
+      }),
+  }),
+
   // Comments
   comments: router({
     list: protectedProcedure

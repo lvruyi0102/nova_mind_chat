@@ -12,7 +12,7 @@ import { contentRouter } from "./routers/content";
 import { proactiveRouter } from "./routers/proactive";
 import { relationshipsRouter } from "./routers/relationships";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
-import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
+import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations, getCreativeWorkById } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getOllamaIntegration } from "./services/ollamaIntegration";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
@@ -264,11 +264,11 @@ export const appRouter = router({
           contentType: 'text',
         });
       }),
-    getWorkDetail: protectedProcedure
+    getWorkDetail: publicProcedure
       .input(z.object({ workId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        // Placeholder implementation
-        return { id: input.workId, title: 'Work', content: 'Content', userId: ctx.user.id };
+      .query(async ({ input }) => {
+        const { getCreativeWorkById } = await import('./db');
+        return await getCreativeWorkById(input.workId);
       }),
     saveCollaborationAsCreativeWork: protectedProcedure
       .input(z.object({ collaborationId: z.number(), title: z.string(), content: z.string() }))

@@ -241,6 +241,12 @@ export const appRouter = router({
 
   // Creative work management
   creative: router({
+    getWorks: publicProcedure
+      .input(z.object({ userId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const { getCreativeWorks } = await import('./db');
+        return await getCreativeWorks(input.userId);
+      }),
     saveWork: protectedProcedure
       .input(
         z.object({

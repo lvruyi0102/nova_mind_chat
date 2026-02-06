@@ -140,3 +140,38 @@ export async function getConversationMessages(conversationId: number) {
 
   return db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
 }
+
+
+// Creative Works queries
+export async function getCreativeWorks(userId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const { creativeWorks } = await import("../drizzle/schema");
+    let query: any = db.select().from(creativeWorks);
+    
+    if (userId) {
+      query = query.where(eq(creativeWorks.userId, userId));
+    }
+    
+    return await query.orderBy(desc(creativeWorks.createdAt));
+  } catch (error) {
+    console.error("[Database] Failed to get creative works:", error);
+    return [];
+  }
+}
+
+export async function getCreativeWorkById(workId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    const { creativeWorks } = await import("../drizzle/schema");
+    const result = await db.select().from(creativeWorks).where(eq(creativeWorks.id, workId)).limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error("[Database] Failed to get creative work:", error);
+    return undefined;
+  }
+}

@@ -45,8 +45,10 @@ export default function CreativeGallery() {
   const saveWorkMutation = trpc.system.saveCreativeWork.useMutation();
 
   // Fetch shared creative works
-  // TODO: Implement creative.getWorks endpoint
-  const { data: works, isLoading } = { data: [], isLoading: false }; // Placeholder
+  const { data: works = [], isLoading } = trpc.creative.getWorks.useQuery(
+    { userId: undefined }, // Get all public works
+    { enabled: activeTab === "works" }
+  ) || { data: [], isLoading: false }
 
   // Filter and sort works
   const filteredWorks = useMemo(() => {

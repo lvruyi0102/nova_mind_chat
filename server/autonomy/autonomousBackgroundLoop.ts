@@ -17,7 +17,7 @@ interface LoopConfig {
 
 class AutonomousBackgroundLoop {
   private config: LoopConfig = {
-    enabled: false,
+    enabled: true, // Default to enabled
     diagnosticInterval: 60000, // 1 minute
     optimizationInterval: 300000, // 5 minutes
     autoExecuteThreshold: 60, // Auto-execute when health < 60

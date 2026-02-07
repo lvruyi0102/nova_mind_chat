@@ -24,6 +24,7 @@ import PrivateThoughtsPage from "./pages/PrivateThoughtsPage";
 import PerformanceDashboard from "./pages/PerformanceDashboard";
 import AlertManagementDashboard from "./pages/AlertManagementDashboard";
 import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboard";
+import { BackgroundProcessMonitor } from "./components/BackgroundProcessMonitor";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function Router() {
@@ -72,6 +73,7 @@ function App() {
             <Toaster />
             <Router />
             <MultimodalGenerationPanel />
+            <BackgroundProcessMonitor />
             <SpeedInsights />
           </TooltipProvider>
         </GenerationProvider>

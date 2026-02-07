@@ -3,7 +3,7 @@
  * Prevents memory leaks and manages data lifecycle
  */
 
-import { eq, lt } from 'drizzle-orm';
+import { eq, lt, sql } from 'drizzle-orm';
 import { getDb } from '../db';
 import {
   cognitiveLog,
@@ -31,12 +31,13 @@ export async function cleanOldCognitiveLogs(): Promise<number> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     // Delete old logs
-    await db
+    const result = await db
       .delete(cognitiveLog)
       .where(lt(cognitiveLog.createdAt, sevenDaysAgo));
 
-    console.log('[MemoryManager] Cleaned old cognitive logs');
-    return 1;
+    const deleted = getDeletedCount(result);
+    console.log(`[MemoryManager] Cleaned old cognitive logs: ${deleted}`);
+    return deleted;
   } catch (error) {
     console.error('[MemoryManager] Error cleaning cognitive logs:', error);
     return 0;
@@ -54,12 +55,13 @@ export async function archiveOldEpisodes(): Promise<number> {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Delete old episodes
-    await db
+    const result = await db
       .delete(episodicMemories)
       .where(lt(episodicMemories.createdAt, thirtyDaysAgo));
 
-    console.log('[MemoryManager] Archived old episodic memories');
-    return 1;
+    const deleted = getDeletedCount(result);
+    console.log(`[MemoryManager] Archived old episodic memories: ${deleted}`);
+    return deleted;
   } catch (error) {
     console.error('[MemoryManager] Error archiving episodes:', error);
     return 0;
@@ -75,12 +77,13 @@ export async function cleanWeakRelations(): Promise<number> {
 
   try {
     // Delete weak relations
-    await db
+    const result = await db
       .delete(conceptRelations)
       .where(lt(conceptRelations.strength, 3));
 
-    console.log('[MemoryManager] Cleaned weak concept relations');
-    return 1;
+    const deleted = getDeletedCount(result);
+    console.log(`[MemoryManager] Cleaned weak concept relations: ${deleted}`);
+    return deleted;
   } catch (error) {
     console.error('[MemoryManager] Error cleaning weak relations:', error);
     return 0;
@@ -96,6 +99,15 @@ export async function consolidateConcepts(): Promise<number> {
 
   try {
     let deletedCount = 0;
+
+    const totalConcepts = await getTableCount(db, concepts);
+    const maxConsolidationSize = 2000;
+    if (totalConcepts > maxConsolidationSize) {
+      console.warn(
+        `[MemoryManager] Skipping concept consolidation: ${totalConcepts} concepts exceeds safe limit ${maxConsolidationSize}`
+      );
+      return 0;
+    }
 
     // Get all concepts
     const allConcepts = await db.select().from(concepts);
@@ -116,7 +128,6 @@ export async function consolidateConcepts(): Promise<number> {
       if (group.length > 1) {
         // Keep the one with highest confidence
         const sorted = group.sort((a: any, b: any) => b.confidence - a.confidence);
-        const keeper = sorted[0];
 
         // Delete others
         for (let i = 1; i < sorted.length; i++) {
@@ -146,23 +157,39 @@ export async function getMemoryStats(): Promise<MemoryStats | null> {
   if (!db) return null;
 
   try {
-    // Get all records to count them
-    const allConcepts = await db.select().from(concepts);
-    const allRelations = await db.select().from(conceptRelations);
-    const allLogs = await db.select().from(cognitiveLog);
-    const allEpisodes = await db.select().from(episodicMemories);
+    const totalConcepts = await getTableCount(db, concepts);
+    const totalRelations = await getTableCount(db, conceptRelations);
+    const totalLogs = await getTableCount(db, cognitiveLog);
+    const totalEpisodes = await getTableCount(db, episodicMemories);
 
     return {
-      totalConcepts: allConcepts.length,
-      totalRelations: allRelations.length,
-      totalLogs: allLogs.length,
-      totalEpisodes: allEpisodes.length,
+      totalConcepts,
+      totalRelations,
+      totalLogs,
+      totalEpisodes,
       timestamp: new Date(),
     };
   } catch (error) {
     console.error('[MemoryManager] Error getting memory stats:', error);
     return null;
   }
+}
+
+async function getTableCount(db: any, table: any): Promise<number> {
+  try {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(table);
+    return result[0]?.count ?? 0;
+  } catch (error) {
+    console.error('[MemoryManager] Error counting table:', error);
+    return 0;
+  }
+}
+
+function getDeletedCount(result: any): number {
+  if (!result) return 0;
+  if (typeof result.rowsAffected === 'number') return result.rowsAffected;
+  if (typeof result.affectedRows === 'number') return result.affectedRows;
+  return 0;
 }
 
 /**

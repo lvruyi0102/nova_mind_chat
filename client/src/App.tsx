@@ -27,6 +27,7 @@ function Router() {
       <Route path="/chat/:id" component={Chat} />
       <Route path={"/chat"} component={Chat} />
       <Route path={"/monitor"} component={CognitiveMonitor} />
+      <Route path={"/cognitive-monitor"} component={CognitiveMonitor} />
       <Route path={"/autonomous"} component={AutonomousMonitor} />
       <Route path={"/creative"} component={CreativeGallery} />
       <Route path={"/emotions"} component={EmotionalDialogue} />

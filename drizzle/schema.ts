@@ -150,10 +150,32 @@ export type ReflectionLog = typeof reflectionLog.$inferSelect;
 export type InsertReflectionLog = typeof reflectionLog.$inferInsert;
 
 /**
+ * Action Tasks - Nova's reflection-derived action items with outcomes
+ */
+export const actionTasks = mysqlTable("actionTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  conversationId: int("conversationId").references(() => conversations.id),
+  intent: varchar("intent", { length: 200 }).notNull(),
+  sourceSummary: text("sourceSummary").notNull(),
+  priority: int("priority").notNull().default(5), // 1-10 scale
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed"]).notNull().default("pending"),
+  result: text("result"),
+  successScore: int("successScore"), // 1-10 scale
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type ActionTask = typeof actionTasks.$inferSelect;
+export type InsertActionTask = typeof actionTasks.$inferInsert;
+
+/**
  * Growth Metrics - quantitative tracking of Nova's development
  */
 export const growthMetrics = mysqlTable("growthMetrics", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
   metricName: varchar("metricName", { length: 100 }).notNull(),
   value: int("value").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
@@ -235,6 +257,7 @@ export type InsertAutonomousDecision = typeof autonomousDecisions.$inferInsert;
  */
 export const privateThoughts = mysqlTable("privateThoughts", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
   content: text("content").notNull(),
   thoughtType: varchar("thoughtType", { length: 100 }).notNull(), // inner_monologue, doubt, curiosity, emotion
   visibility: mysqlEnum("visibility", ["private", "shared", "public"]).notNull().default("private"),

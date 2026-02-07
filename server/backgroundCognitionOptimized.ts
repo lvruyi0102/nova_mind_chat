@@ -6,8 +6,7 @@
 import { getCurrentState, updateState, makeAutonomousDecision } from "./autonomousEngine";
 import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
-import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import { recordPrivateThought } from "./privacyEngine";
 
 // Background cognition loop state
 let isRunning = false;
@@ -149,6 +148,9 @@ async function runCognitionCycle() {
   MemoryManager.logMemoryStatus();
 
   try {
+    const ownerUsers = await db.select().from(users).limit(1);
+    const ownerUserId = ownerUsers[0]?.id;
+
     // 1. Check current state (with cache)
     const cacheKey = "nova_current_state";
     let state = queryCache.get(cacheKey);
@@ -194,11 +196,14 @@ async function runCognitionCycle() {
 
     // 3. Record decision as private thought (lightweight)
     try {
-      await recordPrivateThought({
-        content: `决策: ${decision.decision}`,
-        thoughtType: "decision_reflection",
-        emotionalTone: state.currentMotivation || "neutral",
-      });
+      if (ownerUserId) {
+        await recordPrivateThought({
+          userId: ownerUserId,
+          content: `决策: ${decision.decision}`,
+          thoughtType: "decision_reflection",
+          emotionalTone: state.currentMotivation || "neutral",
+        });
+      }
     } catch (error) {
       console.error("[BackgroundCognition] Error recording thought:", error);
       // Don't fail the whole cycle if thought recording fails

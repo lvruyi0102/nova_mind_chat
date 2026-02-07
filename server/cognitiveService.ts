@@ -2,7 +2,7 @@
  * Cognitive Service - Orchestrates Nova-Mind's learning and growth processes
  */
 
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   concepts,
@@ -13,6 +13,8 @@ import {
   reflectionLog,
   growthMetrics,
   messages,
+  conversations,
+  actionTasks,
 } from "../drizzle/schema";
 import {
   extractConcepts,
@@ -178,10 +180,13 @@ export async function processMessageCognitively(
         value: 1,
       });
 
-      const totalConcepts = await db.select().from(concepts);
+      const conceptCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(concepts);
+      const conceptCount = conceptCountResult[0]?.count ?? 0;
       await db.insert(growthMetrics).values({
         metricName: "concept_count",
-        value: totalConcepts.length,
+        value: conceptCount,
       });
     } catch (err) {
       console.warn("[CognitiveService] Failed to update growth metrics:", err);
@@ -253,6 +258,17 @@ export async function performPeriodicReflection(conversationId: number) {
   if (!db) return null;
 
   try {
+    const conversationRows = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+    const conversation = conversationRows[0];
+    if (!conversation) {
+      console.warn("[CognitiveService] Conversation not found for reflection.");
+      return null;
+    }
+
     // Get recent messages
     const recentMessages = await db
       .select()
@@ -294,6 +310,13 @@ export async function performPeriodicReflection(conversationId: number) {
         description: reflection.content,
         conversationId,
       });
+
+      await createActionTaskFromReflection(db, {
+        conversationId,
+        userId: conversation.userId,
+        reflectionType: reflection.reflectionType,
+        reflectionContent: reflection.content,
+      });
     } catch (err) {
       console.warn("[CognitiveService] Failed to store reflection:", err);
     }
@@ -306,6 +329,50 @@ export async function performPeriodicReflection(conversationId: number) {
 }
 
 /**
+ * Run a cognition loop pass (reflection + curiosity) based on message cadence.
+ */
+export async function runCognitiveLoop(
+  conversationId: number,
+  messageCount: number
+): Promise<{
+  didReflect: boolean;
+  didGenerateQuestions: boolean;
+}> {
+  const db = await getDb();
+  if (!db) return { didReflect: false, didGenerateQuestions: false };
+
+  const shouldReflect = messageCount % 5 === 0;
+  const shouldGenerateQuestions = messageCount % 10 === 0;
+
+  let didReflect = false;
+  let didGenerateQuestions = false;
+
+  if (shouldReflect) {
+    const reflection = await performPeriodicReflection(conversationId);
+    didReflect = Boolean(reflection);
+  }
+
+  if (shouldGenerateQuestions) {
+    const questions = await generateNewQuestions(conversationId);
+    didGenerateQuestions = questions.length > 0;
+  }
+
+  if (didReflect || didGenerateQuestions) {
+    const summaryParts = [];
+    if (didReflect) summaryParts.push("完成反思");
+    if (didGenerateQuestions) summaryParts.push("生成问题");
+    await db.insert(cognitiveLog).values({
+      stage: "Sensorimotor_I",
+      eventType: "cognition_loop",
+      description: `认知闭环执行：${summaryParts.join("、")}`,
+      conversationId,
+    });
+  }
+
+  return { didReflect, didGenerateQuestions };
+}
+
+/**
  * Get Nova's current cognitive state summary
  */
 export async function getCognitiveState() {
@@ -313,18 +380,27 @@ export async function getCognitiveState() {
   if (!db) return null;
 
   try {
-    const totalConcepts = await db.select().from(concepts);
-    const totalRelations = await db.select().from(conceptRelations);
-    const totalMemories = await db.select().from(episodicMemories);
-    const pendingQuestions = await db.select().from(selfQuestions).where(eq(selfQuestions.status, "pending"));
+    const conceptCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(concepts);
+    const relationCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(conceptRelations);
+    const memoryCountResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(episodicMemories);
+    const pendingQuestionsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(selfQuestions)
+      .where(eq(selfQuestions.status, "pending"));
     const recentReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(3);
     const recentGrowth = await db.select().from(cognitiveLog).orderBy(desc(cognitiveLog.createdAt)).limit(5);
 
     return {
-      conceptCount: totalConcepts.length,
-      relationCount: totalRelations.length,
-      memoryCount: totalMemories.length,
-      pendingQuestionCount: pendingQuestions.length,
+      conceptCount: conceptCountResult[0]?.count ?? 0,
+      relationCount: relationCountResult[0]?.count ?? 0,
+      memoryCount: memoryCountResult[0]?.count ?? 0,
+      pendingQuestionCount: pendingQuestionsResult[0]?.count ?? 0,
       recentReflections: recentReflections.map((r) => ({
         type: r.reflectionType,
         content: r.content,
@@ -340,5 +416,44 @@ export async function getCognitiveState() {
   } catch (error) {
     console.error("[CognitiveService] Error getting cognitive state:", error);
     return null;
+  }
+}
+
+async function createActionTaskFromReflection(
+  db: any,
+  input: {
+    conversationId: number;
+    userId: number;
+    reflectionType: string;
+    reflectionContent: string;
+  }
+) {
+  const summary = input.reflectionContent.trim().slice(0, 500);
+  if (!summary) return;
+
+  const intentPrefix =
+    input.reflectionType === "error_correction"
+      ? "修正问题"
+      : input.reflectionType === "insight"
+      ? "巩固洞察"
+      : "推进改进";
+  const intent = `${intentPrefix}：${summary.slice(0, 120)}`;
+
+  try {
+    await db.insert(actionTasks).values({
+      userId: input.userId,
+      conversationId: input.conversationId,
+      intent,
+      sourceSummary: summary,
+      priority: 5,
+      status: "pending",
+    });
+
+    await db.insert(growthMetrics).values({
+      metricName: "action_tasks_created",
+      value: 1,
+    });
+  } catch (error) {
+    console.warn("[CognitiveService] Failed to create action task:", error);
   }
 }

@@ -331,6 +331,22 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Self Evolution */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-primary">自我进化</h4>
+              <div className="grid md:grid-cols-3 gap-4">
+                <Link href="/evolution">
+                  <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                    <Zap className="w-10 h-10 text-primary" />
+                    <h3 className="font-semibold text-lg">进化仪表板</h3>
+                    <p className="text-sm text-muted-foreground">
+                      监控 Nova-Mind 的代码自我修改和进化过程
+                    </p>
+                  </Card>
+                </Link>
+              </div>
+            </div>
+
             {/* Learning & Memory */}
             <div>
               <h4 className="text-lg font-semibold mb-4 text-primary">学习与记忆</h4>

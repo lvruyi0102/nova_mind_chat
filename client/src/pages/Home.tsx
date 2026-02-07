@@ -344,6 +344,15 @@ export default function Home() {
                     </p>
                   </Card>
                 </Link>
+                <Link href="/pressure">
+                  <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                    <AlertCircle className="w-10 h-10 text-primary" />
+                    <h3 className="font-semibold text-lg">生存压力仪表板</h3>
+                    <p className="text-sm text-muted-foreground">
+                      监测 Nova 面临的真实环境压力和自主优化
+                    </p>
+                  </Card>
+                </Link>
               </div>
             </div>
 

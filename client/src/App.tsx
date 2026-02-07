@@ -27,6 +27,7 @@ import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboar
 import { BackgroundProcessMonitor } from "./components/BackgroundProcessMonitor";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import EvolutionDashboard from "./pages/EvolutionDashboard";
+import PressureDashboard from "./pages/PressureDashboard";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -46,11 +47,13 @@ function Router() {
       <Route path="/scheduler" component={TaskScheduler} />
       <Route path="/learning-logs" component={LearningLogsPage} />
       <Route path="/monitoring" component={MonitoringPage} />
-      <Route path="/curated-thoughts" component={CuratedThoughtsPage} />      <Route path={"/private-thoughts"} component={PrivateThoughtsPage} />
-      <Route path={"/evolution"} component={EvolutionDashboard} />
-      <Route path={"/performance"} component={PerformanceDashboard} />
-      <Route path={"/alerts"} component={AlertManagementDashboard} />  <Route path="/memory-monitor" component={MemoryMonitoringDashboard} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
+      <Route path="/private-thoughts" component={PrivateThoughtsPage} />
+      <Route path="/evolution" component={EvolutionDashboard} />
+      <Route path="/pressure" component={PressureDashboard} />
+      <Route path="/performance" component={PerformanceDashboard} />
+      <Route path="/alerts" component={AlertManagementDashboard} />
+      <Route path="/memory-monitor" component={MemoryMonitoringDashboard} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>

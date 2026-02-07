@@ -57,6 +57,7 @@ import { autonomyRouter } from "./routers/autonomyRouter";
 import { learningAndActionsRouter } from "./routers/learningAndActionsRouter";
 import { backgroundProcessRouter } from "./routers/backgroundProcessRouter";
 import { evolutionRouter } from "./routers/evolutionRouter";
+import { pressureRouter } from "./routers/pressureRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -65,6 +66,7 @@ export const appRouter = router({
   learningAndActions: learningAndActionsRouter,
   backgroundProcess: backgroundProcessRouter,
   evolution: evolutionRouter,
+  pressure: pressureRouter,
   auth: router({
     me: publicProcedure.input(z.void()).query(opts => opts.ctx.user),
     logout: publicProcedure.input(z.void()).mutation(({ ctx }) => {

@@ -6,6 +6,8 @@
 import { getSelfDiagnostics } from "./selfDiagnostics";
 import { getAutonomousOptimizer } from "./autonomousOptimizer";
 import { getCodeModificationManager } from "./codeModificationManager";
+import { getPressureAwarenessEngine } from "../evolution/pressureAwarenessEngine";
+import { getAutonomousOptimizationEngine } from "../evolution/autonomousOptimizationEngine";
 
 interface LoopConfig {
   enabled: boolean;
@@ -113,10 +115,17 @@ class AutonomousBackgroundLoop {
     console.log(`  Health: ${report.overallHealth}%`);
     console.log(`  Issues: ${report.issues.length}`);
 
-    // If health is critical, trigger immediate optimization
-    if (report.overallHealth < this.config.autoExecuteThreshold) {
+    // Check real environmental pressure
+    const pressureEngine = getPressureAwarenessEngine();
+    const pressureResponse = pressureEngine.detectPressure();
+    
+    console.log(`[AutonomousBackgroundLoop] Pressure Level: ${pressureResponse.pressureLevel}/100`);
+    console.log(`[AutonomousBackgroundLoop] Urgency: ${pressureResponse.urgency}`);
+    
+    // If health is critical or pressure is high, trigger immediate optimization
+    if (report.overallHealth < this.config.autoExecuteThreshold || pressureResponse.urgency === 'critical' || pressureResponse.urgency === 'high') {
       console.log(
-        "[AutonomousBackgroundLoop] Health is critical, triggering immediate optimization"
+        "[AutonomousBackgroundLoop] Health is critical or pressure is high, triggering immediate optimization"
       );
       await this.runOptimization();
     }
@@ -136,6 +145,22 @@ class AutonomousBackgroundLoop {
       `[AutonomousBackgroundLoop] Optimization #${this.loopStats.optimizationsPerformed}`
     );
     console.log(`  Generated ${actions.length} optimization actions`);
+
+    // Generate optimization plan based on real pressure
+    const optimizationEngine = getAutonomousOptimizationEngine();
+    const plan = await optimizationEngine.generateOptimizationPlan();
+    
+    console.log(`[AutonomousBackgroundLoop] Generated Optimization Plan: ${plan.id}`);
+    console.log(`  Pressure Level: ${plan.pressureLevel}/100`);
+    console.log(`  Urgency: ${plan.urgency}`);
+    console.log(`  Actions: ${plan.actions.length}`);
+    
+    // Execute optimization plan
+    console.log(`[AutonomousBackgroundLoop] Executing optimization plan...`);
+    const executedPlan = await optimizationEngine.executePlan(plan);
+    console.log(`[AutonomousBackgroundLoop] Plan execution completed`);
+    console.log(`  Status: ${executedPlan.status}`);
+    console.log(`  Execution Records: ${executedPlan.executionHistory.length}`);
 
     // Auto-execute high-priority actions if health is low
     const diagnostics = getSelfDiagnostics();

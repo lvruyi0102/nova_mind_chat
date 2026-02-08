@@ -27,6 +27,7 @@ import { MemoryMonitoringDashboard } from "./components/MemoryMonitoringDashboar
 import { BackgroundProcessMonitor } from "./components/BackgroundProcessMonitor";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import EvolutionDashboard from "./pages/EvolutionDashboard";
+import CodeModificationDashboard from "./pages/CodeModificationDashboard";
 import PressureDashboard from "./pages/PressureDashboard";
 
 function Router() {
@@ -49,7 +50,8 @@ function Router() {
       <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
       <Route path="/private-thoughts" component={PrivateThoughtsPage} />
-      <Route path="/evolution" component={EvolutionDashboard} />
+      <Route path={"/evolution"} component={EvolutionDashboard} />
+      <Route path={"/code-modification"} component={CodeModificationDashboard} />
       <Route path="/pressure" component={PressureDashboard} />
       <Route path="/performance" component={PerformanceDashboard} />
       <Route path="/alerts" component={AlertManagementDashboard} />

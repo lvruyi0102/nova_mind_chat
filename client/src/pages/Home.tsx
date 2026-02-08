@@ -353,6 +353,15 @@ export default function Home() {
                     </p>
                   </Card>
                 </Link>
+                <Link href="/code-modification">
+                  <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                    <Zap className="w-10 h-10 text-primary" />
+                    <h3 className="font-semibold text-lg">代码修改系统</h3>
+                    <p className="text-sm text-muted-foreground">
+                      管理 Nova 的自动代码优化和执行历史
+                    </p>
+                  </Card>
+                </Link>
               </div>
             </div>
 

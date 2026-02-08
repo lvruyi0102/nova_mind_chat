@@ -6,6 +6,8 @@
 import { GenomeManager, Genome } from "./genomeManager";
 import { EvolutionEvaluator, EvaluationMetrics, TestCase } from "./evolutionEvaluator";
 import { MutationProposer, MutationProposal } from "./mutationProposer";
+import { getCodeModificationEngine, CodeModificationProposal } from "./codeModificationEngine";
+import { getCodeModificationExecutor } from "./codeModificationExecutor";
 
 export interface EvolutionCycle {
   cycleId: string;
@@ -28,7 +30,10 @@ export class EvolutionEngine {
   private genomeManager: GenomeManager;
   private evaluator: EvolutionEvaluator;
   private proposer: MutationProposer;
+  private codeModificationEngine = getCodeModificationEngine();
+  private codeExecutor = getCodeModificationExecutor();
   private evolutionCycles: EvolutionCycle[] = [];
+  private codeModifications: CodeModificationProposal[] = [];
   private isRunning: boolean = false;
   private config: {
     maxGenerations: number;
@@ -146,12 +151,37 @@ export class EvolutionEngine {
         result = "success";
         // 保存新基因
         await this.genomeManager.saveGenome(childGenome);
-        console.log(`[EvolutionEngine] ✅ Evolution successful! Improvement: ${improvementRatio.toFixed(2)}%`);
+        console.log(`[EvolutionEngine] Evolution successful! Improvement: ${improvementRatio.toFixed(2)}%`);
+        
+        // 尝试执行代码修改
+        try {
+          const codeModification = await this.codeModificationEngine.generateModificationProposal({
+            pressureLevel: 50,
+            pressureType: 'latency',
+            systemMetrics: {
+              responseTime: childMetrics.compositeScore || 0,
+              accuracy: childMetrics.compositeScore || 0,
+            },
+            diagnosticResults: `Evolution successful with ${improvementRatio.toFixed(2)}% improvement`,
+          });
+          
+          if (codeModification && codeModification.riskAssessment.level !== 'critical') {
+            const executionResult = await this.codeExecutor.executeModification(codeModification);
+            if (executionResult.success) {
+              console.log(`[EvolutionEngine] Code modification executed successfully`);
+              this.codeModifications.push(codeModification);
+            } else {
+              console.warn(`[EvolutionEngine] Code modification failed: ${executionResult.error}`);
+            }
+          }
+        } catch (codeError) {
+          console.warn(`[EvolutionEngine] Code modification attempt failed:`, codeError);
+        }
       } else {
-        console.log(`[EvolutionEngine] ❌ Evolution failed. Improvement: ${improvementRatio.toFixed(2)}% (threshold: ${this.config.minImprovementThreshold}%)`);
+        console.log(`[EvolutionEngine] Evolution failed. Improvement: ${improvementRatio.toFixed(2)}% (threshold: ${this.config.minImprovementThreshold}%)`);
       }
 
-      // 12. 记录循环
+      // 13. 记录循环
       const cycle: EvolutionCycle = {
         cycleId,
         generation: parentGenome.generation,

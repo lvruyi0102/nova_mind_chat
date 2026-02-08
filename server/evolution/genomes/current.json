@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "timestamp": 1770437834487,
+  "generation": 0,
+  "startNode": "analyze",
+  "nodes": {
+    "analyze": {
+      "id": "analyze",
+      "name": "分析阶段",
+      "description": "分析用户输入和上下文",
+      "instruction": "Analyze the user input and context. Identify key concepts and relationships.",
+      "next": [
+        "think"
+      ],
+      "metadata": {
+        "priority": 1,
+        "timeout": 5000
+      }
+    },
+    "think": {
+      "id": "think",
+      "name": "思考阶段",
+      "description": "深度思考和推理",
+      "instruction": "Perform deep reasoning. Consider multiple perspectives and implications.",
+      "next": [
+        "decide"
+      ],
+      "metadata": {
+        "priority": 2,
+        "timeout": 10000
+      }
+    },
+    "decide": {
+      "id": "decide",
+      "name": "决策阶段",
+      "description": "做出决策",
+      "instruction": "Make a decision based on analysis and reasoning.",
+      "next": [
+        "respond"
+      ],
+      "metadata": {
+        "priority": 3,
+        "timeout": 5000
+      }
+    },
+    "respond": {
+      "id": "respond",
+      "name": "响应阶段",
+      "description": "生成响应",
+      "instruction": "Generate a concise and helpful response.",
+      "next": [],
+      "metadata": {
+        "priority": 4,
+        "timeout": 5000
+      }
+    }
+  },
+  "metadata": {
+    "totalTokenLimit": 2000,
+    "maxPathLength": 10,
+    "optimizationTarget": "minimize_tokens_while_maintaining_accuracy"
+  },
+  "history": []
+}

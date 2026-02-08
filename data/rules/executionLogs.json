@@ -194,5 +194,371 @@
     },
     "error": "Returned null instead of default",
     "timestamp": "2026-01-31T17:18:36.735Z"
+  },
+  {
+    "ruleId": "rule_1770562445017_45pzuvk5t",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-02-08T14:54:05.018Z"
+  },
+  {
+    "ruleId": "rule_1770562445017_45pzuvk5t",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-02-08T14:54:05.019Z"
+  },
+  {
+    "ruleId": "rule_1770562445041_9supy7ol5",
+    "success": false,
+    "score": 0.5296956134897786,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:05.042Z"
+  },
+  {
+    "ruleId": "rule_1770562445041_9supy7ol5",
+    "success": true,
+    "score": 0.6681984042713908,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:05.046Z"
+  },
+  {
+    "ruleId": "rule_1770562445041_9supy7ol5",
+    "success": false,
+    "score": 0.5601216736447392,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:05.047Z"
+  },
+  {
+    "ruleId": "rule_1770562445041_9supy7ol5",
+    "success": true,
+    "score": 0.6111002031355992,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:05.050Z"
+  },
+  {
+    "ruleId": "rule_1770562445041_9supy7ol5",
+    "success": false,
+    "score": 0.6361961232536935,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:05.052Z"
+  },
+  {
+    "ruleId": "rule_1770562445053_3htonoo0u",
+    "success": true,
+    "score": 0.844923317023405,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:05.054Z"
+  },
+  {
+    "ruleId": "rule_1770562445053_3htonoo0u",
+    "success": true,
+    "score": 0.90428989940917,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:05.055Z"
+  },
+  {
+    "ruleId": "rule_1770562445053_3htonoo0u",
+    "success": true,
+    "score": 0.8978053097427747,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:05.057Z"
+  },
+  {
+    "ruleId": "rule_1770562445053_3htonoo0u",
+    "success": true,
+    "score": 0.9078858617145438,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:05.073Z"
+  },
+  {
+    "ruleId": "rule_1770562445053_3htonoo0u",
+    "success": true,
+    "score": 0.8016738613181417,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:05.075Z"
+  },
+  {
+    "ruleId": "rule_1770562445078_gosvda5zm",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-02-08T14:54:05.079Z"
+  },
+  {
+    "ruleId": "rule_1770562445269_6679l5c87",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-02-08T14:54:05.270Z"
+  },
+  {
+    "ruleId": "rule_1770562479459_x6ddmw531",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-02-08T14:54:39.460Z"
+  },
+  {
+    "ruleId": "rule_1770562479459_x6ddmw531",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-02-08T14:54:39.464Z"
+  },
+  {
+    "ruleId": "rule_1770562479498_wm4irp2jf",
+    "success": false,
+    "score": 0.6487973967474456,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:39.501Z"
+  },
+  {
+    "ruleId": "rule_1770562479498_wm4irp2jf",
+    "success": false,
+    "score": 0.6806108495867272,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:39.504Z"
+  },
+  {
+    "ruleId": "rule_1770562479498_wm4irp2jf",
+    "success": true,
+    "score": 0.560617525396196,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:39.506Z"
+  },
+  {
+    "ruleId": "rule_1770562479498_wm4irp2jf",
+    "success": false,
+    "score": 0.5652770421338963,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:39.512Z"
+  },
+  {
+    "ruleId": "rule_1770562479498_wm4irp2jf",
+    "success": true,
+    "score": 0.6664169868354163,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-02-08T14:54:39.516Z"
+  },
+  {
+    "ruleId": "rule_1770562479518_6fb5qvn23",
+    "success": true,
+    "score": 0.8962973182733082,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:39.518Z"
+  },
+  {
+    "ruleId": "rule_1770562479518_6fb5qvn23",
+    "success": true,
+    "score": 0.8819488169300472,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:39.520Z"
+  },
+  {
+    "ruleId": "rule_1770562479518_6fb5qvn23",
+    "success": true,
+    "score": 0.8807940301282743,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:39.521Z"
+  },
+  {
+    "ruleId": "rule_1770562479518_6fb5qvn23",
+    "success": true,
+    "score": 0.9196376944486644,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:39.557Z"
+  },
+  {
+    "ruleId": "rule_1770562479518_6fb5qvn23",
+    "success": true,
+    "score": 0.8018920530774621,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-02-08T14:54:39.566Z"
+  },
+  {
+    "ruleId": "rule_1770562479570_8uplghf7v",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-02-08T14:54:39.572Z"
+  },
+  {
+    "ruleId": "rule_1770562479751_wtji2gh8b",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-02-08T14:54:39.754Z"
   }
 ]

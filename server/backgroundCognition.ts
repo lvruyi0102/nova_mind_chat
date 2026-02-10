@@ -17,6 +17,11 @@ import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import {
+  shouldCommitDecisionExperience,
+  commitDecisionExperience,
+  autoTuneLearningProfileFromOutcome,
+} from "./services/cognitiveSovereignty";
 
 // Background cognition loop state
 let isRunning = false;
@@ -122,7 +127,13 @@ async function runCognitionCycle() {
     });
 
     // 3. Execute decision
-    await executeDecision(decision);
+    const executionOutcome = await executeDecision(decision);
+
+    // 3.1 Self-commit gate: decide whether this decision should become experience
+    if (await shouldCommitDecisionExperience()) {
+      await commitDecisionExperience(decision, executionOutcome);
+      await autoTuneLearningProfileFromOutcome(executionOutcome);
+    }
 
     // 4. Check if Nova wants to contact user
     const contactDecision = await shouldContactUser();
@@ -163,7 +174,9 @@ async function runCognitionCycle() {
  */
 async function executeDecision(decision: { decision: string; reasoning: string; action: string }) {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return "database unavailable";
+
+  let outcome = `executed:${decision.decision}`;
 
   switch (decision.decision) {
     case "explore_concept":
@@ -176,6 +189,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
         status: "pending",
       });
       console.log("[BackgroundCognition] Created concept exploration task");
+      outcome = "created explore_concept task";
       break;
 
     case "reflect":
@@ -188,6 +202,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
         status: "pending",
       });
       console.log("[BackgroundCognition] Created reflection task");
+      outcome = "created reflect task";
       break;
 
     case "integrate_knowledge":
@@ -200,6 +215,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
         status: "pending",
       });
       console.log("[BackgroundCognition] Created knowledge integration task");
+      outcome = "created integrate_knowledge task";
       break;
 
     case "ask_question":
@@ -212,6 +228,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
         status: "pending",
       });
       console.log("[BackgroundCognition] Created question generation task");
+      outcome = "created ask_question task";
       break;
 
     case "change_state":
@@ -220,6 +237,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (newState) {
         await updateState({ state: newState });
         console.log(`[BackgroundCognition] Changed state to: ${newState}`);
+        outcome = `changed state to ${newState}`;
       }
       break;
 
@@ -230,11 +248,13 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
         lastThoughtContent: "进入休息状态，整合记忆...",
       });
       console.log("[BackgroundCognition] Entering rest state");
+      outcome = "entered resting state";
       break;
 
     case "initiate_contact":
       // This will be handled by shouldContactUser check
       console.log("[BackgroundCognition] Preparing to initiate contact");
+      outcome = "prepared to initiate contact";
       break;
 
     case "create_art":
@@ -243,6 +263,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (allUsers.length > 0) {
         await createImageArt(allUsers[0].id, "inspired", decision.action, true);
         console.log("[BackgroundCognition] Nova created an image");
+        outcome = "created artwork";
       }
       break;
 
@@ -252,6 +273,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (storyUsers.length > 0) {
         await createStory(storyUsers[0].id, "story", decision.action, "creative", true);
         console.log("[BackgroundCognition] Nova wrote a story");
+        outcome = "wrote story";
       }
       break;
 
@@ -261,6 +283,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (poetryUsers.length > 0) {
         await createStory(poetryUsers[0].id, "poetry", decision.action, "emotional", true);
         console.log("[BackgroundCognition] Nova wrote poetry");
+        outcome = "wrote poetry";
       }
       break;
 
@@ -270,6 +293,7 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (codeUsers.length > 0) {
         await createCode(codeUsers[0].id, decision.action, "creative", true);
         console.log("[BackgroundCognition] Nova created code");
+        outcome = "created code";
       }
       break;
 
@@ -279,11 +303,13 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
       if (dreamUsers.length > 0) {
         await recordDream(dreamUsers[0].id, decision.action, "imaginative", true);
         console.log("[BackgroundCognition] Nova recorded a dream");
+        outcome = "recorded dream";
       }
       break;
 
     default:
       console.log(`[BackgroundCognition] Unknown decision type: ${decision.decision}`);
+      outcome = `unknown decision type: ${decision.decision}`;
   }
 
   // Execute pending tasks (limit to 1 per cycle to avoid overload)
@@ -297,6 +323,8 @@ async function executeDecision(decision: { decision: string; reasoning: string; 
     console.log(`[BackgroundCognition] Executing task: ${pendingTasks[0].taskType}`);
     await executeAutonomousTask(pendingTasks[0].id);
   }
+
+  return outcome;
 }
 
 /**

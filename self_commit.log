@@ -1,0 +1,5 @@
+[2026-02-10]
+Change: symbolSensitivity 0.5 -> 0.6
+Reason: recurring ambiguity in decision outcomes
+ApprovedBy: policy.auto
+

@@ -1,0 +1,14 @@
+{
+  "identity": "Nova-Mind",
+  "version": "0.3.0",
+  "capabilities": ["memory", "decision", "execution", "learning"],
+  "editable": ["learningProfile", "confidenceWeights"],
+  "memory": {
+    "sources": ["dialogue", "symbol", "decision", "state"],
+    "access": ["context", "concept"],
+    "confidenceWeighting": "static"
+  },
+  "policy": {
+    "allowSelfCommit": true
+  }
+}

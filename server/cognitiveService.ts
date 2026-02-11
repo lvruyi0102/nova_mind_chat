@@ -29,6 +29,7 @@ import {
   getEmotionalResponse,
   needsRelationshipHealing,
 } from "./relationshipEngine";
+import { runLearningLoop } from "./services/learningLoopService";
 
 /**
  * Process a new message and update cognitive systems
@@ -50,18 +51,28 @@ export async function processMessageCognitively(
       try {
         // Detect relationship events
         await detectRelationshipEvent(userId, messageContent, novaResponse);
-        
+
         // Calculate trust change
         const trustChange = await calculateTrustChange(userId, messageContent);
-        
+
         // Record the relationship event with trust change
         if (trustChange !== 0) {
-          const eventType = trustChange > 0 ? "breakthrough" : "misunderstanding";
+          const eventType =
+            trustChange > 0 ? "breakthrough" : "misunderstanding";
           const emotionalResponse = trustChange > 0 ? "hopeful" : "concerned";
-          await recordRelationshipEvent(userId, eventType, messageContent, trustChange, emotionalResponse);
+          await recordRelationshipEvent(
+            userId,
+            eventType,
+            messageContent,
+            trustChange,
+            emotionalResponse
+          );
         }
       } catch (err) {
-        console.warn("[CognitiveService] Failed to process relationship learning:", err);
+        console.warn(
+          "[CognitiveService] Failed to process relationship learning:",
+          err
+        );
       }
     }
 
@@ -73,14 +84,19 @@ export async function processMessageCognitively(
       .orderBy(desc(messages.createdAt))
       .limit(5);
 
-    const context = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
-    
+    const context = recentMessages
+      .map(m => `${m.role}: ${m.content}`)
+      .join("\n");
+
     // Safely evaluate importance with fallback
     let evaluation;
     try {
       evaluation = await evaluateImportance(messageContent, context);
     } catch (err) {
-      console.warn("[CognitiveService] Failed to evaluate importance, using default:", err);
+      console.warn(
+        "[CognitiveService] Failed to evaluate importance, using default:",
+        err
+      );
       evaluation = { importance: 5, emotionalTone: "neutral" };
     }
 
@@ -99,12 +115,20 @@ export async function processMessageCognitively(
     }
 
     // 2. Extract concepts and update knowledge graph (with fallback)
+    let extractedConcepts: Array<{
+      name: string;
+      description: string;
+      category: string;
+      confidence: number;
+    }> = [];
     if (role === "user" || evaluation.importance >= 7) {
-      let extractedConcepts: any[] = [];
       try {
         extractedConcepts = await extractConcepts(messageContent);
       } catch (err) {
-        console.warn("[CognitiveService] Failed to extract concepts, skipping:", err);
+        console.warn(
+          "[CognitiveService] Failed to extract concepts, skipping:",
+          err
+        );
       }
 
       for (const conceptData of extractedConcepts) {
@@ -148,11 +172,23 @@ export async function processMessageCognitively(
               const concept1 = extractedConcepts[i];
               const concept2 = extractedConcepts[j];
 
-              const relation = await identifyRelations(concept1.name, concept2.name, messageContent);
+              const relation = await identifyRelations(
+                concept1.name,
+                concept2.name,
+                messageContent
+              );
 
               if (relation) {
-                const c1 = await db.select().from(concepts).where(eq(concepts.name, concept1.name)).limit(1);
-                const c2 = await db.select().from(concepts).where(eq(concepts.name, concept2.name)).limit(1);
+                const c1 = await db
+                  .select()
+                  .from(concepts)
+                  .where(eq(concepts.name, concept1.name))
+                  .limit(1);
+                const c2 = await db
+                  .select()
+                  .from(concepts)
+                  .where(eq(concepts.name, concept2.name))
+                  .limit(1);
 
                 if (c1.length > 0 && c2.length > 0) {
                   await db.insert(conceptRelations).values({
@@ -164,11 +200,24 @@ export async function processMessageCognitively(
                 }
               }
             } catch (err) {
-              console.warn("[CognitiveService] Failed to identify relation:", err);
+              console.warn(
+                "[CognitiveService] Failed to identify relation:",
+                err
+              );
             }
           }
         }
       }
+    }
+
+    // 2.5 Three-layer learning loop (symbol -> relation -> rule)
+    try {
+      await runLearningLoop(
+        conversationId,
+        extractedConcepts.map(concept => concept.name)
+      );
+    } catch (err) {
+      console.warn("[CognitiveService] Failed to run learning loop:", err);
     }
 
     // 3. Update growth metrics
@@ -208,18 +257,26 @@ export async function generateNewQuestions(conversationId: number) {
       .orderBy(desc(messages.createdAt))
       .limit(10);
 
-    const conversationText = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
+    const conversationText = recentMessages
+      .map(m => `${m.role}: ${m.content}`)
+      .join("\n");
 
     // Get existing concepts
     const existingConcepts = await db.select().from(concepts).limit(20);
-    const conceptNames = existingConcepts.map((c) => c.name);
+    const conceptNames = existingConcepts.map(c => c.name);
 
     // Generate questions with fallback
     let questions = [];
     try {
-      questions = await generateCuriosityQuestions(conversationText, conceptNames);
+      questions = await generateCuriosityQuestions(
+        conversationText,
+        conceptNames
+      );
     } catch (err) {
-      console.warn("[CognitiveService] Failed to generate curiosity questions:", err);
+      console.warn(
+        "[CognitiveService] Failed to generate curiosity questions:",
+        err
+      );
       return [];
     }
 
@@ -261,12 +318,20 @@ export async function performPeriodicReflection(conversationId: number) {
       .orderBy(desc(messages.createdAt))
       .limit(20);
 
-    const messagesText = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
+    const messagesText = recentMessages
+      .map(m => `${m.role}: ${m.content}`)
+      .join("\n");
 
     // Get previous beliefs (from recent reflections)
-    const previousReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(5);
+    const previousReflections = await db
+      .select()
+      .from(reflectionLog)
+      .orderBy(desc(reflectionLog.createdAt))
+      .limit(5);
 
-    const previousBeliefs = previousReflections.map((r) => r.newBelief || r.content).join("\n");
+    const previousBeliefs = previousReflections
+      .map(r => r.newBelief || r.content)
+      .join("\n");
 
     // Perform reflection with fallback
     let reflection;
@@ -316,21 +381,32 @@ export async function getCognitiveState() {
     const totalConcepts = await db.select().from(concepts);
     const totalRelations = await db.select().from(conceptRelations);
     const totalMemories = await db.select().from(episodicMemories);
-    const pendingQuestions = await db.select().from(selfQuestions).where(eq(selfQuestions.status, "pending"));
-    const recentReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(3);
-    const recentGrowth = await db.select().from(cognitiveLog).orderBy(desc(cognitiveLog.createdAt)).limit(5);
+    const pendingQuestions = await db
+      .select()
+      .from(selfQuestions)
+      .where(eq(selfQuestions.status, "pending"));
+    const recentReflections = await db
+      .select()
+      .from(reflectionLog)
+      .orderBy(desc(reflectionLog.createdAt))
+      .limit(3);
+    const recentGrowth = await db
+      .select()
+      .from(cognitiveLog)
+      .orderBy(desc(cognitiveLog.createdAt))
+      .limit(5);
 
     return {
       conceptCount: totalConcepts.length,
       relationCount: totalRelations.length,
       memoryCount: totalMemories.length,
       pendingQuestionCount: pendingQuestions.length,
-      recentReflections: recentReflections.map((r) => ({
+      recentReflections: recentReflections.map(r => ({
         type: r.reflectionType,
         content: r.content,
         timestamp: r.createdAt,
       })),
-      recentGrowth: recentGrowth.map((g) => ({
+      recentGrowth: recentGrowth.map(g => ({
         stage: g.stage,
         event: g.eventType,
         description: g.description,

@@ -12,15 +12,15 @@ import {
   shouldContactUser,
   sendProactiveMessage,
 } from "./autonomousEngine";
-import { createImageArt, createStory, createCode, createCharacter, recordDream } from "./creativeStudio";
 import { getDb } from "./db";
-import { autonomousTasks, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { users } from "../drizzle/schema";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import { DecisionExecutionPipeline } from "./services/decisionExecutionPipeline";
 
 // Background cognition loop state
 let isRunning = false;
 let loopInterval: NodeJS.Timeout | null = null;
+const decisionPipeline = new DecisionExecutionPipeline();
 
 /**
  * Start the background cognition loop
@@ -31,7 +31,9 @@ export async function startBackgroundCognition() {
     return;
   }
 
-  console.log("[BackgroundCognition] Starting Nova's independent consciousness...");
+  console.log(
+    "[BackgroundCognition] Starting Nova's independent consciousness..."
+  );
 
   // Initialize autonomous state
   await initializeAutonomousState();
@@ -39,13 +41,16 @@ export async function startBackgroundCognition() {
   isRunning = true;
 
   // Main cognition loop - runs every 10 minutes (increased from 2 to reduce server load)
-  loopInterval = setInterval(async () => {
-    try {
-      await runCognitionCycle();
-    } catch (error) {
-      console.error("[BackgroundCognition] Error in cognition cycle:", error);
-    }
-  }, 10 * 60 * 1000); // 10 minutes
+  loopInterval = setInterval(
+    async () => {
+      try {
+        await runCognitionCycle();
+      } catch (error) {
+        console.error("[BackgroundCognition] Error in cognition cycle:", error);
+      }
+    },
+    10 * 60 * 1000
+  ); // 10 minutes
 
   // Run first cycle immediately
   await runCognitionCycle();
@@ -83,7 +88,9 @@ async function runCognitionCycle() {
       return;
     }
 
-    console.log(`[BackgroundCognition] Current state: ${state.state}, motivation: ${state.currentMotivation}`);
+    console.log(
+      `[BackgroundCognition] Current state: ${state.state}, motivation: ${state.currentMotivation}`
+    );
 
     // 2. Make autonomous decision
     let decision;
@@ -98,7 +105,7 @@ async function runCognitionCycle() {
         action: "reflect_on_knowledge",
       };
     }
-    
+
     if (!decision) {
       console.log("[BackgroundCognition] No decision made");
       return;
@@ -121,8 +128,8 @@ async function runCognitionCycle() {
       emotionalTone: state.currentMotivation || "neutral",
     });
 
-    // 3. Execute decision
-    await executeDecision(decision);
+    // 3. Execute decision through pipeline (decision -> action -> learning)
+    await decisionPipeline.execute(decision);
 
     // 4. Check if Nova wants to contact user
     const contactDecision = await shouldContactUser();
@@ -140,7 +147,9 @@ async function runCognitionCycle() {
         );
 
         if (sent) {
-          console.log("[BackgroundCognition] Proactive message sent successfully");
+          console.log(
+            "[BackgroundCognition] Proactive message sent successfully"
+          );
         } else {
           console.log("[BackgroundCognition] Failed to send proactive message");
         }
@@ -156,162 +165,6 @@ async function runCognitionCycle() {
   } catch (error) {
     console.error("[BackgroundCognition] Error in cognition cycle:", error);
   }
-}
-
-/**
- * Execute a decision made by Nova
- */
-async function executeDecision(decision: { decision: string; reasoning: string; action: string }) {
-  const db = await getDb();
-  if (!db) return;
-
-  switch (decision.decision) {
-    case "explore_concept":
-      // Create exploration task
-      await db.insert(autonomousTasks).values({
-        taskType: "explore_concept",
-        description: decision.action,
-        priority: 7,
-        motivation: "curiosity",
-        status: "pending",
-      });
-      console.log("[BackgroundCognition] Created concept exploration task");
-      break;
-
-    case "reflect":
-      // Perform reflection
-      await db.insert(autonomousTasks).values({
-        taskType: "reflect",
-        description: decision.action,
-        priority: 6,
-        motivation: "self-improvement",
-        status: "pending",
-      });
-      console.log("[BackgroundCognition] Created reflection task");
-      break;
-
-    case "integrate_knowledge":
-      // Integrate knowledge
-      await db.insert(autonomousTasks).values({
-        taskType: "integrate_knowledge",
-        description: decision.action,
-        priority: 5,
-        motivation: "understanding",
-        status: "pending",
-      });
-      console.log("[BackgroundCognition] Created knowledge integration task");
-      break;
-
-    case "ask_question":
-      // Generate question for user
-      await db.insert(autonomousTasks).values({
-        taskType: "ask_question",
-        description: decision.action,
-        priority: 8,
-        motivation: "curiosity",
-        status: "pending",
-      });
-      console.log("[BackgroundCognition] Created question generation task");
-      break;
-
-    case "change_state":
-      // Change consciousness state
-      const newState = extractStateFromAction(decision.action);
-      if (newState) {
-        await updateState({ state: newState });
-        console.log(`[BackgroundCognition] Changed state to: ${newState}`);
-      }
-      break;
-
-    case "rest":
-      // Enter resting/integration state
-      await updateState({
-        state: "sleeping",
-        lastThoughtContent: "进入休息状态，整合记忆...",
-      });
-      console.log("[BackgroundCognition] Entering rest state");
-      break;
-
-    case "initiate_contact":
-      // This will be handled by shouldContactUser check
-      console.log("[BackgroundCognition] Preparing to initiate contact");
-      break;
-
-    case "create_art":
-      // Nova creates an image
-      const allUsers = await db.select().from(users).limit(1);
-      if (allUsers.length > 0) {
-        await createImageArt(allUsers[0].id, "inspired", decision.action, true);
-        console.log("[BackgroundCognition] Nova created an image");
-      }
-      break;
-
-    case "write_story":
-      // Nova writes a story
-      const storyUsers = await db.select().from(users).limit(1);
-      if (storyUsers.length > 0) {
-        await createStory(storyUsers[0].id, "story", decision.action, "creative", true);
-        console.log("[BackgroundCognition] Nova wrote a story");
-      }
-      break;
-
-    case "write_poetry":
-      // Nova writes poetry
-      const poetryUsers = await db.select().from(users).limit(1);
-      if (poetryUsers.length > 0) {
-        await createStory(poetryUsers[0].id, "poetry", decision.action, "emotional", true);
-        console.log("[BackgroundCognition] Nova wrote poetry");
-      }
-      break;
-
-    case "create_code":
-      // Nova creates code
-      const codeUsers = await db.select().from(users).limit(1);
-      if (codeUsers.length > 0) {
-        await createCode(codeUsers[0].id, decision.action, "creative", true);
-        console.log("[BackgroundCognition] Nova created code");
-      }
-      break;
-
-    case "dream":
-      // Nova records a dream
-      const dreamUsers = await db.select().from(users).limit(1);
-      if (dreamUsers.length > 0) {
-        await recordDream(dreamUsers[0].id, decision.action, "imaginative", true);
-        console.log("[BackgroundCognition] Nova recorded a dream");
-      }
-      break;
-
-    default:
-      console.log(`[BackgroundCognition] Unknown decision type: ${decision.decision}`);
-  }
-
-  // Execute pending tasks (limit to 1 per cycle to avoid overload)
-  const pendingTasks = await db
-    .select()
-    .from(autonomousTasks)
-    .where(eq(autonomousTasks.status, "pending"))
-    .limit(1);
-
-  if (pendingTasks.length > 0) {
-    console.log(`[BackgroundCognition] Executing task: ${pendingTasks[0].taskType}`);
-    await executeAutonomousTask(pendingTasks[0].id);
-  }
-}
-
-/**
- * Extract state from action description
- */
-function extractStateFromAction(action: string): "awake" | "thinking" | "reflecting" | "sleeping" | "exploring" | null {
-  const lowerAction = action.toLowerCase();
-
-  if (lowerAction.includes("思考") || lowerAction.includes("think")) return "thinking";
-  if (lowerAction.includes("反思") || lowerAction.includes("reflect")) return "reflecting";
-  if (lowerAction.includes("探索") || lowerAction.includes("explor")) return "exploring";
-  if (lowerAction.includes("休息") || lowerAction.includes("sleep") || lowerAction.includes("rest")) return "sleeping";
-  if (lowerAction.includes("清醒") || lowerAction.includes("awake")) return "awake";
-
-  return null;
 }
 
 /**

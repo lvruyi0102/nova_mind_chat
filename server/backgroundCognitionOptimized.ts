@@ -3,11 +3,14 @@
  * With memory optimization, streaming processing, and garbage collection
  */
 
-import { getCurrentState, updateState, makeAutonomousDecision } from "./autonomousEngine";
+import {
+  getCurrentState,
+  updateState,
+  makeAutonomousDecision,
+} from "./autonomousEngine";
 import { getDb } from "./db";
-import { autonomousTasks, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
-import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import { recordPrivateThought } from "./privacyEngine";
+import { DecisionExecutionPipeline } from "./services/decisionExecutionPipeline";
 
 // Background cognition loop state
 let isRunning = false;
@@ -15,6 +18,7 @@ let loopInterval: NodeJS.Timeout | null = null;
 let lastGarbageCollectionTime = Date.now();
 const GC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MEMORY_THRESHOLD = 0.85; // 85% of heap
+const decisionPipeline = new DecisionExecutionPipeline();
 
 /**
  * Memory management utilities
@@ -41,8 +45,12 @@ class MemoryManager {
 
   static logMemoryStatus() {
     const usage = process.memoryUsage();
-    const heapUsagePercent = (usage.heapUsed / usage.heapTotal * 100).toFixed(1);
-    console.log(`[MemoryManager] Heap: ${heapUsagePercent}% (${Math.round(usage.heapUsed / 1024 / 1024)}MB/${Math.round(usage.heapTotal / 1024 / 1024)}MB)`);
+    const heapUsagePercent = ((usage.heapUsed / usage.heapTotal) * 100).toFixed(
+      1
+    );
+    console.log(
+      `[MemoryManager] Heap: ${heapUsagePercent}% (${Math.round(usage.heapUsed / 1024 / 1024)}MB/${Math.round(usage.heapTotal / 1024 / 1024)}MB)`
+    );
   }
 }
 
@@ -57,8 +65,9 @@ class QueryCache {
   set(key: string, data: any) {
     if (this.cache.size >= this.maxSize) {
       // Remove oldest entry
-      const oldestKey = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0];
+      const oldestKey = Array.from(this.cache.entries()).sort(
+        (a, b) => a[1].timestamp - b[1].timestamp
+      )[0][0];
       this.cache.delete(oldestKey);
     }
     this.cache.set(key, { data, timestamp: Date.now() });
@@ -93,36 +102,45 @@ export async function startBackgroundCognition() {
     return;
   }
 
-  console.log("[BackgroundCognition] Starting Nova's independent consciousness (optimized)...");
+  console.log(
+    "[BackgroundCognition] Starting Nova's independent consciousness (optimized)..."
+  );
 
   isRunning = true;
 
   // Main cognition loop - runs every 15 minutes (increased from 10 to reduce server load)
-  loopInterval = setInterval(async () => {
-    try {
-      // Check memory pressure before running cycle
-      if (MemoryManager.isMemoryPressure()) {
-        console.warn("[BackgroundCognition] High memory pressure detected, skipping cycle");
-        MemoryManager.forceGarbageCollection();
-        return;
-      }
+  loopInterval = setInterval(
+    async () => {
+      try {
+        // Check memory pressure before running cycle
+        if (MemoryManager.isMemoryPressure()) {
+          console.warn(
+            "[BackgroundCognition] High memory pressure detected, skipping cycle"
+          );
+          MemoryManager.forceGarbageCollection();
+          return;
+        }
 
-      await runCognitionCycle();
+        await runCognitionCycle();
 
-      // Periodic garbage collection
-      if (Date.now() - lastGarbageCollectionTime > GC_INTERVAL) {
-        MemoryManager.forceGarbageCollection();
-        lastGarbageCollectionTime = Date.now();
+        // Periodic garbage collection
+        if (Date.now() - lastGarbageCollectionTime > GC_INTERVAL) {
+          MemoryManager.forceGarbageCollection();
+          lastGarbageCollectionTime = Date.now();
+        }
+      } catch (error) {
+        console.error("[BackgroundCognition] Error in cognition cycle:", error);
       }
-    } catch (error) {
-      console.error("[BackgroundCognition] Error in cognition cycle:", error);
-    }
-  }, 15 * 60 * 1000); // 15 minutes
+    },
+    15 * 60 * 1000
+  ); // 15 minutes
 
   // Run first cycle after a short delay
   setTimeout(() => runCognitionCycle(), 5000);
 
-  console.log("[BackgroundCognition] Nova is now thinking independently (optimized)");
+  console.log(
+    "[BackgroundCognition] Nova is now thinking independently (optimized)"
+  );
 }
 
 /**
@@ -171,8 +189,9 @@ async function runCognitionCycle() {
     let decision: any = null;
     try {
       const decisionPromise = makeAutonomousDecision();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Decision timeout")), 20000) // 20 second timeout
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          setTimeout(() => reject(new Error("Decision timeout")), 20000) // 20 second timeout
       );
 
       decision = await Promise.race([decisionPromise, timeoutPromise]);
@@ -204,9 +223,9 @@ async function runCognitionCycle() {
       // Don't fail the whole cycle if thought recording fails
     }
 
-    // 4. Execute decision (simplified, no creative tasks to reduce memory)
+    // 4. Execute decision through pipeline (decision -> action -> learning)
     if (decision && decision.decision) {
-      await executeDecisionOptimized(decision);
+      await decisionPipeline.execute(decision);
     }
 
     // 5. Update state (minimal update)
@@ -220,82 +239,6 @@ async function runCognitionCycle() {
   }
 
   MemoryManager.logMemoryStatus();
-}
-
-/**
- * Optimized decision execution - no heavy creative tasks
- */
-async function executeDecisionOptimized(decision: {
-  decision: string;
-  reasoning: string;
-  action: string;
-}) {
-  const db = await getDb();
-  if (!db) return;
-
-  // Only handle lightweight decisions
-  switch (decision.decision) {
-    case "explore_concept":
-      // Create lightweight exploration task
-      await db
-        .insert(autonomousTasks)
-        .values({
-          taskType: "explore_concept",
-          description: decision.action.substring(0, 500), // Limit description length
-          priority: 7,
-          motivation: "curiosity",
-          status: "pending",
-        })
-        .catch((err) => console.error("[BackgroundCognition] Error creating task:", err));
-      break;
-
-    case "reflect":
-      // Create reflection task
-      await db
-        .insert(autonomousTasks)
-        .values({
-          taskType: "reflect",
-          description: decision.action.substring(0, 500),
-          priority: 6,
-          motivation: "self-improvement",
-          status: "pending",
-        })
-        .catch((err) => console.error("[BackgroundCognition] Error creating task:", err));
-      break;
-
-    case "change_state":
-      // Change consciousness state
-      const newState = extractStateFromAction(decision.action);
-      if (newState) {
-        await updateState({ state: newState }).catch((err) =>
-          console.error("[BackgroundCognition] Error updating state:", err)
-        );
-      }
-      break;
-
-    case "rest":
-      // Enter resting state
-      await updateState({
-        state: "sleeping",
-        lastThoughtContent: "休息中...",
-      }).catch((err) => console.error("[BackgroundCognition] Error entering rest:", err));
-      break;
-
-    // Skip heavy creative tasks (create_art, write_story, etc.) to save memory
-    default:
-      console.log(`[BackgroundCognition] Skipping decision: ${decision.decision}`);
-  }
-}
-
-/**
- * Extract state from action string
- */
-function extractStateFromAction(action: string): "awake" | "thinking" | "sleeping" | "exploring" | "reflecting" | null {
-  if (action.includes("awake") || action.includes("active")) return "awake";
-  if (action.includes("thinking") || action.includes("reflect")) return "thinking";
-  if (action.includes("sleep") || action.includes("rest")) return "sleeping";
-  if (action.includes("learning")) return "exploring";
-  return null;
 }
 
 /**

@@ -7,43 +7,67 @@ import {
   episodicMemories,
   selfQuestions,
 } from "../../drizzle/schema";
+import { decayOldRelations, evaluateLearningWrite } from "./learningPolicyGate";
+import {
+  markRuleDeprecated,
+  upsertRuleCandidate,
+} from "./ruleLifecycleService";
 
 interface LearningLoopResult {
   symbolCount: number;
   relationLearned: number;
   rulesLearned: number;
+  relationDecayed: number;
 }
 
 /**
  * Three-layer learning loop:
- * 1) Symbol learning (already done via concept extraction, here only counts)
- * 2) Relation learning (reinforce relation graph from co-occurrence)
- * 3) Rule learning (derive simple if-then heuristics from episodic patterns)
+ * 1) Symbol learning (existing concept extraction)
+ * 2) Relation learning with policy gate
+ * 3) Rule learning with rule lifecycle state machine
  */
 export async function runLearningLoop(
   conversationId: number,
   recentSymbolNames: string[]
 ): Promise<LearningLoopResult> {
   const db = await getDb();
-  if (!db) return { symbolCount: 0, relationLearned: 0, rulesLearned: 0 };
+  if (!db) {
+    return {
+      symbolCount: 0,
+      relationLearned: 0,
+      rulesLearned: 0,
+      relationDecayed: 0,
+    };
+  }
 
   const cleanSymbols = Array.from(
     new Set(recentSymbolNames.map(s => s.trim()).filter(Boolean))
   );
 
+  const cycleStats = { relationWrites: 0, ruleWrites: 0 };
+
   const relationLearned = await learnRelationsFromSymbols(
     conversationId,
-    cleanSymbols
+    cleanSymbols,
+    cycleStats
   );
   const rulesLearned = await learnRulesFromEpisodes(
     conversationId,
-    cleanSymbols
+    cleanSymbols,
+    cycleStats
   );
+  const relationDecayed = await decayOldRelations();
 
   await db.insert(cognitiveLog).values({
     stage: "Meta_Learning_III",
     eventType: "three_layer_learning",
-    description: `symbols=${cleanSymbols.length}; relations=${relationLearned}; rules=${rulesLearned}`,
+    description: JSON.stringify({
+      symbols: cleanSymbols.length,
+      relations: relationLearned,
+      rules: rulesLearned,
+      relationDecayed,
+      cycleStats,
+    }),
     conversationId,
   });
 
@@ -51,12 +75,14 @@ export async function runLearningLoop(
     symbolCount: cleanSymbols.length,
     relationLearned,
     rulesLearned,
+    relationDecayed,
   };
 }
 
 async function learnRelationsFromSymbols(
   conversationId: number,
-  symbols: string[]
+  symbols: string[],
+  cycleStats: { relationWrites: number; ruleWrites: number }
 ): Promise<number> {
   const db = await getDb();
   if (!db || symbols.length < 2) return 0;
@@ -71,6 +97,19 @@ async function learnRelationsFromSymbols(
   let count = 0;
   for (let i = 0; i < matched.length; i++) {
     for (let j = i + 1; j < matched.length; j++) {
+      const gate = await evaluateLearningWrite(
+        {
+          conversationId,
+          action: "relation_reinforcement",
+          confidenceDelta: 1,
+        },
+        cycleStats
+      );
+
+      if (gate.decision === "defer") {
+        continue;
+      }
+
       const a = matched[i];
       const b = matched[j];
 
@@ -94,33 +133,41 @@ async function learnRelationsFromSymbols(
       if (existing.length > 0) {
         await db
           .update(conceptRelations)
-          .set({ strength: Math.min(10, existing[0].strength + 1) })
+          .set({
+            strength: Math.min(
+              10,
+              existing[0].strength + gate.adjustedConfidenceDelta
+            ),
+          })
           .where(eq(conceptRelations.id, existing[0].id));
       } else {
         await db.insert(conceptRelations).values({
           fromConceptId: a.id,
           toConceptId: b.id,
           relationType: "co_occurs_with",
-          strength: 4,
+          strength: Math.max(3, 3 + gate.adjustedConfidenceDelta),
         });
       }
+
+      cycleStats.relationWrites += 1;
       count++;
+
+      await db.insert(cognitiveLog).values({
+        stage: "Relational_Learning_II",
+        eventType: "relation_reinforcement_applied",
+        description: `pair=${a.name}<->${b.name}; gate=${gate.decision}; reason=${gate.reason}; delta=${gate.adjustedConfidenceDelta}`,
+        conversationId,
+      });
     }
   }
-
-  await db.insert(cognitiveLog).values({
-    stage: "Relational_Learning_II",
-    eventType: "relation_reinforcement",
-    description: `conversation=${conversationId}; learned_pairs=${count}`,
-    conversationId,
-  });
 
   return count;
 }
 
 async function learnRulesFromEpisodes(
   conversationId: number,
-  symbols: string[]
+  symbols: string[],
+  cycleStats: { relationWrites: number; ruleWrites: number }
 ): Promise<number> {
   const db = await getDb();
   if (!db || symbols.length === 0) return 0;
@@ -155,18 +202,33 @@ async function learnRulesFromEpisodes(
     const related = episodes.filter(ep => ep.content.includes(symbol));
     if (related.length < 2) continue;
 
+    const gate = await evaluateLearningWrite(
+      {
+        conversationId,
+        action: "rule_formation",
+        confidenceDelta: Math.min(2, related.length - 1),
+      },
+      cycleStats
+    );
+
+    if (gate.decision === "defer") {
+      continue;
+    }
+
     const interrogativeCount = related.filter(ep =>
       triggerWords.some(w => ep.content.toLowerCase().includes(w))
     ).length;
-    if (interrogativeCount >= 2) {
-      const rule = `Rule: IF topic includes "${symbol}", THEN prioritize explanatory response with examples.`;
 
-      await db.insert(cognitiveLog).values({
-        stage: "Rule_Learning_III",
-        eventType: "rule_formation",
-        description: rule,
+    const ruleKey = `topic:${symbol}:explanatory_response`;
+    const statement = `IF topic includes "${symbol}" THEN prioritize explanatory response with examples.`;
+
+    if (interrogativeCount >= 2) {
+      await upsertRuleCandidate(
         conversationId,
-      });
+        ruleKey,
+        statement,
+        gate.adjustedConfidenceDelta * 12
+      );
 
       await db.insert(selfQuestions).values({
         question: `当讨论「${symbol}」时，我如何提供更可验证的解释？`,
@@ -175,7 +237,14 @@ async function learnRulesFromEpisodes(
         status: "pending",
       });
 
+      cycleStats.ruleWrites += 1;
       rules++;
+    } else if (interrogativeCount === 0) {
+      await markRuleDeprecated(
+        conversationId,
+        ruleKey,
+        "no_recent_supporting_evidence"
+      );
     }
   }
 

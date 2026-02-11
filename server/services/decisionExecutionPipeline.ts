@@ -13,28 +13,52 @@ export interface AutonomousDecisionInput {
   action: string;
 }
 
+type SuccessType = "reliable" | "accidental" | "non-repeatable";
+
+interface DecisionOutcome {
+  expected: {
+    decision: string;
+    action: string;
+    effect: string;
+  };
+  actual: {
+    createdTaskId?: number;
+    executedTaskId?: number;
+    stateChanged?: string;
+    notes: string[];
+  };
+  successType: SuccessType;
+  learningEligible: boolean;
+}
+
 /**
  * DecisionExecutionPipeline
- * Convert autonomous decisions into tasks/actions and persist learnable outcomes.
+ * Convert autonomous decisions into actions and record standardized outcomes.
  */
 export class DecisionExecutionPipeline {
-  async execute(
-    decision: AutonomousDecisionInput
-  ): Promise<{
+  async execute(decision: AutonomousDecisionInput): Promise<{
     createdTaskId?: number;
     executedTaskId?: number;
     summary: string;
+    outcome: DecisionOutcome;
   }> {
     const db = await getDb();
     if (!db) {
-      return { summary: "数据库不可用，跳过执行" };
+      const fallback = this.buildOutcome(decision, {
+        notes: ["db_unavailable"],
+      });
+      return {
+        summary: "数据库不可用，跳过执行",
+        outcome: fallback,
+      };
     }
 
-    const summaryParts: string[] = [];
-
-    // 1) Create action artifact (task or state update)
+    const notes: string[] = [];
     let createdTaskId: number | undefined;
+    let executedTaskId: number | undefined;
+    let stateChanged: string | undefined;
 
+    // 1) Convert decision to artifact
     if (decision.decision === "change_state") {
       const nextState = this.inferState(decision.action);
       if (nextState) {
@@ -42,23 +66,28 @@ export class DecisionExecutionPipeline {
           state: nextState,
           lastThoughtContent: decision.reasoning.slice(0, 180),
         });
-        summaryParts.push(`状态切换到 ${nextState}`);
+        stateChanged = nextState;
+        notes.push(`state_changed:${nextState}`);
+      } else {
+        notes.push("state_change_inferred_failed");
       }
     } else if (decision.decision === "rest") {
       await updateState({
         state: "sleeping",
         lastThoughtContent: "进入整合休息模式",
       });
-      summaryParts.push("进入休息状态");
+      stateChanged = "sleeping";
+      notes.push("state_changed:sleeping");
     } else {
       createdTaskId = await this.createTaskFromDecision(decision);
       if (createdTaskId) {
-        summaryParts.push(`创建任务 #${createdTaskId}`);
+        notes.push(`task_created:${createdTaskId}`);
+      } else {
+        notes.push("task_create_failed");
       }
     }
 
-    // 2) Execute one pending task to close loop
-    let executedTaskId: number | undefined;
+    // 2) Execute one pending task
     const pending = await db
       .select()
       .from(autonomousTasks)
@@ -69,30 +98,82 @@ export class DecisionExecutionPipeline {
     if (pending[0]) {
       executedTaskId = pending[0].id;
       await executeAutonomousTask(executedTaskId);
-      summaryParts.push(`执行任务 #${executedTaskId}`);
+      notes.push(`task_executed:${executedTaskId}`);
     }
 
-    // 3) Log the pipeline outcome for learning
+    const outcome = this.buildOutcome(decision, {
+      createdTaskId,
+      executedTaskId,
+      stateChanged,
+      notes,
+    });
+
+    const summary = notes.join(" | ") || "no_op";
+
+    // 3) Persist structured outcome for explainability
     await db.insert(cognitiveLog).values({
       stage: "Autonomous_Execution",
       eventType: "decision_pipeline",
-      description: `decision=${decision.decision}; action=${decision.action}; outcome=${summaryParts.join(" | ") || "no_op"}`,
+      description: JSON.stringify(outcome),
     });
 
-    // Keep an explicit decision outcome for future policy learning
     await db.insert(autonomousDecisions).values({
       decisionType: decision.decision,
       context: "background_cognition_pipeline",
       reasoning: decision.reasoning,
       action: decision.action,
-      outcome: summaryParts.join(" | ") || "no_op",
+      outcome: JSON.stringify(outcome),
     });
 
     return {
       createdTaskId,
       executedTaskId,
-      summary: summaryParts.join(" | ") || "no_op",
+      summary,
+      outcome,
     };
+  }
+
+  private buildOutcome(
+    decision: AutonomousDecisionInput,
+    actual: {
+      createdTaskId?: number;
+      executedTaskId?: number;
+      stateChanged?: string;
+      notes: string[];
+    }
+  ): DecisionOutcome {
+    const hasDeterministicArtifact = Boolean(
+      actual.stateChanged || actual.createdTaskId || actual.executedTaskId
+    );
+
+    const successType: SuccessType = hasDeterministicArtifact
+      ? "reliable"
+      : actual.notes.length > 0
+        ? "non-repeatable"
+        : "accidental";
+
+    const learningEligible =
+      successType === "reliable" &&
+      !actual.notes.some(note => note.includes("failed"));
+
+    return {
+      expected: {
+        decision: decision.decision,
+        action: decision.action,
+        effect: this.expectedEffect(decision.decision),
+      },
+      actual,
+      successType,
+      learningEligible,
+    };
+  }
+
+  private expectedEffect(decisionType: string): string {
+    if (decisionType === "change_state") return "state_transition";
+    if (decisionType === "rest") return "enter_sleeping_mode";
+    if (decisionType === "ask_question") return "generate_user_question_task";
+    if (decisionType === "explore_concept") return "create_exploration_task";
+    return "create_or_execute_autonomous_task";
   }
 
   private async createTaskFromDecision(

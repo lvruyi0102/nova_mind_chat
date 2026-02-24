@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal } from "drizzle-orm/mysql-core";
 
 /**

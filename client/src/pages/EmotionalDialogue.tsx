@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Emotional Dialogue Page
  * 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { router, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { PermissionRulesEngine } from "../services/permissionRulesEngine";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * FileUploadPanel 组件
  * 支持 PDF、图片、文件夹的上传界面

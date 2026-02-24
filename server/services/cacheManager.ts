@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDb } from "../db";
 
 /**

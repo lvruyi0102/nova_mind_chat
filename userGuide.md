@@ -64,6 +64,19 @@ Nova 会根据与您的信任等级、思考内容的私密性、分享的价值
 
 ### 设置面板
 
+### 自主代码修改（管理员）
+
+系统支持受控的“自主代码修改”能力：管理员可通过后端接口让 Nova 根据目标生成 patch，并应用到仓库。
+
+使用前提：
+- 必须是管理员账号
+- 必须设置环境变量 `SELF_MODIFICATION_ENABLED=true`
+- 建议传入 `allowedPaths` 限制可修改文件范围
+
+安全边界：
+- 默认禁止修改 `.git` 和 `node_modules`
+- 仅支持 `git apply` 可识别的 unified diff patch
+
 在"Settings"中，您可以：修改网站名称和 Logo、配置可见性设置、管理环境变量和 API 密钥。
 
 ---

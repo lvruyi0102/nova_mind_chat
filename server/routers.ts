@@ -40,6 +40,7 @@ import {
   createImageArt,
   createStory,
   createCode,
+  selfModifyCodeWork,
   createCharacter,
   recordDream,
   getCreativeWorks,
@@ -352,6 +353,12 @@ export const appRouter = router({
       .input(z.object({ idea: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
       .mutation(async ({ ctx, input }) => {
         return createCode(ctx.user.id, input.idea, input.emotionalState, input.shouldSave);
+      }),
+
+    selfModifyCode: protectedProcedure
+      .input(z.object({ workId: z.number(), instruction: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        return selfModifyCodeWork(ctx.user.id, input.workId, input.instruction);
       }),
     
     createCharacter: protectedProcedure

@@ -10,6 +10,7 @@ import {
   creativeAccessRequests,
   creativeTags,
   creativeInsights,
+  creativeWorkVersions,
   users,
 } from "../drizzle/schema";
 import { generateImage } from "./_core/imageGeneration";
@@ -246,6 +247,112 @@ export async function createCode(
   } catch (error) {
     console.error("[CreativeStudio] Error creating code:", error);
     return { success: false, message: "Error creating code" };
+  }
+}
+
+
+/**
+ * Nova self-modifies an existing code work
+ * This is real code evolution: reads existing code -> applies instruction -> persists new version.
+ */
+export async function selfModifyCodeWork(
+  userId: number,
+  workId: number,
+  instruction: string
+): Promise<{ success: boolean; workId?: number; previousContent?: string; updatedCode?: string; versionNumber?: number; message: string }> {
+  const db = await getDb();
+  if (!db) return { success: false, message: "Database unavailable" };
+
+  try {
+    const works = await db
+      .select()
+      .from(creativeWorks)
+      .where(and(eq(creativeWorks.id, workId), eq(creativeWorks.userId, userId)))
+      .limit(1);
+
+    const work = works[0];
+    if (!work) {
+      return { success: false, message: "Work not found or unauthorized" };
+    }
+    if (work.type !== "code") {
+      return { success: false, message: "Only code works can be self-modified" };
+    }
+
+    const previousContent = work.content || "";
+    if (!previousContent.trim()) {
+      return { success: false, message: "Original code is empty" };
+    }
+
+    const response = await callLLMWithTimeout(
+      () =>
+        invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are Nova improving your own code. Return only the updated full code, no markdown fences, no explanation.",
+            },
+            {
+              role: "user",
+              content: `Improve this code according to instruction.\n\nInstruction: ${instruction}\n\nOriginal code:\n${previousContent}` ,
+            },
+          ],
+        }),
+      { timeout: 30000, maxRetries: 2 }
+    );
+
+    if (!response) {
+      return { success: false, message: "Failed to generate updated code" };
+    }
+
+    const content = response.choices[0]?.message?.content;
+    const updatedCode = typeof content === "string" ? content : "";
+    if (!updatedCode.trim()) {
+      return { success: false, message: "Updated code is empty" };
+    }
+
+    const latestVersion = await db
+      .select()
+      .from(creativeWorkVersions)
+      .where(eq(creativeWorkVersions.workId, workId))
+      .orderBy(desc(creativeWorkVersions.versionNumber))
+      .limit(1);
+    const nextVersion = (latestVersion[0]?.versionNumber || 0) + 1;
+
+    await db
+      .update(creativeWorks)
+      .set({
+        content: updatedCode,
+        updatedAt: new Date(),
+      })
+      .where(eq(creativeWorks.id, workId));
+
+    await db.insert(creativeWorkVersions).values({
+      workId,
+      versionNumber: nextVersion,
+      title: work.title,
+      description: work.description,
+      content: updatedCode,
+      contentType: "code",
+      createdBy: "nova",
+      changeLog: instruction,
+      improvedFrom: latestVersion[0]?.id,
+      fileSize: Buffer.byteLength(updatedCode),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      workId,
+      previousContent,
+      updatedCode,
+      versionNumber: nextVersion,
+      message: "Code self-modified and versioned successfully",
+    };
+  } catch (error) {
+    console.error("[CreativeStudio] Error self-modifying code:", error);
+    return { success: false, message: "Error self-modifying code" };
   }
 }
 

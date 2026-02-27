@@ -61,49 +61,72 @@ export async function generateCreativeImage(
   emotionalContext?: string
 ) {
   try {
-    const imageUrl = await generateImage({ prompt });
-
-    // Create generation request and save as creative work
     const db = await getDb();
-    if (db) {
-      const reqResult = await db.insert(creativeGenRequests).values({
-        userId,
-        generationType: "image",
-        prompt,
-        context,
-        emotionalContext,
-        status: "completed",
-        progress: 100,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+    if (!db) throw new Error("Database not available");
+
+    let imageUrl: string;
+    try {
+      const generatedImage = await generateImage({ prompt });
+      imageUrl = generatedImage.url || "";
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "";
+      const canFallback = errorMessage.includes("BUILT_IN_FORGE_API_URL is not configured")
+        || errorMessage.includes("BUILT_IN_FORGE_API_KEY is not configured");
+
+      if (!canFallback) {
+        throw error;
+      }
+
+      // Fallback to LLM-generated URL only when forge config is unavailable.
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an image generation assistant. Return only a direct image URL." },
+          { role: "user", content: `Generate an image URL for: ${prompt}` },
+        ],
       });
-
-      const requestId = (reqResult as any).insertId || reqResult[0];
-
-      // Save as creative work
-      await db.insert(creativeWorks).values({
-        userId,
-        type: "image",
-        title: prompt.substring(0, 100),
-        description: `Generated image from prompt: ${prompt}`,
-        content: imageUrl,
-        metadata: JSON.stringify({
-          generationType: "image",
-          prompt,
-          generationRequestId: requestId,
-        }),
-        isSaved: true,
-        visibility: "shared",
-        emotionalState: emotionalContext,
-        inspiration: context,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      return { requestId, imageUrl, success: true };
+      imageUrl = extractTextContent(response.choices[0]?.message?.content);
     }
 
-    return { imageUrl, success: true };
+    if (!imageUrl) {
+      throw new Error("Failed to generate image URL");
+    }
+
+    // Create generation request and save as creative work
+    const reqResult = await db.insert(creativeGenRequests).values({
+      userId,
+      generationType: "image",
+      prompt,
+      context,
+      emotionalContext,
+      status: "completed",
+      progress: 100,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const requestId = (reqResult as any).insertId || reqResult[0];
+
+    // Save as creative work
+    await db.insert(creativeWorks).values({
+      userId,
+      type: "image",
+      title: prompt.substring(0, 100),
+      description: `Generated image from prompt: ${prompt}`,
+      content: imageUrl,
+      metadata: JSON.stringify({
+        generationType: "image",
+        prompt,
+        generationRequestId: requestId,
+      }),
+      isSaved: true,
+      visibility: "shared",
+      emotionalState: emotionalContext,
+      inspiration: context,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return imageUrl;
   } catch (error) {
     console.error("Error generating image:", error);
     throw error;
@@ -196,10 +219,10 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
         updatedAt: new Date(),
       });
 
-      return { requestId, html: gameHtml, success: true };
+      return gameHtml;
     }
 
-    return { html: gameHtml, success: true };
+    return gameHtml;
   } catch (error) {
     console.error("Error generating game:", error);
     throw error;

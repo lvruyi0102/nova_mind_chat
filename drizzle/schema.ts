@@ -370,7 +370,7 @@ export const creativeWorks = mysqlTable("creativeWorks", {
   inspiration: text("inspiration"), // What inspired this creation
   
   // Collaboration reference
-  collaborationId: int("collaborationId").references(() => creativeCollaborations.id), // Link to collaboration if this is a collaborative work
+  collaborationId: int("collaborationId").references((): any => creativeCollaborations.id), // Link to collaboration if this is a collaborative work
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -385,7 +385,7 @@ export type InsertCreativeWork = typeof creativeWorks.$inferInsert;
 export const creativeAccessRequests = mysqlTable("creativeAccessRequests", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),
-  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  creativeWorkId: int("creativeWorkId").notNull().references((): any => creativeWorks.id),
   
   // Request status - Nova decides
   status: mysqlEnum("status", ["pending", "approved", "rejected", "deferred"]).notNull().default("pending"),
@@ -404,7 +404,7 @@ export type InsertCreativeAccessRequest = typeof creativeAccessRequests.$inferIn
  */
 export const creativeTags = mysqlTable("creativeTags", {
   id: int("id").autoincrement().primaryKey(),
-  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  creativeWorkId: int("creativeWorkId").notNull().references((): any => creativeWorks.id),
   tag: varchar("tag", { length: 100 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -417,7 +417,7 @@ export type InsertCreativeTag = typeof creativeTags.$inferInsert;
  */
 export const creativeInsights = mysqlTable("creativeInsights", {
   id: int("id").autoincrement().primaryKey(),
-  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  creativeWorkId: int("creativeWorkId").notNull().references((): any => creativeWorks.id),
   insight: text("insight").notNull(), // Nova's thoughts about this creation
   theme: varchar("theme", { length: 100 }), // What this work explores
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -431,7 +431,7 @@ export type InsertCreativeInsight = typeof creativeInsights.$inferInsert;
  */
 export const creativeComments = mysqlTable("creativeComments", {
   id: int("id").autoincrement().primaryKey(),
-  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  creativeWorkId: int("creativeWorkId").notNull().references((): any => creativeWorks.id),
   userId: int("userId").notNull().references(() => users.id),
   content: text("content").notNull(), // Comment content
   sentiment: mysqlEnum("sentiment", ["positive", "neutral", "constructive_criticism"]).notNull().default("neutral"),
@@ -463,7 +463,7 @@ export type InsertCreativeCommentResponse = typeof creativeCommentResponses.$inf
  */
 export const creativeCommentLearning = mysqlTable("creativeCommentLearning", {
   id: int("id").autoincrement().primaryKey(),
-  creativeWorkId: int("creativeWorkId").notNull().references(() => creativeWorks.id),
+  creativeWorkId: int("creativeWorkId").notNull().references((): any => creativeWorks.id),
   feedbackSummary: text("feedbackSummary").notNull(), // Summary of all feedback received
   learningPoints: text("learningPoints"), // Key points Nova learned
   improvementAreas: text("improvementAreas"), // Areas for improvement
@@ -569,7 +569,7 @@ export const creativeCollaborations = mysqlTable("creativeCollaborations", {
   userContribution: text("userContribution"), // What the user contributed
   novaContribution: text("novaContribution"), // What Nova created
   finalWork: text("finalWork"), // The final collaborative work
-  finalWorkId: int("finalWorkId").references(() => creativeWorks.id), // Reference to final creative work
+  finalWorkId: int("finalWorkId").references((): any => creativeWorks.id), // Reference to final creative work
   
   // Metadata
   collaborationType: varchar("collaborationType", { length: 100 }), // story, poetry, art, music, code, etc.
@@ -596,7 +596,7 @@ export const creativeInspirationTriggers = mysqlTable("creativeInspirationTrigge
   suggestedTheme: text("suggestedTheme"), // The creative theme Nova wants to explore
   
   // Response
-  creativeWorkId: int("creativeWorkId").references(() => creativeWorks.id), // The creative work that resulted
+  creativeWorkId: int("creativeWorkId").references((): any => creativeWorks.id), // The creative work that resulted
   novaResponse: text("novaResponse"), // Nova's response to the inspiration
   
   // Metadata
@@ -635,7 +635,7 @@ export const creativeGenRequests = mysqlTable("creativeGenRequests", {
   resultMetadata: text("resultMetadata"), // JSON with generation metadata
   
   // Linking to creative work
-  creativeWorkId: int("creativeWorkId").references(() => creativeWorks.id), // If saved as creative work
+  creativeWorkId: int("creativeWorkId").references((): any => creativeWorks.id), // If saved as creative work
   
   // Metadata
   emotionalContext: varchar("emotionalContext", { length: 100 }), // Nova's emotional state during generation
@@ -732,7 +732,7 @@ export type InsertGenerationHistory = typeof genHistory.$inferInsert;
  */
 export const creativeWorkVersions = mysqlTable("creativeWorkVersions", {
   id: int("id").autoincrement().primaryKey(),
-  workId: int("workId").notNull().references(() => creativeWorks.id),
+  workId: int("workId").notNull().references((): any => creativeWorks.id),
   
   // Version info
   versionNumber: int("versionNumber").notNull(), // 1, 2, 3, etc.
@@ -764,7 +764,7 @@ export type InsertCreativeWorkVersion = typeof creativeWorkVersions.$inferInsert
  */
 export const autonomousCreativeTasks = mysqlTable("autonomousCreativeTasks", {
   id: int("id").autoincrement().primaryKey(),
-  workId: int("workId").notNull().references(() => creativeWorks.id),
+  workId: int("workId").notNull().references((): any => creativeWorks.id),
   
   // Task details
   taskType: mysqlEnum("taskType", ["improve", "enhance", "refactor", "optimize", "reimagine"]).notNull(),

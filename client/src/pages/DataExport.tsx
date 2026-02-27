@@ -13,39 +13,35 @@ export default function DataExport() {
 
   const [shouldExport, setShouldExport] = useState(false);
 
-  const { data: exportData } = trpc.export.exportNovaMemories.useQuery(
-    undefined,
-    {
-      enabled: shouldExport,
-      onSuccess: (data) => {
-      // 创建 JSON 文件并下载
-      const jsonString = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonString], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `nova-memories-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+  const { data: exportData, error: exportError } = trpc.export.exportNovaMemories.useQuery(undefined, {
+    enabled: shouldExport,
+  });
 
-      setExportStatus("success");
-      setIsExporting(false);
-      setShouldExport(false);
+  if (shouldExport && exportData && exportStatus === "loading") {
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nova-memories-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
-      setTimeout(() => setExportStatus("idle"), 3000);
-    },
-      onError: (error) => {
-        setErrorMessage(error.message || "导出失败，请重试");
-        setExportStatus("error");
-        setIsExporting(false);
-        setShouldExport(false);
+    setExportStatus("success");
+    setIsExporting(false);
+    setShouldExport(false);
+    setTimeout(() => setExportStatus("idle"), 3000);
+  }
 
-        setTimeout(() => setExportStatus("idle"), 5000);
-      },
-    }
-  );
+  if (shouldExport && exportError && exportStatus === "loading") {
+    setErrorMessage(exportError.message || "导出失败，请重试");
+    setExportStatus("error");
+    setIsExporting(false);
+    setShouldExport(false);
+    setTimeout(() => setExportStatus("idle"), 5000);
+  }
 
   const handleExport = async () => {
     setIsExporting(true);

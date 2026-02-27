@@ -139,7 +139,7 @@ export function CostMonitoringDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, value }) => `${name}: ¥${value.toFixed(2)}`}
+                        label={({ name, value }) => `${name}: ¥${Number(value).toFixed(2)}`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -148,7 +148,7 @@ export function CostMonitoringDashboard() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
+                      <Tooltip formatter={(value) => `¥${Number(value).toFixed(2)}`} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -214,7 +214,7 @@ export function CostMonitoringDashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value) => `¥${value.toFixed(2)}`} />
+                    <Tooltip formatter={(value) => `¥${Number(value).toFixed(2)}`} />
                     <Legend />
                     <Line type="monotone" dataKey="llm" stroke="#3b82f6" name="LLM 成本" />
                     <Line type="monotone" dataKey="database" stroke="#10b981" name="数据库成本" />

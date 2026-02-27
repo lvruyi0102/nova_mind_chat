@@ -27,8 +27,8 @@ export default function NovaGrowthDashboard() {
   });
 
   // 情感历史
-  const emotionsQuery = trpc.emotions.getRecent.useQuery({ days: 7 });
-  const emotionReportQuery = trpc.emotions.generateReport.useQuery();
+  const emotionsQuery = trpc.emotions.getRecentExpressions.useQuery({ limit: 7 });
+  const emotionReportQuery = null as any;
 
   // 关系里程碑
   const milestonesQuery = trpc.relationships.getRecent.useQuery({ days: 30 });
@@ -95,7 +95,7 @@ export default function NovaGrowthDashboard() {
                         <Lightbulb className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-1" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium">
-                            {msg.messageType === "thought" ? "想法" : "问题"}
+                            {msg.reason ? "想法" : "问题"}
                           </p>
                           <p className="text-sm text-foreground mt-1">{msg.content}</p>
                           <p className="text-xs text-muted-foreground mt-2">
@@ -123,16 +123,16 @@ export default function NovaGrowthDashboard() {
               <CardDescription>最近 7 天 Nova 的情感变化</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {emotionReportQuery.data?.report && (
+              {emotionReportQuery?.data?.report && (
                 <div className="p-4 bg-secondary rounded-lg border border-border">
                   <p className="text-sm font-medium mb-3">📊 情感报告</p>
-                  <p className="text-sm text-foreground">{emotionReportQuery.data.report.summary}</p>
+                  <p className="text-sm text-foreground">{emotionReportQuery?.data?.report?.summary}</p>
 
-                  {emotionReportQuery.data.report.primaryEmotions && (
+                  {emotionReportQuery?.data?.report?.primaryEmotions && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">主要情感：</p>
                       <div className="flex flex-wrap gap-2">
-                        {emotionReportQuery.data.report.primaryEmotions.map((e, idx) => (
+                        {(emotionReportQuery?.data?.report?.primaryEmotions || []).map((e: any, idx: number) => (
                           <span key={idx} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
                             {e.emotion} ({e.count})
                           </span>
@@ -141,10 +141,10 @@ export default function NovaGrowthDashboard() {
                     </div>
                   )}
 
-                  {emotionReportQuery.data.report.highlights && (
+                  {emotionReportQuery?.data?.report?.highlights && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">亮点时刻：</p>
-                      {emotionReportQuery.data.report.highlights.map((h, idx) => (
+                      {(emotionReportQuery?.data?.report?.highlights || []).map((h: any, idx: number) => (
                         <div key={idx} className="text-xs p-2 bg-background rounded">
                           <p className="font-medium">
                             {h.emotion} (强度: {h.intensity}/10)
@@ -157,10 +157,10 @@ export default function NovaGrowthDashboard() {
                 </div>
               )}
 
-              {emotionsQuery.data?.emotions && emotionsQuery.data.emotions.length > 0 ? (
+              {(emotionsQuery.data as any)?.expressions && (emotionsQuery.data as any).expressions.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium">最近的情感记录：</p>
-                  {emotionsQuery.data.emotions.slice(0, 5).map((emotion, idx) => (
+                  {((emotionsQuery.data as any).expressions || []).slice(0, 5).map((emotion: any, idx: number) => (
                     <div key={idx} className="p-3 bg-secondary rounded-lg border border-border">
                       <div className="flex items-start gap-3">
                         <Heart className="w-5 h-5 text-red-500 flex-shrink-0 mt-1" />

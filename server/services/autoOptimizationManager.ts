@@ -191,8 +191,7 @@ class AutoOptimizationManager {
   getOptimizationSuggestions(): string[] {
     const budgetStatus = this.budgetManager.getBudgetStatus();
     const costStats = this.costTracker.getMonthlyStats();
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const currentCost = costStats[currentMonth] || 0;
+    const currentCost = costStats.totalCost || 0;
 
     const suggestions: string[] = [];
 

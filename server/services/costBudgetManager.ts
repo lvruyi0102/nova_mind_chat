@@ -56,7 +56,7 @@ class CostBudgetManager {
   getBudgetStatus(): BudgetStatus {
     const costStats = this.costTracker.getMonthlyStats();
     const currentMonth = this.getCurrentMonth();
-    const currentCost = costStats[currentMonth] || 0;
+    const currentCost = costStats.totalCost || 0;
     const percentageUsed = (currentCost / this.config.monthlyBudget) * 100;
     const remainingBudget = Math.max(0, this.config.monthlyBudget - currentCost);
 

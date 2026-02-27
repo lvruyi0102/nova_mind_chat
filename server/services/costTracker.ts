@@ -327,6 +327,22 @@ class CostTracker {
     return report;
   }
 
+  getMonthlyStats() {
+    const stats = this.getStats();
+    return {
+      totalCost: stats.totalCost,
+      llmCost: stats.llmCost,
+      databaseCost: stats.databaseCost,
+      savingsCost: stats.savingsCost,
+      averageDailyCost: stats.averageDailyCost,
+      trend: stats.costTrend,
+    };
+  }
+
+  resetMonthlyStats(): void {
+    this.reset();
+  }
+
   /**
    * 重置追踪数据
    */

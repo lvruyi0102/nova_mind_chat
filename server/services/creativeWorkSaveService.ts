@@ -33,7 +33,6 @@ export async function saveCreativeWork(options: {
       type: options.type,
       visibility: "private",
       emotionalState: options.emotionalState,
-      theme: options.theme,
       content: options.content.substring(0, 65535), // MySQL TEXT limit
     });
 

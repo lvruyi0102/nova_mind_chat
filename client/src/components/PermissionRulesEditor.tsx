@@ -88,7 +88,9 @@ export default function PermissionRulesEditor({ accountId }: PermissionRulesEdit
     try {
       await createRuleMutation.mutateAsync({
         accountId,
-        ...newRule
+        ...newRule,
+        ruleType: newRule.ruleType as any,
+        permission: newRule.permission as any,
       });
     } catch (error) {
       console.error('Failed to create rule:', error);

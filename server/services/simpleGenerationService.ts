@@ -97,7 +97,8 @@ Return ONLY the complete HTML code starting with <html> and ending with </html>.
       ],
     });
 
-    const gameHtml = response.choices[0]?.message?.content || "";
+    const rawGameHtml = response.choices[0]?.message?.content;
+    const gameHtml = typeof rawGameHtml === "string" ? rawGameHtml : "";
 
     if (!gameHtml || gameHtml.length < 100) {
       throw new Error("Game generation returned invalid content");
@@ -166,7 +167,7 @@ export async function generateMediaSimple(
       if (db) {
         await db.insert(creativeWorks).values({
           userId,
-          type: "media",
+          type: mediaType,
           title: prompt.substring(0, 100),
           description: `Generated ${mediaType}`,
           content: mediaUrl,

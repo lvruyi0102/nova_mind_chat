@@ -133,7 +133,7 @@ export default function SocialMediaManagement() {
                     onClick={() => {
                       // 切换到账户标签页
                       const accountsTab = document.querySelector('[value="accounts"]');
-                      accountsTab?.click();
+                      (accountsTab as HTMLElement | null)?.click();
                     }}
                   >
                     返回账户列表
@@ -155,7 +155,7 @@ export default function SocialMediaManagement() {
                     variant="outline"
                     onClick={() => {
                       const accountsTab = document.querySelector('[value="accounts"]');
-                      accountsTab?.click();
+                      (accountsTab as HTMLElement | null)?.click();
                     }}
                   >
                     返回账户列表

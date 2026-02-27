@@ -69,7 +69,6 @@ class LLMOptimizer {
     // 调用 LLM
     const response = await invokeLLM({
       messages: [{ role: "user", content: prompt }],
-      temperature: options?.temperature,
     });
 
     const content = response.choices[0]?.message?.content;

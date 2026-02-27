@@ -31,19 +31,19 @@ export default function VoiceChatPage() {
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: (response) => {
       // Add Nova's response to messages
-      if (response.response) {
+      if (response.content) {
         const assistantMessage: ChatMessage = {
           id: `msg-${Date.now()}`,
           role: 'assistant',
-          content: response.response,
+          content: response.content,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
         
         // Optionally speak the response
         const voiceService = (window as any).voiceService;
-        if (voiceService && response.response) {
-          voiceService.speak(response.response);
+        if (voiceService && response.content) {
+          voiceService.speak(response.content);
         }
       }
       setIsLoading(false);
@@ -75,9 +75,8 @@ export default function VoiceChatPage() {
     try {
       // Send message to Nova
       await sendMessageMutation.mutateAsync({
-        userId: user.id,
-        content: message,
-        conversationId: 'voice-chat', // Use a special conversation ID for voice
+        conversationId: 1,
+        content: message
       });
     } catch (err) {
       console.error('Error sending message:', err);

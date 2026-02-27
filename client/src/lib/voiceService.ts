@@ -18,7 +18,7 @@ export interface VoiceRecognitionResult {
 }
 
 export class VoiceService {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: any = null;
   private synthesis: SpeechSynthesis | null = null;
   private isListening = false;
   private language: VoiceLanguage = 'zh-CN';
@@ -51,7 +51,7 @@ export class VoiceService {
       this.onStartCallback?.();
     };
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = (event: any) => {
       let transcript = '';
       let isFinal = false;
       let confidence = 0;
@@ -73,7 +73,7 @@ export class VoiceService {
       });
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    this.recognition.onerror = (event: any) => {
       const errorMessage = this.getErrorMessage(event.error);
       this.onErrorCallback?.(errorMessage);
     };
@@ -152,7 +152,7 @@ export class VoiceService {
     this.synthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.language = this.language;
+    utterance.lang = this.language;
     utterance.rate = options?.rate ?? 1;
     utterance.pitch = options?.pitch ?? 1;
     utterance.volume = options?.volume ?? 1;

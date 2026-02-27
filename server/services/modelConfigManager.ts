@@ -154,7 +154,7 @@ class ModelConfigManager {
       try {
         const response = await fetch(config.endpoint, {
           method: "HEAD",
-          timeout: 5000,
+          signal: AbortSignal.timeout(5000),
         });
 
         if (!response.ok && response.status !== 405) {

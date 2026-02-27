@@ -67,7 +67,7 @@ export const emotionsRouter = router({
           .optional(),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const understanding = await generateEmotionalUnderstanding(
           ctx.user.id,
@@ -103,7 +103,7 @@ export const emotionsRouter = router({
         }),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const response = await generateNovaResponse(ctx.user.id, input.expressionId, input.understanding);
         return {

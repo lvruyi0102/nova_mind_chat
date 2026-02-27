@@ -171,7 +171,7 @@ export const FileUploadPanel: React.FC<FileUploadPanelProps> = ({
         ref={folderInputRef}
         type="file"
         multiple
-        webkitdirectory
+        {...({ webkitdirectory: "" } as any)}
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
       />

@@ -107,7 +107,7 @@ export default function CreativeDetail({
                 <div className="bg-slate-800/50 rounded-lg p-4 flex items-center justify-center">
                   <img
                     src={work.content}
-                    alt={work.title}
+                    alt={work.title || undefined}
                     className="max-w-full max-h-96 rounded-lg"
                   />
                 </div>

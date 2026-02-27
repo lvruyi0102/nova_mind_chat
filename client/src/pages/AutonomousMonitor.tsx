@@ -160,7 +160,7 @@ export default function AutonomousMonitor() {
                     <div className={`w-3 h-3 rounded-full ${status?.isRunning ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
                     <span className="text-sm font-medium">{status?.isRunning ? "运行中" : "已停止"}</span>
                   </div>
-                  <Badge variant="outline">{status?.uptime}</Badge>
+                  <Badge variant="outline">{status?.memoryUsage || (status?.isRunning ? "Active" : "Stopped")}</Badge>
                 </div>
               </CardContent>
             </Card>

@@ -560,5 +560,188 @@
       "result": "success"
     },
     "timestamp": "2026-02-08T14:54:39.754Z"
+  },
+  {
+    "ruleId": "rule_1772388361404_x1mg9j0oy",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-03-01T18:06:01.406Z"
+  },
+  {
+    "ruleId": "rule_1772388361436_ny7dmdltz",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-03-01T18:06:01.437Z"
+  },
+  {
+    "ruleId": "rule_1772388361436_ny7dmdltz",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-03-01T18:06:01.441Z"
+  },
+  {
+    "ruleId": "rule_1772388361455_yazmupetj",
+    "success": true,
+    "score": 0.5347274168358414,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-01T18:06:01.457Z"
+  },
+  {
+    "ruleId": "rule_1772388361455_yazmupetj",
+    "success": true,
+    "score": 0.6211507137866918,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-01T18:06:01.458Z"
+  },
+  {
+    "ruleId": "rule_1772388361455_yazmupetj",
+    "success": true,
+    "score": 0.5872172919114672,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-01T18:06:01.461Z"
+  },
+  {
+    "ruleId": "rule_1772388361455_yazmupetj",
+    "success": true,
+    "score": 0.6079081575993741,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-01T18:06:01.463Z"
+  },
+  {
+    "ruleId": "rule_1772388361455_yazmupetj",
+    "success": true,
+    "score": 0.5004644576111614,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-01T18:06:01.467Z"
+  },
+  {
+    "ruleId": "rule_1772388361469_78q1v7xhy",
+    "success": true,
+    "score": 0.9332511928244254,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-01T18:06:01.471Z"
+  },
+  {
+    "ruleId": "rule_1772388361469_78q1v7xhy",
+    "success": true,
+    "score": 0.9363215068567385,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-01T18:06:01.473Z"
+  },
+  {
+    "ruleId": "rule_1772388361469_78q1v7xhy",
+    "success": true,
+    "score": 0.9337411988215513,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-01T18:06:01.475Z"
+  },
+  {
+    "ruleId": "rule_1772388361469_78q1v7xhy",
+    "success": true,
+    "score": 0.8004626819056888,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-01T18:06:01.487Z"
+  },
+  {
+    "ruleId": "rule_1772388361469_78q1v7xhy",
+    "success": true,
+    "score": 0.818017971116773,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-01T18:06:01.488Z"
+  },
+  {
+    "ruleId": "rule_1772388361494_uz4xs26w6",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-03-01T18:06:01.495Z"
   }
 ]

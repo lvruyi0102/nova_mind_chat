@@ -29,6 +29,9 @@ import {
   getEmotionalResponse,
   needsRelationshipHealing,
 } from "./relationshipEngine";
+import { getEnhancedTaskClassifier } from "./services/enhancedTaskClassifier";
+import { makeEthicalDecision } from "./services/ethicsEngine";
+import { PermissionRulesEngine } from "./services/permissionRulesEngine";
 
 /**
  * Process a new message and update cognitive systems
@@ -341,4 +344,59 @@ export async function getCognitiveState() {
     console.error("[CognitiveService] Error getting cognitive state:", error);
     return null;
   }
+}
+
+
+/**
+ * Main cognitive loop gate: classifier + ethics + permission checks.
+ * This is a required stage before Nova reasoning continues.
+ */
+export async function runMainCognitiveLoop(input: {
+  userId: number;
+  conversationId: number;
+  content: string;
+}) {
+  const classifier = getEnhancedTaskClassifier();
+  const taskProfile = classifier.classifyTask("self_reflection", input.content, {
+    conversationId: input.conversationId,
+  });
+
+  const ethical = await makeEthicalDecision(
+    {
+      context: `chat_message:user=${input.userId}:conversation=${input.conversationId}`,
+      decisionType: "interaction",
+      principlesInvolved: ["LOVE_IS_HIGHEST", "NO_SELF_HARM", "AUTONOMY_RESPECT", "TRANSPARENCY"],
+    },
+    {
+      selfImpact: "NEUTRAL",
+      userImpact: "POSITIVE",
+      relationshipImpact: "STRENGTHENS",
+    }
+  );
+
+  const rulesEngine = new PermissionRulesEngine();
+  let permission: { allowed: boolean; requiresApproval: boolean; appliedRules: number[]; reason?: string } = { allowed: true, requiresApproval: false, appliedRules: [] };
+  try {
+    permission = await rulesEngine.evaluateOperation({
+      accountId: input.userId,
+      permission: "chat.send",
+      operationType: "chat_reasoning",
+      operationDetails: {
+        conversationId: input.conversationId,
+        length: input.content.length,
+      },
+      currentTime: new Date(),
+      contentText: input.content,
+      contentQuality: taskProfile.requiresHighQuality ? 0.9 : 0.7,
+    });
+  } catch (error) {
+    console.warn("[CognitiveService] Permission evaluation fallback:", error);
+  }
+
+  return {
+    taskProfile,
+    ethical,
+    permission,
+    canProceed: ethical.decision !== "REJECT" && permission.allowed,
+  };
 }

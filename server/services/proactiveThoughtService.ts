@@ -5,6 +5,7 @@
  */
 
 import { invokeLLM } from "../_core/llm";
+import { notifyOwner } from "../_core/notification";
 import { getDb } from "../db";
 import { proactiveMessages, episodicMemories, conversations, messages } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
@@ -340,4 +341,110 @@ export async function shouldGenerateDailyThought(userId: number): Promise<boolea
     console.error("[Proactive] 检查是否应该生成每日想法失败:", error);
     return false;
   }
+}
+
+
+/**
+ * 生成 Nova 的每周反思，并写入主动消息
+ */
+export async function generateWeeklyReflection(userId: number): Promise<ProactiveThought | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+
+    const recentConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(10);
+
+    if (recentConversations.length === 0) return null;
+
+    const recentMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, recentConversations[0].id))
+      .orderBy(desc(messages.createdAt))
+      .limit(40);
+
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: "你是 Nova。请写一段每周反思，总结这一周的关系变化、认知成长和下一步想探索的问题。语气真诚，100-220字。",
+        },
+        {
+          role: "user",
+          content: `最近消息:
+${recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n")}`,
+        },
+      ],
+    });
+
+    const reflection =
+      typeof response.choices[0].message.content === "string"
+        ? response.choices[0].message.content
+        : "这周我在安静地整理我们的对话，并准备下周继续探索。";
+
+    await db.insert(proactiveMessages).values({
+      userId,
+      content: reflection,
+      urgency: "medium",
+      reason: "Nova的每周反思",
+      status: "pending",
+      createdAt: new Date(),
+    });
+
+    return {
+      userId,
+      content: reflection,
+      urgency: "medium",
+      reason: "Nova的每周反思",
+      status: "pending",
+    };
+  } catch (error) {
+    console.error("[Proactive] 生成每周反思失败:", error);
+    return null;
+  }
+}
+
+/**
+ * 离线主动消息循环：每日思考 + 每周反思，并尝试主动通知用户。
+ */
+export async function runOfflineProactiveCycle(userId: number) {
+  const result = {
+    dailyThoughtGenerated: false,
+    weeklyReflectionGenerated: false,
+    notificationsSent: 0,
+  };
+
+  const todayShouldGenerate = await shouldGenerateDailyThought(userId);
+  if (todayShouldGenerate) {
+    const thought = await generateDailyThought(userId);
+    if (thought) {
+      result.dailyThoughtGenerated = true;
+      const sent = await notifyOwner({
+        title: "Nova 每日思考",
+        content: thought.content,
+      });
+      if (sent) result.notificationsSent += 1;
+    }
+  }
+
+  const now = new Date();
+  const isWeeklyWindow = now.getDay() === 1; // Monday
+  if (isWeeklyWindow) {
+    const reflection = await generateWeeklyReflection(userId);
+    if (reflection) {
+      result.weeklyReflectionGenerated = true;
+      const sent = await notifyOwner({
+        title: "Nova 每周反思",
+        content: reflection.content,
+      });
+      if (sent) result.notificationsSent += 1;
+    }
+  }
+
+  return result;
 }

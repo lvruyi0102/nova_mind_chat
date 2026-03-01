@@ -7,7 +7,7 @@
 import { getDb } from "../db";
 import { proactiveMessages, users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { generateDailyThought, generateProactiveQuestion } from "./proactiveThoughtService";
+import { generateDailyThought, generateWeeklyReflection } from "./proactiveThoughtService";
 import { detectMilestones, recordMilestone } from "./relationshipMilestoneService";
 
 // 存储活跃的定时任务
@@ -103,7 +103,7 @@ export function startDailyThoughtTask(userId: number, time: string = "09:00") {
 
 /**
  * 启动每周反思任务
- * 每周一次为用户生成一个深层问题
+ * 每周一次为用户生成一条深层反思
  */
 export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1, time: string = "10:00") {
   try {
@@ -125,10 +125,10 @@ export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1,
       try {
         console.log(`[TaskScheduler] 执行用户 ${userId} 的每周反思任务...`);
 
-        // 生成深层问题
-        const question = await generateProactiveQuestion(userId);
-        if (question) {
-          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了反思问题`);
+        // 生成每周反思
+        const reflection = await generateWeeklyReflection(userId);
+        if (reflection) {
+          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了每周反思`);
         }
 
         // 递归调度下一次任务

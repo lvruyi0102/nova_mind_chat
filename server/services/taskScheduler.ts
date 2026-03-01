@@ -7,8 +7,14 @@
 import { getDb } from "../db";
 import { proactiveMessages, users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { generateDailyThought, generateProactiveQuestion } from "./proactiveThoughtService";
-import { detectMilestones, recordMilestone } from "./relationshipMilestoneService";
+import {
+  generateDailyThought,
+  generateWeeklyReflection,
+} from "./proactiveThoughtService";
+import {
+  detectMilestones,
+  recordMilestone,
+} from "./relationshipMilestoneService";
 
 // 存储活跃的定时任务
 const activeSchedules = new Map<string, NodeJS.Timeout>();
@@ -105,7 +111,11 @@ export function startDailyThoughtTask(userId: number, time: string = "09:00") {
  * 启动每周反思任务
  * 每周一次为用户生成一个深层问题
  */
-export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1, time: string = "10:00") {
+export function startWeeklyReflectionTask(
+  userId: number,
+  dayOfWeek: number = 1,
+  time: string = "10:00"
+) {
   try {
     const taskId = `weekly-reflection-${userId}`;
 
@@ -126,9 +136,9 @@ export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1,
         console.log(`[TaskScheduler] 执行用户 ${userId} 的每周反思任务...`);
 
         // 生成深层问题
-        const question = await generateProactiveQuestion(userId);
-        if (question) {
-          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了反思问题`);
+        const reflection = await generateWeeklyReflection(userId);
+        if (reflection) {
+          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了每周反思`);
         }
 
         // 递归调度下一次任务
@@ -149,7 +159,10 @@ export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1,
  * 启动里程碑检测任务
  * 每 6 小时检测一次是否有新的关系里程碑
  */
-export function startMilestoneDetectionTask(userId: number, intervalHours: number = 6) {
+export function startMilestoneDetectionTask(
+  userId: number,
+  intervalHours: number = 6
+) {
   try {
     const taskId = `milestone-detection-${userId}`;
 
@@ -214,7 +227,7 @@ export function startMilestoneDetectionTask(userId: number, intervalHours: numbe
  */
 export function stopUserSchedules(userId: number) {
   try {
-    const taskIds = Array.from(activeSchedules.keys()).filter((id) =>
+    const taskIds = Array.from(activeSchedules.keys()).filter(id =>
       id.includes(`-${userId}`)
     );
 
@@ -226,7 +239,9 @@ export function stopUserSchedules(userId: number) {
       }
     }
 
-    console.log(`[TaskScheduler] ✓ 停止了用户 ${userId} 的 ${taskIds.length} 个定时任务`);
+    console.log(
+      `[TaskScheduler] ✓ 停止了用户 ${userId} 的 ${taskIds.length} 个定时任务`
+    );
   } catch (error) {
     console.error("[TaskScheduler] 停止定时任务失败:", error);
   }
@@ -237,7 +252,7 @@ export function stopUserSchedules(userId: number) {
  */
 export function stopAllSchedules() {
   try {
-    activeSchedules.forEach((timeout) => {
+    activeSchedules.forEach(timeout => {
       clearTimeout(timeout);
     });
     activeSchedules.clear();

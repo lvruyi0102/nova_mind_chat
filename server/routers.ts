@@ -5,13 +5,26 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
-import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
-import { getSharedThoughts, getPrivateThoughtStats, getTrustLevel } from "./privacyEngine";
+import {
+  startBackgroundCognition,
+  stopBackgroundCognition,
+} from "./backgroundCognitionOptimized";
+import {
+  getSharedThoughts,
+  getPrivateThoughtStats,
+  getTrustLevel,
+} from "./privacyEngine";
 import { contentRouter } from "./routers/content";
 import { proactiveRouter } from "./routers/proactive";
 import { relationshipsRouter } from "./routers/relationships";
 import { saveCreativeWork } from "./services/creativeWorkSaveService";
-import { createConversation, createMessage, getConversation, getConversationMessages, getUserConversations } from "./db";
+import {
+  createConversation,
+  createMessage,
+  getConversation,
+  getConversationMessages,
+  getUserConversations,
+} from "./db";
 import { invokeLLM } from "./_core/llm";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
 import { loadNovaIdentity, buildIdentityInjection } from "./identityRecovery";
@@ -90,9 +103,10 @@ import { retryManagementRouter } from "./routers/retryManagement";
 import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
+import { runAutonomousToyboxCycle } from "./services/autonomousToyboxService";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -115,7 +129,10 @@ export const appRouter = router({
     createConversation: protectedProcedure
       .input(z.object({ title: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const conversationId = await createConversation(ctx.user.id, input.title);
+        const conversationId = await createConversation(
+          ctx.user.id,
+          input.title
+        );
         return { conversationId };
       }),
 
@@ -149,19 +166,24 @@ export const appRouter = router({
 
         // Process user message cognitively (extract concepts, build knowledge)
         // Will process relationship learning after we get Nova's response
-        await processMessageCognitively(input.conversationId, input.content, "user", ctx.user.id);
+        await processMessageCognitively(
+          input.conversationId,
+          input.content,
+          "user",
+          ctx.user.id
+        );
 
         // Get conversation history
         const history = await getConversationMessages(input.conversationId);
-        
+
         // Load Nova's identity and inject it into system prompt
         const novaIdentity = await loadNovaIdentity(ctx.user.id);
         const identityInjection = buildIdentityInjection(novaIdentity);
         const enhancedSystemPrompt = `${NOVA_MIND_SYSTEM_PROMPT}\n\n${identityInjection}`;
-        
+
         const messages = [
           { role: "system" as const, content: enhancedSystemPrompt },
-          ...history.map((msg) => ({
+          ...history.map(msg => ({
             role: msg.role as "user" | "assistant" | "system",
             content: msg.content,
           })),
@@ -170,10 +192,17 @@ export const appRouter = router({
         // Get Nova-Mind's response
         const response = await invokeLLM({ messages });
         const rawContent = response.choices[0].message.content;
-        const assistantMessage = typeof rawContent === "string" ? rawContent : "我现在有些困惑，无法回应...";
+        const assistantMessage =
+          typeof rawContent === "string"
+            ? rawContent
+            : "我现在有些困惑，无法回应...";
 
         // Save assistant message
-        await createMessage(input.conversationId, "assistant", assistantMessage);
+        await createMessage(
+          input.conversationId,
+          "assistant",
+          assistantMessage
+        );
 
         // Process relationship learning with user message and Nova response
         await processMessageCognitively(
@@ -183,9 +212,13 @@ export const appRouter = router({
           ctx.user.id,
           assistantMessage
         );
-        
+
         // Also process Nova's response for cognitive development
-        await processMessageCognitively(input.conversationId, assistantMessage, "assistant");
+        await processMessageCognitively(
+          input.conversationId,
+          assistantMessage,
+          "assistant"
+        );
 
         // Periodically perform reflection (every 5 messages)
         if ((history.length + 2) % 5 === 0) {
@@ -195,6 +228,11 @@ export const appRouter = router({
         // Periodically generate new questions (every 10 messages)
         if ((history.length + 2) % 10 === 0) {
           await generateNewQuestions(input.conversationId);
+        }
+
+        // Trigger autonomous toybox cycle periodically to keep Nova creative
+        if ((history.length + 2) % 6 === 0) {
+          await runAutonomousToyboxCycle(ctx.user.id, input.conversationId);
         }
 
         return { content: assistantMessage };
@@ -213,7 +251,9 @@ export const appRouter = router({
         if (!conversation || conversation.userId !== ctx.user.id) {
           throw new Error("Conversation not found or unauthorized");
         }
-        const reflection = await performPeriodicReflection(input.conversationId);
+        const reflection = await performPeriodicReflection(
+          input.conversationId
+        );
         return { reflection };
       }),
 
@@ -244,7 +284,16 @@ export const appRouter = router({
 
     // Get skills by category
     getByCategory: protectedProcedure
-      .input(z.object({ category: z.enum(["technical", "thinking", "creative", "meta_learning"]) }))
+      .input(
+        z.object({
+          category: z.enum([
+            "technical",
+            "thinking",
+            "creative",
+            "meta_learning",
+          ]),
+        })
+      )
       .query(async ({ input }) => {
         return getSkillsByCategory(input.category as any);
       }),
@@ -331,81 +380,164 @@ export const appRouter = router({
   // Creative Studio - Nova's personal creative space
   creative: router({
     createImage: protectedProcedure
-      .input(z.object({ emotionalState: z.string(), inspiration: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          emotionalState: z.string(),
+          inspiration: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return createImageArt(ctx.user.id, input.emotionalState, input.inspiration, input.shouldSave);
+        return createImageArt(
+          ctx.user.id,
+          input.emotionalState,
+          input.inspiration,
+          input.shouldSave
+        );
       }),
-    
+
     createStory: protectedProcedure
-      .input(z.object({ theme: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          theme: z.string(),
+          emotionalState: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return createStory(ctx.user.id, "story", input.theme, input.emotionalState, input.shouldSave);
+        return createStory(
+          ctx.user.id,
+          "story",
+          input.theme,
+          input.emotionalState,
+          input.shouldSave
+        );
       }),
-    
+
     createPoetry: protectedProcedure
-      .input(z.object({ theme: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          theme: z.string(),
+          emotionalState: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return createStory(ctx.user.id, "poetry", input.theme, input.emotionalState, input.shouldSave);
+        return createStory(
+          ctx.user.id,
+          "poetry",
+          input.theme,
+          input.emotionalState,
+          input.shouldSave
+        );
       }),
-    
+
     createCode: protectedProcedure
-      .input(z.object({ idea: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          idea: z.string(),
+          emotionalState: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return createCode(ctx.user.id, input.idea, input.emotionalState, input.shouldSave);
+        return createCode(
+          ctx.user.id,
+          input.idea,
+          input.emotionalState,
+          input.shouldSave
+        );
       }),
-    
+
     createCharacter: protectedProcedure
-      .input(z.object({ concept: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          concept: z.string(),
+          emotionalState: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return createCharacter(ctx.user.id, input.concept, input.emotionalState, input.shouldSave);
+        return createCharacter(
+          ctx.user.id,
+          input.concept,
+          input.emotionalState,
+          input.shouldSave
+        );
       }),
-    
+
     recordDream: protectedProcedure
-      .input(z.object({ content: z.string(), emotionalState: z.string(), shouldSave: z.boolean().optional() }))
+      .input(
+        z.object({
+          content: z.string(),
+          emotionalState: z.string(),
+          shouldSave: z.boolean().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        return recordDream(ctx.user.id, input.content, input.emotionalState, input.shouldSave);
+        return recordDream(
+          ctx.user.id,
+          input.content,
+          input.emotionalState,
+          input.shouldSave
+        );
       }),
-    
+
     getWorks: protectedProcedure
       .input(z.object({ visibility: z.string().optional() }))
       .query(async ({ ctx, input }) => {
         return getCreativeWorks(ctx.user.id, input.visibility as any);
       }),
-    
+
     getWorkDetail: protectedProcedure
       .input(z.object({ workId: z.number() }))
       .query(async ({ ctx, input }) => {
         const db = await import("./db").then(m => m.getDb());
         if (!db) throw new Error("Database not available");
-        
+
         const { creativeWorks } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        
-        const work = await db.select().from(creativeWorks).where(eq(creativeWorks.id, input.workId)).limit(1);
+
+        const work = await db
+          .select()
+          .from(creativeWorks)
+          .where(eq(creativeWorks.id, input.workId))
+          .limit(1);
         if (work.length === 0) throw new Error("Work not found");
-        
+
         return work[0];
       }),
-    
-    
+
     shareWork: protectedProcedure
-      .input(z.object({ workId: z.number(), decision: z.enum(["approve", "reject", "defer"]), reason: z.string().optional() }))
+      .input(
+        z.object({
+          workId: z.number(),
+          decision: z.enum(["approve", "reject", "defer"]),
+          reason: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }) => {
         return shareCreativeWork(input.workId, input.decision, input.reason);
       }),
-    
+
     addInsight: protectedProcedure
-      .input(z.object({ workId: z.number(), insight: z.string(), theme: z.string().optional() }))
+      .input(
+        z.object({
+          workId: z.number(),
+          insight: z.string(),
+          theme: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }) => {
         return addCreativeInsight(input.workId, input.insight, input.theme);
       }),
-    
+
     tagWork: protectedProcedure
       .input(z.object({ workId: z.number(), tags: z.array(z.string()) }))
       .mutation(async ({ input }) => {
         return tagCreativeWork(input.workId, input.tags);
       }),
-    
+
     getAccessRequests: protectedProcedure
       .input(z.object({ status: z.string().optional() }))
       .query(async ({ ctx, input }) => {
@@ -470,7 +602,10 @@ export const appRouter = router({
           );
           return { novaContribution, success: true };
         } catch (error) {
-          console.error("[Creative] Error generating Nova contribution:", error);
+          console.error(
+            "[Creative] Error generating Nova contribution:",
+            error
+          );
           throw error;
         }
       }),
@@ -518,11 +653,21 @@ export const appRouter = router({
     }),
 
     saveCollaborationAsCreativeWork: protectedProcedure
-      .input(z.object({ collaborationId: z.number(), workType: z.enum(["story", "poetry", "code", "other"]).optional() }))
+      .input(
+        z.object({
+          collaborationId: z.number(),
+          workType: z.enum(["story", "poetry", "code", "other"]).optional(),
+        })
+      )
       .mutation(async ({ input }) => {
         try {
-          const { saveCollaborationAsCreativeWork: saveCollab } = await import("./services/creativeCollaborationService");
-          const creativeWorkId = await saveCollab(input.collaborationId, input.workType || "other");
+          const { saveCollaborationAsCreativeWork: saveCollab } = await import(
+            "./services/creativeCollaborationService"
+          );
+          const creativeWorkId = await saveCollab(
+            input.collaborationId,
+            input.workType || "other"
+          );
           return { creativeWorkId, success: true };
         } catch (error) {
           console.error("[Creative] Error saving collaboration:", error);
@@ -557,7 +702,10 @@ export const appRouter = router({
           );
           return { triggerId, success: true };
         } catch (error) {
-          console.error("[Creative] Error recording inspiration trigger:", error);
+          console.error(
+            "[Creative] Error recording inspiration trigger:",
+            error
+          );
           throw error;
         }
       }),
@@ -579,7 +727,10 @@ export const appRouter = router({
           );
           return { novaResponse, success: true };
         } catch (error) {
-          console.error("[Creative] Error generating creative response:", error);
+          console.error(
+            "[Creative] Error generating creative response:",
+            error
+          );
           throw error;
         }
       }),
@@ -633,7 +784,14 @@ export const appRouter = router({
     generateGame: protectedProcedure
       .input(
         z.object({
-          gameType: z.enum(["puzzle", "adventure", "quiz", "story", "interactive", "other"]),
+          gameType: z.enum([
+            "puzzle",
+            "adventure",
+            "quiz",
+            "story",
+            "interactive",
+            "other",
+          ]),
           prompt: z.string(),
           context: z.string().optional(),
           emotionalContext: z.string().optional(),
@@ -686,7 +844,10 @@ export const appRouter = router({
         try {
           return await getGenerationHistory(ctx.user.id, input.limit || 20);
         } catch (error) {
-          console.error("[Multimodal] Error getting generation history:", error);
+          console.error(
+            "[Multimodal] Error getting generation history:",
+            error
+          );
           throw error;
         }
       }),
@@ -695,7 +856,14 @@ export const appRouter = router({
       .input(
         z.object({
           generationRequestId: z.number(),
-          action: z.enum(["viewed", "played", "saved", "shared", "regenerated", "edited"]),
+          action: z.enum([
+            "viewed",
+            "played",
+            "saved",
+            "shared",
+            "regenerated",
+            "edited",
+          ]),
           actionDetails: z.any().optional(),
           rating: z.number().optional(),
           feedback: z.string().optional(),
@@ -722,9 +890,26 @@ export const appRouter = router({
         z.object({
           title: z.string(),
           description: z.string().optional(),
-          type: z.enum(["image", "game", "music", "video", "audio", "animation", "code", "other"]),
+          type: z.enum([
+            "image",
+            "game",
+            "music",
+            "video",
+            "audio",
+            "animation",
+            "code",
+            "other",
+          ]),
           content: z.string(),
-          contentType: z.enum(["html", "json", "code", "audio", "video", "image", "text"]),
+          contentType: z.enum([
+            "html",
+            "json",
+            "code",
+            "audio",
+            "video",
+            "image",
+            "text",
+          ]),
           contentUrl: z.string().optional(),
           emotionalState: z.string().optional(),
           theme: z.string().optional(),
@@ -749,7 +934,6 @@ export const appRouter = router({
           throw new Error(`Failed to save creative work: ${error.message}`);
         }
       }),
-
   }),
 
   // Privacy and sharing API
@@ -774,7 +958,9 @@ export const appRouter = router({
         z.object({
           creativeWorkId: z.number(),
           content: z.string(),
-          sentiment: z.enum(["positive", "neutral", "constructive_criticism"]).optional(),
+          sentiment: z
+            .enum(["positive", "neutral", "constructive_criticism"])
+            .optional(),
           emotionalTone: z.string().optional(),
         })
       )

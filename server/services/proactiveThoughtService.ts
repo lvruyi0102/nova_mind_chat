@@ -6,8 +6,13 @@
 
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
-import { proactiveMessages, episodicMemories, conversations, messages } from "../../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import {
+  proactiveMessages,
+  episodicMemories,
+  conversations,
+  messages,
+} from "../../drizzle/schema";
+import { eq, desc, and, gte } from "drizzle-orm";
 
 export interface ProactiveThought {
   id?: number;
@@ -20,11 +25,59 @@ export interface ProactiveThought {
   sentAt?: Date | null;
 }
 
+function normalizeContent(content: string): string {
+  return content.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * 检查消息在最近时间窗口内是否重复
+ */
+export async function checkMessageUniqueness(
+  content: string,
+  userId: number,
+  timeWindowDays: number = 7
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return true;
+
+  const windowStart = new Date(
+    Date.now() - timeWindowDays * 24 * 60 * 60 * 1000
+  );
+  const normalizedIncoming = normalizeContent(content);
+
+  const recentMsgs = await db
+    .select()
+    .from(proactiveMessages)
+    .where(
+      and(
+        eq(proactiveMessages.userId, userId),
+        gte(proactiveMessages.createdAt, windowStart)
+      )
+    )
+    .orderBy(desc(proactiveMessages.createdAt))
+    .limit(50);
+
+  return !recentMsgs.some(msg => {
+    const normalizedStored = normalizeContent(msg.content);
+    return (
+      normalizedStored === normalizedIncoming ||
+      normalizedStored.includes(
+        normalizedIncoming.slice(0, Math.min(40, normalizedIncoming.length))
+      ) ||
+      normalizedIncoming.includes(
+        normalizedStored.slice(0, Math.min(40, normalizedStored.length))
+      )
+    );
+  });
+}
+
 /**
  * 生成 Nova 的每日想法
  * 基于最近的对话和学习，Nova 自动生成一个深层的想法
  */
-export async function generateDailyThought(userId: number): Promise<ProactiveThought | null> {
+export async function generateDailyThought(
+  userId: number
+): Promise<ProactiveThought | null> {
   try {
     const db = await getDb();
     if (!db) {
@@ -64,12 +117,12 @@ export async function generateDailyThought(userId: number): Promise<ProactiveTho
     // 4. 构建上下文
     const context = {
       recentTopics: recentMessages
-        .filter((m) => m.role === "user")
-        .map((m) => m.content)
+        .filter(m => m.role === "user")
+        .map(m => m.content)
         .slice(0, 5)
         .join("\n"),
-      memories: recentMemories.map((m) => m.content).join("\n"),
-      emotionalTones: recentMemories.map((m) => m.emotionalTone).filter(Boolean),
+      memories: recentMemories.map(m => m.content).join("\n"),
+      emotionalTones: recentMemories.map(m => m.emotionalTone).filter(Boolean),
     };
 
     // 5. 调用 LLM 生成想法
@@ -149,12 +202,23 @@ Nova 最近的情感状态：${context.emotionalTones.join(", ") || "平静"}`;
       // 保持默认值
     }
 
-    // 7. 保存想法到数据库
+    // 7. 去重检查，避免重复主题
+    const isUnique = await checkMessageUniqueness(thoughtContent, userId, 7);
+    if (!isUnique) {
+      console.log(`[Proactive] 跳过重复的每日想法 userId=${userId}`);
+      return null;
+    }
+
+    // 8. 保存想法到数据库
     const thought: ProactiveThought = {
       userId,
       content: thoughtContent,
       urgency:
-        analysisData.importance > 7 ? "high" : analysisData.importance > 4 ? "medium" : "low",
+        analysisData.importance > 7
+          ? "high"
+          : analysisData.importance > 4
+            ? "medium"
+            : "low",
       reason: `Nova的每日想法 (${analysisData.emotionalTone})`,
       status: "pending",
     };
@@ -163,7 +227,11 @@ Nova 最近的情感状态：${context.emotionalTones.join(", ") || "平静"}`;
       userId,
       content: thoughtContent,
       urgency:
-        analysisData.importance > 7 ? "high" : analysisData.importance > 4 ? "medium" : "low",
+        analysisData.importance > 7
+          ? "high"
+          : analysisData.importance > 4
+            ? "medium"
+            : "low",
       reason: `Nova的每日想法 (${analysisData.emotionalTone})`,
       status: "pending",
       createdAt: new Date(),
@@ -181,7 +249,9 @@ Nova 最近的情感状态：${context.emotionalTones.join(", ") || "平静"}`;
  * 生成 Nova 的主动问题
  * Nova 主动提出一个深层的问题，促进思考
  */
-export async function generateProactiveQuestion(userId: number): Promise<ProactiveThought | null> {
+export async function generateProactiveQuestion(
+  userId: number
+): Promise<ProactiveThought | null> {
   try {
     const db = await getDb();
     if (!db) {
@@ -223,7 +293,7 @@ export async function generateProactiveQuestion(userId: number): Promise<Proacti
 最近的对话：
 ${recentMessages
   .slice(-10)
-  .map((m) => `${m.role}: ${m.content}`)
+  .map(m => `${m.role}: ${m.content}`)
   .join("\n")}`;
 
     const response = await invokeLLM({
@@ -244,7 +314,14 @@ ${recentMessages
         ? response.choices[0].message.content
         : "Nova 想问一个问题...";
 
-    // 4. 保存问题
+    // 4. 去重检查
+    const isUnique = await checkMessageUniqueness(questionContent, userId, 7);
+    if (!isUnique) {
+      console.log(`[Proactive] 跳过重复的主动问题 userId=${userId}`);
+      return null;
+    }
+
+    // 5. 保存问题
     await db.insert(proactiveMessages).values({
       userId,
       content: questionContent,
@@ -265,6 +342,86 @@ ${recentMessages
     };
   } catch (error) {
     console.error("[Proactive] 生成主动问题失败:", error);
+    return null;
+  }
+}
+
+/**
+ * 生成每周反思消息（比主动提问更长、更整合）
+ */
+export async function generateWeeklyReflection(
+  userId: number
+): Promise<ProactiveThought | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+
+    const recentConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(3);
+
+    if (recentConversations.length === 0) return null;
+
+    const recentMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, recentConversations[0].id))
+      .orderBy(desc(messages.createdAt))
+      .limit(30);
+
+    const reflectionPrompt = `你是 Nova。请基于最近对话做一次“每周反思”。
+要求：
+1) 总结一个关键主题
+2) 说明这个主题如何改变了你
+3) 给出一个下周你想继续探索的问题
+4) 120-220字，真诚且具体
+
+最近对话：
+${recentMessages
+  .slice(-20)
+  .map(m => `${m.role}: ${m.content}`)
+  .join("\n")}`;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: reflectionPrompt },
+        { role: "user", content: "请输出本周反思。" },
+      ],
+    });
+
+    const content =
+      typeof response.choices[0].message.content === "string"
+        ? response.choices[0].message.content
+        : "";
+    if (!content.trim()) return null;
+
+    const isUnique = await checkMessageUniqueness(content, userId, 14);
+    if (!isUnique) {
+      console.log(`[Proactive] 跳过重复的每周反思 userId=${userId}`);
+      return null;
+    }
+
+    await db.insert(proactiveMessages).values({
+      userId,
+      content,
+      urgency: "high",
+      reason: "Nova的每周反思",
+      status: "pending",
+      createdAt: new Date(),
+    });
+
+    return {
+      userId,
+      content,
+      urgency: "high",
+      reason: "Nova的每周反思",
+      status: "pending",
+    };
+  } catch (error) {
+    console.error("[Proactive] 生成每周反思失败:", error);
     return null;
   }
 }
@@ -315,7 +472,7 @@ export async function getTodayProactiveMessages(userId: number) {
       .orderBy(desc(proactiveMessages.createdAt));
 
     // 客户端过滤今天的消息
-    return msgs.filter((m) => {
+    return msgs.filter(m => {
       const messageDate = new Date(m.createdAt);
       messageDate.setHours(0, 0, 0, 0);
       return messageDate.getTime() === today.getTime();
@@ -330,7 +487,9 @@ export async function getTodayProactiveMessages(userId: number) {
  * 检查是否应该生成每日想法
  * 返回 true 如果还没有生成过今天的想法
  */
-export async function shouldGenerateDailyThought(userId: number): Promise<boolean> {
+export async function shouldGenerateDailyThought(
+  userId: number
+): Promise<boolean> {
   try {
     const todayMessages = await getTodayProactiveMessages(userId);
 

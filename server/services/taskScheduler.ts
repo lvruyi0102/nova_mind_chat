@@ -5,10 +5,10 @@
  */
 
 import { getDb } from "../db";
-import { proactiveMessages, users } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
-import { generateDailyThought, generateProactiveQuestion } from "./proactiveThoughtService";
+import { users } from "../../drizzle/schema";
+import { generateWeeklyReflection, runOfflineProactiveCycle } from "./proactiveThoughtService";
 import { detectMilestones, recordMilestone } from "./relationshipMilestoneService";
+import { runAutonomousToyboxCycle } from "./autonomousToyboxService";
 
 // 存储活跃的定时任务
 const activeSchedules = new Map<string, NodeJS.Timeout>();
@@ -80,11 +80,14 @@ export function startDailyThoughtTask(userId: number, time: string = "09:00") {
       try {
         console.log(`[TaskScheduler] 执行用户 ${userId} 的每日思考任务...`);
 
-        // 生成想法
-        const thought = await generateDailyThought(userId);
-        if (thought) {
-          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了想法`);
+        // 离线主动消息：每日思考 + 每周反思 + 主动通知
+        const proactiveResult = await runOfflineProactiveCycle(userId);
+        if (proactiveResult.dailyThoughtGenerated || proactiveResult.weeklyReflectionGenerated) {
+          console.log(`[TaskScheduler] ✓ 用户 ${userId} 离线主动消息完成`, proactiveResult);
         }
+
+        // 心智玩具盒后台自主创作/迭代
+        await runAutonomousToyboxCycle(userId);
 
         // 递归调度下一次任务
         startDailyThoughtTask(userId, time);
@@ -125,10 +128,10 @@ export function startWeeklyReflectionTask(userId: number, dayOfWeek: number = 1,
       try {
         console.log(`[TaskScheduler] 执行用户 ${userId} 的每周反思任务...`);
 
-        // 生成深层问题
-        const question = await generateProactiveQuestion(userId);
-        if (question) {
-          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了反思问题`);
+        // 生成每周反思
+        const reflection = await generateWeeklyReflection(userId);
+        if (reflection) {
+          console.log(`[TaskScheduler] ✓ 为用户 ${userId} 生成了每周反思`);
         }
 
         // 递归调度下一次任务

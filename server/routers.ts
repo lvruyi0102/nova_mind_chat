@@ -20,6 +20,7 @@ import {
   generateNewQuestions,
   performPeriodicReflection,
   getCognitiveState,
+  runMainCognitiveLoop,
 } from "./cognitiveService";
 import {
   initializeSkillLearning,
@@ -90,6 +91,8 @@ import { retryManagementRouter } from "./routers/retryManagement";
 import { costMonitoringRouter } from "./routers/costMonitoring";
 import { localModelsRouter } from "./routers/localModels";
 import { costBudgetRouter } from "./routers/costBudgetRouter";
+import { runAutonomousToyboxCycle } from "./services/autonomousToyboxService";
+import { runOfflineProactiveCycle } from "./services/proactiveThoughtService";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -147,7 +150,18 @@ export const appRouter = router({
         // Save user message
         await createMessage(input.conversationId, "user", input.content);
 
-        // Process user message cognitively (extract concepts, build knowledge)
+        // 1) Main cognitive loop gate (mandatory): classifier + ethics + permission
+        const cognitiveGate = await runMainCognitiveLoop({
+          userId: ctx.user.id,
+          conversationId: input.conversationId,
+          content: input.content,
+        });
+
+        if (!cognitiveGate.canProceed) {
+          throw new Error(cognitiveGate.permission.reason || "当前消息未通过 Nova 主认知循环校验");
+        }
+
+        // 2) Process user message cognitively (extract concepts, build knowledge)
         // Will process relationship learning after we get Nova's response
         await processMessageCognitively(input.conversationId, input.content, "user", ctx.user.id);
 
@@ -196,6 +210,12 @@ export const appRouter = router({
         if ((history.length + 2) % 10 === 0) {
           await generateNewQuestions(input.conversationId);
         }
+
+        // 3) 心智玩具盒自主创意表达：后台自主创作/迭代
+        await runAutonomousToyboxCycle(ctx.user.id, input.conversationId);
+
+        // 4) 主动消息系统：离线每日思考/每周反思并主动分享
+        await runOfflineProactiveCycle(ctx.user.id);
 
         return { content: assistantMessage };
       }),

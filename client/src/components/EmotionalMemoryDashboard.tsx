@@ -226,13 +226,13 @@ export default function EmotionalMemoryDashboard() {
         </div>
       )}
 
-      {/* 关系里程碑时间线 */}
-      <RelationshipMilestoneTimeline
+      {/* 关系里程碑时间线 - 暂时禁用，待完整实现 */}
+      {/* <RelationshipMilestoneTimeline
         milestones={processedMilestones}
         currentTrustLevel={trustData?.trustLevel || 0}
         relationshipDuration={relationshipDays}
         isLoading={milestonesLoading}
-      />
+      /> */}
     </div>
   );
 }

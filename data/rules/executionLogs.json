@@ -743,5 +743,175 @@
     },
     "error": "Returned null instead of default",
     "timestamp": "2026-03-01T18:06:01.495Z"
+  },
+  {
+    "ruleId": "rule_1772610171570_0a8yevyx2",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-03-04T07:42:51.573Z"
+  },
+  {
+    "ruleId": "rule_1772610171570_0a8yevyx2",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-03-04T07:42:51.575Z"
+  },
+  {
+    "ruleId": "rule_1772610171591_pfaq5ulan",
+    "success": false,
+    "score": 0.6506675728464099,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T07:42:51.593Z"
+  },
+  {
+    "ruleId": "rule_1772610171591_pfaq5ulan",
+    "success": true,
+    "score": 0.6645523480409815,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T07:42:51.595Z"
+  },
+  {
+    "ruleId": "rule_1772610171591_pfaq5ulan",
+    "success": false,
+    "score": 0.6496331540001735,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T07:42:51.599Z"
+  },
+  {
+    "ruleId": "rule_1772610171591_pfaq5ulan",
+    "success": true,
+    "score": 0.5620621631790427,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T07:42:51.609Z"
+  },
+  {
+    "ruleId": "rule_1772610171591_pfaq5ulan",
+    "success": false,
+    "score": 0.5417346078054767,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T07:42:51.610Z"
+  },
+  {
+    "ruleId": "rule_1772610171612_cnae5uxe9",
+    "success": true,
+    "score": 0.8837909738199021,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T07:42:51.614Z"
+  },
+  {
+    "ruleId": "rule_1772610171612_cnae5uxe9",
+    "success": true,
+    "score": 0.939157639134096,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T07:42:51.616Z"
+  },
+  {
+    "ruleId": "rule_1772610171612_cnae5uxe9",
+    "success": true,
+    "score": 0.833538777050304,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T07:42:51.619Z"
+  },
+  {
+    "ruleId": "rule_1772610171612_cnae5uxe9",
+    "success": true,
+    "score": 0.855309805983115,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T07:42:51.630Z"
+  },
+  {
+    "ruleId": "rule_1772610171612_cnae5uxe9",
+    "success": true,
+    "score": 0.8240830595320416,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T07:42:51.631Z"
+  },
+  {
+    "ruleId": "rule_1772610171634_qupcm6uz8",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-03-04T07:42:51.636Z"
   }
 ]

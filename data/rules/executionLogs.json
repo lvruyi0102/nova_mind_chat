@@ -913,5 +913,188 @@
     },
     "error": "Returned null instead of default",
     "timestamp": "2026-03-04T07:42:51.636Z"
+  },
+  {
+    "ruleId": "rule_1772615004087_ej4d808hv",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-03-04T09:03:24.089Z"
+  },
+  {
+    "ruleId": "rule_1772615004469_sx1bmu6sq",
+    "success": true,
+    "score": 0.9,
+    "executionTime": 50,
+    "context": {
+      "test": "context"
+    },
+    "output": {
+      "result": "success"
+    },
+    "timestamp": "2026-03-04T09:03:24.474Z"
+  },
+  {
+    "ruleId": "rule_1772615004469_sx1bmu6sq",
+    "success": false,
+    "score": 0.3,
+    "executionTime": 100,
+    "context": {
+      "test": "context"
+    },
+    "error": "Test error",
+    "timestamp": "2026-03-04T09:03:24.476Z"
+  },
+  {
+    "ruleId": "rule_1772615004501_82nqogeum",
+    "success": false,
+    "score": 0.651196071356936,
+    "executionTime": 50,
+    "context": {
+      "iteration": 0
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T09:03:24.503Z"
+  },
+  {
+    "ruleId": "rule_1772615004501_82nqogeum",
+    "success": false,
+    "score": 0.6267694041895281,
+    "executionTime": 50,
+    "context": {
+      "iteration": 1
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T09:03:24.507Z"
+  },
+  {
+    "ruleId": "rule_1772615004501_82nqogeum",
+    "success": true,
+    "score": 0.557441077108578,
+    "executionTime": 50,
+    "context": {
+      "iteration": 2
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T09:03:24.518Z"
+  },
+  {
+    "ruleId": "rule_1772615004501_82nqogeum",
+    "success": false,
+    "score": 0.6681317283155126,
+    "executionTime": 50,
+    "context": {
+      "iteration": 3
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T09:03:24.528Z"
+  },
+  {
+    "ruleId": "rule_1772615004501_82nqogeum",
+    "success": false,
+    "score": 0.6735555237478801,
+    "executionTime": 50,
+    "context": {
+      "iteration": 4
+    },
+    "output": {
+      "result": "initial"
+    },
+    "timestamp": "2026-03-04T09:03:24.531Z"
+  },
+  {
+    "ruleId": "rule_1772615004536_ntc4fqvwr",
+    "success": true,
+    "score": 0.9167734507613781,
+    "executionTime": 30,
+    "context": {
+      "iteration": 0,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T09:03:24.539Z"
+  },
+  {
+    "ruleId": "rule_1772615004536_ntc4fqvwr",
+    "success": true,
+    "score": 0.8079331586786626,
+    "executionTime": 30,
+    "context": {
+      "iteration": 1,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T09:03:24.541Z"
+  },
+  {
+    "ruleId": "rule_1772615004536_ntc4fqvwr",
+    "success": true,
+    "score": 0.8796323949343634,
+    "executionTime": 30,
+    "context": {
+      "iteration": 2,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T09:03:24.545Z"
+  },
+  {
+    "ruleId": "rule_1772615004536_ntc4fqvwr",
+    "success": true,
+    "score": 0.9433819978624787,
+    "executionTime": 30,
+    "context": {
+      "iteration": 3,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T09:03:24.549Z"
+  },
+  {
+    "ruleId": "rule_1772615004536_ntc4fqvwr",
+    "success": true,
+    "score": 0.9303453566381713,
+    "executionTime": 30,
+    "context": {
+      "iteration": 4,
+      "query": "test"
+    },
+    "output": {
+      "result": "improved"
+    },
+    "timestamp": "2026-03-04T09:03:24.551Z"
+  },
+  {
+    "ruleId": "rule_1772615004557_r8ht00xvc",
+    "success": false,
+    "score": 0.2,
+    "executionTime": 100,
+    "context": {
+      "input": ""
+    },
+    "error": "Returned null instead of default",
+    "timestamp": "2026-03-04T09:03:24.559Z"
   }
 ]

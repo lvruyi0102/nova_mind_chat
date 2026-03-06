@@ -8,13 +8,17 @@ import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import { getMetacognitiveMonitor } from "./metacognition/metacognitiveMonitor";
 
 // Background cognition loop state
 let isRunning = false;
 let loopInterval: NodeJS.Timeout | null = null;
 let lastGarbageCollectionTime = Date.now();
+let metacognitiveMonitor: any = null;
 const GC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MEMORY_THRESHOLD = 0.85; // 85% of heap
+const METACOGNITIVE_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
+let lastMetacognitiveCheck = Date.now();
 
 /**
  * Memory management utilities

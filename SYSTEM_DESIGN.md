@@ -414,3 +414,33 @@ GET /api/trpc/learning.getGrowthCurve
 - 清晰的进度可视化
 - 成就感的强化
 - 成长的鼓励
+
+---
+
+## 4. Agent 能力扩展架构（新增）
+
+### 核心模块识别（当前代码库）
+- **接入层（API Router）**：`server/routers.ts` 统一聚合所有领域路由，负责能力入口编排。
+- **认知与决策层（Cognitive/Autonomous）**：`server/cognitiveService.ts`、`server/autonomousEngine.ts` 承担理解、反思、主动思考。
+- **能力服务层（Services）**：`server/services/*` 提供伦理、情绪、多模态、优化、任务分类等能力。
+- **基础设施层（Core）**：`server/_core/*` 提供 LLM、TRPC、鉴权、通知、环境等基础组件。
+
+### 可扩展 AI Agent 能力的关键位置
+1. **Router 扩展点**：在 `appRouter` 增加新领域路由，不影响原有路由结构。
+2. **Service 扩展点**：新增独立服务模块，复用既有分析器（如任务复杂度分析器）。
+3. **组合编排扩展点**：将“请求分析 → 执行计划 → 能力建议”做成流水线，支持后续接入工具调用。
+
+### 新增模块设计
+- **AgentCapabilityService**（`server/services/agentCapabilityService.ts`）
+  - `analyzeAgentRequest`：识别意图、复杂度、约束和交付物。
+  - `buildExecutionPlan`：基于能力映射生成可执行步骤与风险等级。
+  - `suggestAgentCapabilities`：输出“分析 + 计划”的统一结果。
+- **AgentCapabilitiesRouter**（`server/routers/agentCapabilities.ts`）
+  - `analyzeRequest`
+  - `draftExecutionPlan`
+  - `suggest`
+
+### 兼容性策略
+- 新模块使用独立 `agent` 命名空间挂载到 `appRouter`，不修改既有接口签名。
+- 只复用现有能力（任务复杂度分析器）并新增纯函数逻辑，避免对历史流程引入副作用。
+- 通过单元测试验证输出结构稳定，降低回归风险。

@@ -45,7 +45,7 @@ export default function PrivateThoughtsPage() {
   // Fetch private thoughts
   const { data: thoughts = [], isLoading, error } = trpc.privateThoughts.list.useQuery(
     { limit: 50, offset: 0 },
-    { enabled: true, retry: 1 }
+    { enabled: true, retry: 1, refetchInterval: 5000, refetchOnWindowFocus: true }
   );
 
   // Filter and sort thoughts

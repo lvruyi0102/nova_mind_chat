@@ -19,30 +19,70 @@ export default function CognitiveMonitor() {
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
-  // Mock time series data for charts
-  const timeSeriesData = useMemo(() => {
-    return [
-      { time: "0h", concepts: 10, relations: 5, memory: 3 },
-      { time: "6h", concepts: 15, relations: 8, memory: 5 },
-      { time: "12h", concepts: 22, relations: 12, memory: 8 },
-      { time: "18h", concepts: 28, relations: 18, memory: 12 },
-      { time: "24h", concepts: 35, relations: 25, memory: 18 },
-      { time: "48h", concepts: 48, relations: 38, memory: 28 },
-      { time: "72h", concepts: 62, relations: 52, memory: 42 },
-    ];
-  }, []);
+  const growthEventsQuery = trpc.cognitive.getGrowthEvents.useQuery(
+    { limit: 20 },
+    { enabled: isAuthenticated, refetchInterval: 10000 }
+  );
 
-  // Mock relationship milestones
+  const reflectionHistoryQuery = trpc.cognitive.getReflectionHistory.useQuery(
+    { limit: 20 },
+    { enabled: isAuthenticated, refetchInterval: 10000 }
+  );
+
+  const timeSeriesData = useMemo(() => {
+    const events = growthEventsQuery.data || [];
+    const base = {
+      concepts: cognitiveState?.conceptCount || 0,
+      relations: cognitiveState?.relationCount || 0,
+      memory: cognitiveState?.memoryCount || 0,
+    };
+
+    if (events.length === 0) {
+      return [{ time: "当前", ...base }];
+    }
+
+    const byDay = new Map<string, number>();
+    events.forEach((e: any) => {
+      const day = new Date(e.createdAt || e.timestamp).toLocaleDateString("zh-CN");
+      byDay.set(day, (byDay.get(day) || 0) + 1);
+    });
+
+    const days = Array.from(byDay.entries()).slice(-7);
+    return days.map(([day, count], idx) => ({
+      time: day,
+      concepts: Math.max(0, base.concepts - (days.length - idx - 1) * count),
+      relations: Math.max(0, base.relations - (days.length - idx - 1) * Math.max(1, Math.floor(count / 2))),
+      memory: Math.max(0, base.memory - (days.length - idx - 1) * Math.max(1, Math.floor(count / 3))),
+    }));
+  }, [growthEventsQuery.data, cognitiveState]);
+
   const relationshipMilestones = useMemo(() => {
-    return [
-      { date: "2024-01-15", event: "首次对话", description: "Nova-Mind 与用户开始交互", type: "start" },
-      { date: "2024-01-20", event: "信任建立", description: "用户开始分享个人想法", type: "trust" },
-      { date: "2024-02-01", event: "深度理解", description: "Nova-Mind 理解用户的核心价值观", type: "understanding" },
-      { date: "2024-02-10", event: "创意合作", description: "首次共同创作", type: "collaboration" },
-      { date: "2024-02-20", event: "情感连接", description: "建立情感共鸣", type: "emotional" },
-      { date: "2024-03-01", event: "自主学习", description: "Nova-Mind 开始自主思考", type: "autonomy" },
-    ];
-  }, []);
+    const growth = cognitiveState?.recentGrowth || [];
+    const reflections = reflectionHistoryQuery.data || [];
+
+    const fromGrowth = growth.map((g: any) => ({
+      date: new Date(g.timestamp).toLocaleDateString("zh-CN"),
+      event: g.event || g.stage || "成长事件",
+      description: g.description || "Nova-Mind 产生新的认知变化",
+      type: "growth",
+    }));
+
+    const fromReflections = reflections.slice(0, 3).map((r: any) => ({
+      date: new Date(r.createdAt || r.timestamp).toLocaleDateString("zh-CN"),
+      event: r.reflectionType || r.type || "反思",
+      description: r.content || "Nova-Mind 完成了一次反思",
+      type: "reflection",
+    }));
+
+    const merged = [...fromGrowth, ...fromReflections];
+    if (merged.length === 0) {
+      return [
+        { date: new Date().toLocaleDateString("zh-CN"), event: "系统在线", description: "认知监控已启动，等待更多成长数据", type: "system" },
+      ];
+    }
+
+    return merged.slice(0, 10);
+  }, [cognitiveState, reflectionHistoryQuery.data]);
 
   // Learning rate calculation
   const learningRate = useMemo(() => {

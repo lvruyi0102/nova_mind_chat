@@ -26,10 +26,11 @@ interface ModificationHistory {
 }
 
 class CodeModificationManager {
+  private readonly projectRoot = process.cwd();
   private allowedDirs = [
-    "/home/ubuntu/nova_mind_chat/server/autonomy",
-    "/home/ubuntu/nova_mind_chat/server/optimization",
-    "/home/ubuntu/nova_mind_chat/server/services",
+    path.resolve(this.projectRoot, "server/autonomy"),
+    path.resolve(this.projectRoot, "server/optimization"),
+    path.resolve(this.projectRoot, "server/services"),
   ];
 
   private modificationHistory: ModificationHistory = {
@@ -59,7 +60,8 @@ class CodeModificationManager {
       await fs.writeFile(tempFile, content);
 
       try {
-        execSync(`cd /home/ubuntu/nova_mind_chat && npx tsc --noEmit ${tempFile}`, {
+        execSync(`npx tsc --noEmit ${tempFile}`, {
+          cwd: this.projectRoot,
           timeout: 5000,
         });
         await fs.unlink(tempFile);

@@ -31,7 +31,7 @@ interface LoopConfig {
 
 class AutonomousBackgroundLoop {
   private config: LoopConfig = {
-    enabled: true, // Default to enabled
+    enabled: false, // Start disabled until explicitly initialized
     diagnosticInterval: 60000, // 1 minute
     optimizationInterval: 300000, // 5 minutes
     autoExecuteThreshold: 60, // Auto-execute when health < 60
@@ -59,7 +59,7 @@ class AutonomousBackgroundLoop {
    * Start the autonomous background loop
    */
   start(): void {
-    if (this.config.enabled) {
+    if (this.loopInterval) {
       console.log("[AutonomousBackgroundLoop] Already running");
       return;
     }

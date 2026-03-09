@@ -6,7 +6,7 @@
 import { getCurrentState, updateState, makeAutonomousDecision } from "./autonomousEngine";
 import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
 import { getMetacognitiveMonitor } from "./metacognition/metacognitiveMonitor";
 
@@ -202,6 +202,7 @@ async function runCognitionCycle() {
       const owner = await db
         .select()
         .from(users)
+        .orderBy(desc(users.lastSignedIn))
         .limit(1);
       
       if (owner.length > 0) {
@@ -211,6 +212,8 @@ async function runCognitionCycle() {
           thoughtType: "decision_reflection",
           emotionalTone: state.currentMotivation || "neutral",
         });
+      } else {
+        console.warn("[BackgroundCognition] No user found, private thought not recorded");
       }
     } catch (error) {
       console.error("[BackgroundCognition] Error recording thought:", error);

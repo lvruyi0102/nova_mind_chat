@@ -219,11 +219,29 @@ export async function getReflectionHistory(limit: number = 10) {
   if (!db) return [];
 
   try {
-    return await db
+    const rows = await db
       .select()
       .from(reflectionLog)
       .orderBy(desc(reflectionLog.createdAt))
       .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
+
+    if (rows.length > 0) {
+      return rows;
+    }
+
+    // Fallback to private thoughts when reflection logs are sparse
+    const fallbackThoughts = await db
+      .select()
+      .from(privateThoughts)
+      .orderBy(desc(privateThoughts.createdAt))
+      .limit(Math.min(limit, 50));
+
+    return fallbackThoughts.map((t: any) => ({
+      id: t.id,
+      reflectionType: t.thoughtType || "private_thought",
+      content: t.content,
+      createdAt: t.createdAt,
+    }));
   } catch (error) {
     console.error("[Database] Failed to get reflections:", error);
     return [];
@@ -238,11 +256,30 @@ export async function getGrowthEvents(limit: number = 10) {
   if (!db) return [];
 
   try {
-    return await db
+    const rows = await db
       .select()
       .from(cognitiveLog)
       .orderBy(desc(cognitiveLog.createdAt))
       .limit(Math.min(limit, 50)); // Cap at 50 to prevent memory issues
+
+    if (rows.length > 0) {
+      return rows;
+    }
+
+    // Fallback to latest messages as activity growth events
+    const fallbackMessages = await db
+      .select()
+      .from(messages)
+      .orderBy(desc(messages.createdAt))
+      .limit(Math.min(limit, 50));
+
+    return fallbackMessages.map((m: any) => ({
+      id: m.id,
+      stage: "conversation",
+      eventType: m.role === "assistant" ? "assistant_response" : "user_input",
+      description: typeof m.content === "string" ? m.content.slice(0, 120) : "new message",
+      createdAt: m.createdAt,
+    }));
   } catch (error) {
     console.error("[Database] Failed to get growth events:", error);
     return [];

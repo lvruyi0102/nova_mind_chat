@@ -12,6 +12,7 @@ import { initializeOptimizedDb } from "../db/optimizedConnection";
 import { initializeAggressiveCacheCleaner } from "../optimization/aggressiveCacheCleaner";
 import { initializeConcurrencyController } from "../optimization/concurrencyController";
 import { initializeAutonomousBackgroundLoop } from "../autonomy/autonomousBackgroundLoop";
+import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -56,6 +57,14 @@ async function startServer() {
     console.log("[Server] ✓ Nova-Mind autonomous background loop initialized");
   } catch (error) {
     console.warn("[Server] Failed to initialize autonomous background loop:", error);
+  }
+
+  // Step 6: Start background cognition loop to continuously generate private thoughts and cognition events
+  try {
+    await startBackgroundCognition();
+    console.log("[Server] ✓ Background cognition loop started");
+  } catch (error) {
+    console.warn("[Server] Failed to start background cognition loop:", error);
   }
 
   const app = express();

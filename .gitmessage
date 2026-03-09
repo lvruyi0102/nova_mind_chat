@@ -1,0 +1,31 @@
+# <type>(<scope>): <subject>
+#
+# <body>
+#
+# <footer>
+
+# ============= 说明 =============
+# type: feat, fix, docs, style, refactor, test, chore, perf
+# scope: 模块名称（可选）
+# subject: 简短描述（命令式，不超过 50 字符）
+# body: 详细描述（可选，每行 72 字符）
+# footer: 关闭的 issue（可选，如 Closes #123）
+
+# ============= 示例 =============
+# feat(email): 实现邮件聊天功能
+#
+# - 添加 EmailChatManager 类
+# - 支持多轮对话
+# - 集成到后台循环
+#
+# Closes #42
+
+# ============= 类型说明 =============
+# feat:     新功能
+# fix:      Bug 修复
+# docs:     文档更新
+# style:    代码格式（不改变功能）
+# refactor: 代码重构
+# test:     添加或修改测试
+# chore:    构建、依赖等杂务
+# perf:     性能改进

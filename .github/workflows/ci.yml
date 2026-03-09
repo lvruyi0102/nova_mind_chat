@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - work
+  schedule:
+    - cron: "0 2 * * *"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Core integration tests (JUnit)
+        run: |
+          mkdir -p artifacts
+          pnpm vitest run \
+            server/tests/coreModulesIntegration.test.ts \
+            server/tests/trpcCoreRoutes.integration.test.ts \
+            --reporter=default --reporter=junit \
+            --outputFile=artifacts/core-integration.junit.xml
+
+      - name: Upload integration test artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-integration-test-report
+          path: artifacts/core-integration.junit.xml
+          if-no-files-found: warn
+
+  full-test:
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref_name == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full test suite
+        run: pnpm test

@@ -1,0 +1,42 @@
+name: Deploy to Manus
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-manus-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Trigger Manus deployment webhook
+        env:
+          MANUS_DEPLOY_WEBHOOK_URL: ${{ secrets.MANUS_DEPLOY_WEBHOOK_URL }}
+          MANUS_DEPLOY_TOKEN: ${{ secrets.MANUS_DEPLOY_TOKEN }}
+        run: bash scripts/ci/deploy-manus.sh
+
+      - name: Post-deploy health check
+        env:
+          MANUS_HEALTHCHECK_URL: ${{ secrets.MANUS_HEALTHCHECK_URL }}
+          MANUS_HEALTHCHECK_EXPECTED_TEXT: ${{ secrets.MANUS_HEALTHCHECK_EXPECTED_TEXT }}
+          MANUS_HEALTHCHECK_RETRIES: "5"
+          MANUS_HEALTHCHECK_DELAY: "5"
+        run: bash scripts/ci/health-check.sh

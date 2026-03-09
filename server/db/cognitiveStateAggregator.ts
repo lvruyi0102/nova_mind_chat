@@ -7,6 +7,8 @@ import {
   selfQuestions,
   reflectionLog,
   cognitiveLog,
+  privateThoughts,
+  messages,
 } from "../../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -47,6 +49,7 @@ export async function getCompleteCognitiveState() {
       db.select({ count: sql<number>`COUNT(*)` }).from(concepts),
       db.select({ count: sql<number>`COUNT(*)` }).from(conceptRelations),
       db.select({ count: sql<number>`COUNT(*)` }).from(episodicMemories),
+      db.select({ count: sql<number>`COUNT(*)` }).from(privateThoughts),
       db
         .select({ count: sql<number>`COUNT(*)` })
         .from(selfQuestions)
@@ -55,11 +58,13 @@ export async function getCompleteCognitiveState() {
 
     const conceptCount = countResults[0][0]?.count || 0;
     const relationCount = countResults[1][0]?.count || 0;
-    const memoryCount = countResults[2][0]?.count || 0;
-    const pendingQuestionCount = countResults[3][0]?.count || 0;
+    const episodicMemoryCount = countResults[2][0]?.count || 0;
+    const privateThoughtCount = countResults[3][0]?.count || 0;
+    const memoryCount = episodicMemoryCount + privateThoughtCount;
+    const pendingQuestionCount = countResults[4][0]?.count || 0;
 
     // Get recent reflections and growth events separately with limits
-    const [recentReflections, recentGrowth] = await Promise.all([
+    const [recentReflections, recentGrowth, latestPrivateThoughts, latestMessages] = await Promise.all([
       db
         .select()
         .from(reflectionLog)
@@ -70,24 +75,51 @@ export async function getCompleteCognitiveState() {
         .from(cognitiveLog)
         .orderBy(desc(cognitiveLog.createdAt))
         .limit(5),
+      db
+        .select()
+        .from(privateThoughts)
+        .orderBy(desc(privateThoughts.createdAt))
+        .limit(3),
+      db
+        .select()
+        .from(messages)
+        .orderBy(desc(messages.createdAt))
+        .limit(5),
     ]);
+
+    const reflectionItems = recentReflections.length > 0
+      ? recentReflections.map((r) => ({
+          type: r.reflectionType,
+          content: r.content,
+          timestamp: r.createdAt,
+        }))
+      : latestPrivateThoughts.map((t) => ({
+          type: t.thoughtType || "private_thought",
+          content: t.content,
+          timestamp: t.createdAt,
+        }));
+
+    const growthItems = recentGrowth.length > 0
+      ? recentGrowth.map((g) => ({
+          stage: g.stage,
+          event: g.eventType,
+          description: g.description,
+          timestamp: g.createdAt,
+        }))
+      : latestMessages.map((m) => ({
+          stage: "conversation",
+          event: m.role === "assistant" ? "assistant_response" : "user_input",
+          description: typeof m.content === "string" ? m.content.slice(0, 120) : "new message",
+          timestamp: m.createdAt,
+        }));
 
     return {
       conceptCount,
       relationCount,
       memoryCount,
       pendingQuestionCount,
-      recentReflections: recentReflections.map((r) => ({
-        type: r.reflectionType,
-        content: r.content,
-        timestamp: r.createdAt,
-      })),
-      recentGrowth: recentGrowth.map((g) => ({
-        stage: g.stage,
-        event: g.eventType,
-        description: g.description,
-        timestamp: g.createdAt,
-      })),
+      recentReflections: reflectionItems,
+      recentGrowth: growthItems,
     };
   } catch (error) {
     console.error("[Database] Failed to get cognitive state:", error);

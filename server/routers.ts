@@ -62,6 +62,7 @@ import { codeModificationRouter } from "./routers/codeModificationRouter";
 import { autonomousEvolutionRouter } from "./routers/autonomousEvolutionRouter";
 import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
+import { emailInternetRouter } from "./routers/emailInternetRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -75,6 +76,7 @@ export const appRouter = router({
   autonomousEvolution: autonomousEvolutionRouter,
   metacognitive: metacognitiveRouter,
   reasoning: reasoningRouter,
+  emailInternet: emailInternetRouter,
   auth: router({
     me: publicProcedure.input(z.void()).query(opts => opts.ctx.user),
     logout: publicProcedure.input(z.void()).mutation(({ ctx }) => {

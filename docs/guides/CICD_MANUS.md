@@ -27,7 +27,7 @@
 
 `deploy-manus.yml` 在以下场景触发：
 
-- `CI` workflow 成功完成，且分支为 `main`
+- `CI` workflow 成功完成、分支为 `main`，且触发事件为 `push`（避免 nightly/schedule 误触发部署）
 - 手动触发（`workflow_dispatch`）
 
 ## 必需 Secrets
@@ -56,6 +56,7 @@
 
 部署完成后会执行 `scripts/ci/health-check.sh`：
 - 最多 5 次重试（间隔 5 秒）
+- 单次请求连接/总超时默认 15 秒（可配）
 - 默认仅校验 HTTP 2xx
 - 若设置 `MANUS_HEALTHCHECK_EXPECTED_TEXT`，还会校验响应体文本
 若检查不通过，workflow 将失败（红灯）。

@@ -17,7 +17,11 @@ jobs:
   deploy:
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.event == 'push'
+      )
     runs-on: ubuntu-latest
     environment: production
 
@@ -39,4 +43,5 @@ jobs:
           MANUS_HEALTHCHECK_EXPECTED_TEXT: ${{ secrets.MANUS_HEALTHCHECK_EXPECTED_TEXT }}
           MANUS_HEALTHCHECK_RETRIES: "5"
           MANUS_HEALTHCHECK_DELAY: "5"
+          MANUS_HEALTHCHECK_TIMEOUT: "15"
         run: bash scripts/ci/health-check.sh

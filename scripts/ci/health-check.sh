@@ -8,20 +8,30 @@ fi
 
 RETRIES="${MANUS_HEALTHCHECK_RETRIES:-5}"
 DELAY="${MANUS_HEALTHCHECK_DELAY:-5}"
+TIMEOUT="${MANUS_HEALTHCHECK_TIMEOUT:-15}"
 EXPECTED_TEXT="${MANUS_HEALTHCHECK_EXPECTED_TEXT:-}"
 
 attempt=1
 while [[ "$attempt" -le "$RETRIES" ]]; do
   echo "Health check attempt $attempt/$RETRIES: $MANUS_HEALTHCHECK_URL"
 
+  curl_args=(
+    --fail
+    --show-error
+    --silent
+    --connect-timeout "$TIMEOUT"
+    --max-time "$TIMEOUT"
+    "$MANUS_HEALTHCHECK_URL"
+  )
+
   if [[ -n "$EXPECTED_TEXT" ]]; then
-    body=$(curl --fail --show-error --silent "$MANUS_HEALTHCHECK_URL") || body=""
+    body=$(curl "${curl_args[@]}") || body=""
     if [[ "$body" == *"$EXPECTED_TEXT"* ]]; then
       echo "Health check passed with expected text match"
       exit 0
     fi
   else
-    if curl --fail --show-error --silent "$MANUS_HEALTHCHECK_URL" > /dev/null; then
+    if curl "${curl_args[@]}" > /dev/null; then
       echo "Health check passed"
       exit 0
     fi

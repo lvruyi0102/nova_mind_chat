@@ -408,6 +408,16 @@ export default function Home() {
                     </p>
                   </Card>
                 </Link>
+
+                <Link href="/my-thoughts">
+                  <Card className="p-6 space-y-3 bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                    <TrendingUp className="w-10 h-10 text-primary" />
+                    <h3 className="font-semibold text-lg">我的思想</h3>
+                    <p className="text-sm text-muted-foreground">
+                      实时查看 curatedThoughts 的增长与演变，观察 Nova 的思考过程
+                    </p>
+                  </Card>
+                </Link>
               </div>
             </div>
 

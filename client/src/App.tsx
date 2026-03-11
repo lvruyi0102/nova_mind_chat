@@ -29,6 +29,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import EvolutionDashboard from "./pages/EvolutionDashboard";
 import CodeModificationDashboard from "./pages/CodeModificationDashboard";
 import PressureDashboard from "./pages/PressureDashboard";
+import MyThoughtsPage from "./pages/MyThoughtsPage";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/curated-thoughts" component={CuratedThoughtsPage} />
       <Route path="/private-thoughts" component={PrivateThoughtsPage} />
+      <Route path="/my-thoughts" component={MyThoughtsPage} />
       <Route path={"/evolution"} component={EvolutionDashboard} />
       <Route path={"/code-modification"} component={CodeModificationDashboard} />
       <Route path="/pressure" component={PressureDashboard} />

@@ -21,6 +21,7 @@ import {
 import { Loader2, Search, Filter, Heart, Brain, Lightbulb, AlertCircle, Eye, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type ThoughtType = "inner_monologue" | "doubt" | "curiosity" | "emotion" | "all";
 type SortBy = "newest" | "oldest" | "emotional";
@@ -41,11 +42,19 @@ export default function PrivateThoughtsPage() {
   const [selectedType, setSelectedType] = useState<ThoughtType>("all");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
   const [selectedThought, setSelectedThought] = useState<PrivateThought | null>(null);
+  const { isAuthenticated } = useAuth();
 
   // Fetch private thoughts
   const { data: thoughts = [], isLoading, error } = trpc.privateThoughts.list.useQuery(
     { limit: 50, offset: 0 },
-    { enabled: true, retry: 1 }
+    {
+      enabled: isAuthenticated,
+      retry: 1,
+      refetchInterval: 3000,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    }
   );
 
   // Filter and sort thoughts

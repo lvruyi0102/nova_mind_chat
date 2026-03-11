@@ -102,6 +102,8 @@ pnpm dev
 - **[环境配置](docs/guides/ENVIRONMENT_SETUP.md)** - 详细的环境变量配置说明
 - **[架构设计](docs/architecture/)** - 系统架构和设计文档
 - **[API 文档](docs/api/)** - tRPC API 端点说明
+- **[CI/CD 指南](docs/guides/CICD_MANUS.md)** - GitHub Actions 与 Manus 自动部署
+- **[TS Strict 计划](docs/guides/TS_STRICT_PLAN.md)** - 类型严格化分阶段推进方案
 - **[项目评估](docs/assessments/)** - 项目状态和性能评估
 - **[功能路线图](docs/roadmaps/)** - 未来功能规划
 
@@ -116,8 +118,8 @@ pnpm dev
 # 运行测试
 pnpm test
 
-# 运行 linter 和格式化
-pnpm lint
+# 类型检查与格式化
+pnpm check
 pnpm format
 
 # 构建生产版本
@@ -126,8 +128,8 @@ pnpm build
 # 推送数据库迁移
 pnpm db:push
 
-# 生成数据库类型
-pnpm db:generate
+# 自动迁移预检（不执行）
+pnpm db:auto-migrate:dry
 ```
 
 ### 代码规范

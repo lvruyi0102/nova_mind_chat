@@ -31,14 +31,14 @@ interface LoopConfig {
 
 class AutonomousBackgroundLoop {
   private config: LoopConfig = {
-    enabled: true, // Default to enabled
+    enabled: false, // Start disabled until explicitly initialized
     diagnosticInterval: 60000, // 1 minute
     optimizationInterval: 300000, // 5 minutes
     autoExecuteThreshold: 60, // Auto-execute when health < 60
     maxConcurrentActions: 2,
     codeOptimizationEnabled: true, // 启用自动代码优化
-    codeOptimizationInterval: 600000, // 10 分钟检查一次
-    pressureThresholdForCodeOptimization: 70, // 压力 >= 70 时触发代码优化
+    codeOptimizationInterval: 120000, // 2 分钟检查一次（提高可观察性）
+    pressureThresholdForCodeOptimization: 10, // 压力 >= 10 时触发代码优化（确保可观察）
     autoExecuteCodeModifications: true, // 自动执行代码修改
   };
 
@@ -53,13 +53,14 @@ class AutonomousBackgroundLoop {
     totalIterations: 0,
     codeOptimizationCycles: 0,
     codeModificationsExecuted: 0,
+    lastIterationTime: 0,
   };
 
   /**
    * Start the autonomous background loop
    */
   start(): void {
-    if (this.config.enabled) {
+    if (this.loopInterval) {
       console.log("[AutonomousBackgroundLoop] Already running");
       return;
     }
@@ -101,6 +102,7 @@ class AutonomousBackgroundLoop {
     if (!this.config.enabled) return;
 
     this.loopStats.totalIterations++;
+    this.loopStats.lastIterationTime = Date.now();
 
     try {
       const now = Date.now();
@@ -387,6 +389,7 @@ class AutonomousBackgroundLoop {
       lastDiagnosticTime: this.lastDiagnosticTime,
       lastOptimizationTime: this.lastOptimizationTime,
       lastCodeOptimizationTime: this.lastCodeOptimizationTime,
+      loopIntervalActive: !!this.loopInterval,
     };
   }
 

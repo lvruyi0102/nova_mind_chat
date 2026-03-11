@@ -6,7 +6,7 @@
 import { getCurrentState, updateState, makeAutonomousDecision } from "./autonomousEngine";
 import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
 import { getMetacognitiveMonitor } from "./metacognition/metacognitiveMonitor";
 
@@ -19,6 +19,45 @@ const GC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MEMORY_THRESHOLD = 0.85; // 85% of heap
 const METACOGNITIVE_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
 let lastMetacognitiveCheck = Date.now();
+const SYSTEM_USER_OPEN_ID = "system@novamind.local";
+
+async function resolveThoughtOwnerId(db: any): Promise<number | null> {
+  const latestUser = await db
+    .select()
+    .from(users)
+    .orderBy(desc(users.lastSignedIn))
+    .limit(1);
+
+  if (latestUser.length > 0) {
+    return latestUser[0].id;
+  }
+
+  await db
+    .insert(users)
+    .values({
+      openId: SYSTEM_USER_OPEN_ID,
+      name: "NovaMind System",
+      loginMethod: "system",
+      lastSignedIn: new Date(),
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        lastSignedIn: new Date(),
+      },
+    });
+
+  const systemUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, SYSTEM_USER_OPEN_ID))
+    .limit(1);
+
+  if (systemUser.length === 0) {
+    return null;
+  }
+
+  return systemUser[0].id;
+}
 
 /**
  * Memory management utilities
@@ -198,19 +237,17 @@ async function runCognitionCycle() {
 
     // 3. Record decision as private thought (lightweight)
     try {
-      // Get owner's userId for recording thoughts
-      const owner = await db
-        .select()
-        .from(users)
-        .limit(1);
-      
-      if (owner.length > 0) {
+      const ownerId = await resolveThoughtOwnerId(db);
+
+      if (ownerId !== null) {
         await recordPrivateThought({
-          userId: owner[0].id,
+          userId: ownerId,
           content: `决策: ${decision.decision}`,
           thoughtType: "decision_reflection",
           emotionalTone: state.currentMotivation || "neutral",
         });
+      } else {
+        console.warn("[BackgroundCognition] Unable to resolve a user, private thought not recorded");
       }
     } catch (error) {
       console.error("[BackgroundCognition] Error recording thought:", error);

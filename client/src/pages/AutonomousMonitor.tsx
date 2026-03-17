@@ -7,7 +7,7 @@ import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Activity, Brain, Loader2, Power, Sparkles, Zap } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function AutonomousMonitor() {
@@ -30,6 +30,31 @@ export default function AutonomousMonitor() {
       toast.error("更新失败");
     },
   });
+
+  const startCognitionMutation = trpc.autonomous.startCognition.useMutation({
+    onSuccess: () => {
+      toast.success("后台认知进程已开启");
+    },
+    onError: () => {
+      toast.error("开启失败");
+    },
+  });
+
+  const stopCognitionMutation = trpc.autonomous.stopCognition.useMutation({
+    onSuccess: () => {
+      toast.success("后台认知进程已停止");
+    },
+    onError: () => {
+      toast.error("停止失败");
+    },
+  });
+
+  useEffect(() => {
+    if (isAuthenticated && status && !status.isRunning && !startCognitionMutation.isPending) {
+      startCognitionMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, status?.isRunning]);
 
   if (authLoading) {
     return (
@@ -160,7 +185,21 @@ export default function AutonomousMonitor() {
                     <div className={`w-3 h-3 rounded-full ${status?.isRunning ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
                     <span className="text-sm font-medium">{status?.isRunning ? "运行中" : "已停止"}</span>
                   </div>
-                  <Badge variant="outline">{status?.uptime}</Badge>
+                  <Badge variant="outline">{status?.uptime || "--"}</Badge>
+                  <Button
+                    size="sm"
+                    variant={status?.isRunning ? "destructive" : "default"}
+                    onClick={() => {
+                      if (status?.isRunning) {
+                        stopCognitionMutation.mutate();
+                      } else {
+                        startCognitionMutation.mutate();
+                      }
+                    }}
+                    disabled={startCognitionMutation.isPending || stopCognitionMutation.isPending}
+                  >
+                    {status?.isRunning ? "停止" : "开启"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

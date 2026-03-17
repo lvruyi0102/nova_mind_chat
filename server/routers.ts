@@ -221,7 +221,15 @@ export const appRouter = router({
       return getCurrentState();
     }),
     getStatus: protectedProcedure.input(z.void()).query(async () => {
-      return getBackgroundCognitionStatus();
+      const status = getBackgroundCognitionStatus();
+      const shouldAutoStart = process.env.AUTO_START_BACKGROUND_COGNITION !== "false";
+
+      if (!status.isRunning && shouldAutoStart) {
+        await startBackgroundCognition();
+        return getBackgroundCognitionStatus();
+      }
+
+      return status;
     }),
     startCognition: protectedProcedure.input(z.void()).mutation(async () => {
       await startBackgroundCognition();

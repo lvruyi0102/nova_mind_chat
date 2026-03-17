@@ -20,6 +20,10 @@ export default function AutonomousMonitor() {
     enabled: isAuthenticated,
     refetchInterval: 5000,
   });
+  const { data: agentStatus, refetch: refetchAgentStatus } = trpc.autonomousAgent.getStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 5000,
+  });
 
   const [autonomyLevel, setAutonomyLevel] = useState<number>(8);
   const updateAutonomyMutation = trpc.autonomous.updateAutonomyLevel.useMutation({
@@ -46,6 +50,36 @@ export default function AutonomousMonitor() {
     },
     onError: () => {
       toast.error("停止失败");
+    },
+  });
+
+  const runAgentCycleMutation = trpc.autonomousAgent.runCycle.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 已完成一轮自主执行");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("Agent 执行失败");
+    },
+  });
+
+  const startAgentAutoMutation = trpc.autonomousAgent.startAutoMode.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 自动模式已开启");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("自动模式开启失败");
+    },
+  });
+
+  const stopAgentAutoMutation = trpc.autonomousAgent.stopAutoMode.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 自动模式已停止");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("自动模式停止失败");
     },
   });
 
@@ -199,6 +233,56 @@ export default function AutonomousMonitor() {
                     disabled={startCognitionMutation.isPending || stopCognitionMutation.isPending}
                   >
                     {status?.isRunning ? "停止" : "开启"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Autonomous Agent
+                </CardTitle>
+                <CardDescription>会自己决定做什么、自己调用工具、自己优化策略</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {agentStatus?.capabilities?.map((capability: string) => (
+                    <Badge key={capability} variant="secondary">{capability}</Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant={agentStatus?.isRunning ? "default" : "outline"}>
+                    {agentStatus?.isRunning ? "自动模式运行中" : "自动模式未开启"}
+                  </Badge>
+                  <Badge variant="outline">策略: {agentStatus?.strategy || "--"}</Badge>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => runAgentCycleMutation.mutate()}
+                    disabled={runAgentCycleMutation.isPending}
+                  >
+                    执行 1 轮
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => startAgentAutoMutation.mutate({ intervalMs: 60000 })}
+                    disabled={startAgentAutoMutation.isPending}
+                  >
+                    开启自动模式
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => stopAgentAutoMutation.mutate()}
+                    disabled={stopAgentAutoMutation.isPending}
+                  >
+                    停止自动模式
                   </Button>
                 </div>
               </CardContent>

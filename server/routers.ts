@@ -63,6 +63,7 @@ import { autonomousEvolutionRouter } from "./routers/autonomousEvolutionRouter";
 import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
+import { autonomousAgentRouter } from "./routers/autonomousAgentRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -74,6 +75,7 @@ export const appRouter = router({
   pressure: pressureRouter,
   codeModification: codeModificationRouter,
   autonomousEvolution: autonomousEvolutionRouter,
+  autonomousAgent: autonomousAgentRouter,
   metacognitive: metacognitiveRouter,
   reasoning: reasoningRouter,
   emailInternet: emailInternetRouter,

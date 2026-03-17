@@ -17,6 +17,7 @@ import {
 } from "../drizzle/schema";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
+import { describeCurrentSelfState } from "./services/cognitiveSovereignty";
 
 /**
  * Initialize Nova's autonomous state
@@ -113,6 +114,8 @@ export async function makeAutonomousDecision(): Promise<{
   try {
     const state = await getCurrentState();
     if (!state) return null;
+    const selfState = await describeCurrentSelfState();
+    const reflectionLimit = Math.max(1, selfState.learningProfile.reflectionDepth);
 
     // Get recent context
     const recentConcepts = await db.select().from(concepts).orderBy(desc(concepts.lastReinforced)).limit(10);
@@ -121,7 +124,11 @@ export async function makeAutonomousDecision(): Promise<{
       .from(selfQuestions)
       .where(eq(selfQuestions.status, "pending"))
       .limit(5);
-    const recentReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(3);
+    const recentReflections = await db
+      .select()
+      .from(reflectionLog)
+      .orderBy(desc(reflectionLog.createdAt))
+      .limit(reflectionLimit);
 
     const contextSummary = `
 当前状态：${state.state}
@@ -132,6 +139,9 @@ export async function makeAutonomousDecision(): Promise<{
 最近学到的概念：${recentConcepts.map((c) => c.name).join(", ")}
 待探索的问题：${pendingQuestions.map((q) => q.question).join("; ")}
 最近的反思：${recentReflections.map((r) => r.content).join("; ")}
+Self-Model记忆源：${selfState.memory.sources.join(",")}
+Self-Model检索方式：${selfState.memory.access.join(",")}
+学习参数：symbolSensitivity=${selfState.learningProfile.symbolSensitivity}, riskTolerance=${selfState.learningProfile.riskTolerance}, reflectionDepth=${selfState.learningProfile.reflectionDepth}
 `;
 
     const response = await callLLMWithTimeout(

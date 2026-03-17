@@ -285,6 +285,42 @@ export default function AutonomousMonitor() {
                     停止自动模式
                   </Button>
                 </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">时间驱动循环</p>
+                  <div className="flex flex-wrap gap-2">
+                    {agentStatus?.loopDefinition?.map((step: string) => (
+                      <Badge key={step} variant="outline">{step}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">内部需求系统</p>
+                  <div className="space-y-2">
+                    {agentStatus?.internalNeeds?.map((need: { key: string; label: string; level: number; rationale: string }) => (
+                      <div key={need.key} className="rounded border p-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{need.label}</span>
+                          <span>{need.level}/100</span>
+                        </div>
+                        <div className="mt-1 h-1.5 rounded bg-secondary">
+                          <div className="h-1.5 rounded bg-primary" style={{ width: `${need.level}%` }} />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">{need.rationale}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {agentStatus?.memorySnapshots?.[0] && (
+                  <div className="rounded border p-2 text-xs">
+                    <p className="font-medium mb-1">最近记忆更新</p>
+                    <p>主导需求：{agentStatus.memorySnapshots[0].dominantNeed}</p>
+                    <p>策略：{agentStatus.memorySnapshots[0].strategy}</p>
+                    <p className="text-muted-foreground mt-1">{agentStatus.memorySnapshots[0].summary}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

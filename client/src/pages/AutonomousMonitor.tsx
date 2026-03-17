@@ -260,6 +260,15 @@ export default function AutonomousMonitor() {
                   <Badge variant="outline">策略: {agentStatus?.strategy || "--"}</Badge>
                 </div>
 
+                <div className="rounded border p-2 text-xs space-y-1">
+                  <p className="font-medium">长期奖励系统</p>
+                  <p>回合数: {agentStatus?.longTermReward?.episodeCount ?? 0}</p>
+                  <p>即时奖励: {agentStatus?.longTermReward?.lastReward ?? 0}</p>
+                  <p>平均奖励: {agentStatus?.longTermReward?.averageReward ?? 0}</p>
+                  <p>折扣累计回报(G): {agentStatus?.longTermReward?.discountedReturn ?? 0}</p>
+                  <p>最佳奖励: {agentStatus?.longTermReward?.bestReward ?? 0}</p>
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"

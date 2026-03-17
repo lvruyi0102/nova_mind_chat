@@ -3,7 +3,12 @@ import { getSelfDiagnostics } from "../autonomy/selfDiagnostics";
 
 export type AgentStrategy = "stability_first" | "recovery_first" | "throughput_first";
 
-type InternalNeedKey = "information_gap" | "knowledge_gap" | "relationship_maintenance" | "system_optimization";
+type InternalNeedKey =
+  | "information_gap"
+  | "knowledge_gap"
+  | "relationship_maintenance"
+  | "system_optimization"
+  | "environment_exploration";
 
 interface InternalNeedState {
   key: InternalNeedKey;
@@ -26,6 +31,7 @@ interface AgentCycleResult {
   toolCalled: string;
   strategyBefore: AgentStrategy;
   strategyAfter: AgentStrategy;
+  reward: number;
   notes: string;
 }
 
@@ -36,11 +42,21 @@ interface AgentMemorySnapshot {
   summary: string;
 }
 
+interface LongTermRewardState {
+  episodeCount: number;
+  discountedReturn: number;
+  averageReward: number;
+  bestReward: number;
+  lastReward: number;
+  gamma: number;
+}
+
 const NEED_LABELS: Record<InternalNeedKey, string> = {
   information_gap: "信息不足",
   knowledge_gap: "知识缺口",
   relationship_maintenance: "关系维护",
   system_optimization: "系统优化",
+  environment_exploration: "环境探索",
 };
 
 class AutonomousAgentOrchestrator {
@@ -50,6 +66,15 @@ class AutonomousAgentOrchestrator {
 
   private readonly cycleHistory: AgentCycleResult[] = [];
   private readonly memorySnapshots: AgentMemorySnapshot[] = [];
+
+  private longTermReward: LongTermRewardState = {
+    episodeCount: 0,
+    discountedReturn: 0,
+    averageReward: 0,
+    bestReward: Number.NEGATIVE_INFINITY,
+    lastReward: 0,
+    gamma: 0.92,
+  };
 
   private internalNeeds: Record<InternalNeedKey, InternalNeedState> = {
     information_gap: {
@@ -76,6 +101,12 @@ class AutonomousAgentOrchestrator {
       level: 55,
       rationale: "系统长期运行需持续优化稳定性与资源使用。",
     },
+    environment_exploration: {
+      key: "environment_exploration",
+      label: NEED_LABELS.environment_exploration,
+      level: 50,
+      rationale: "需要主动探索运行环境信号，发现新机会与风险。",
+    },
   };
 
   private perceiveState(): { needs: InternalNeedState[]; status: ReturnType<typeof getBackgroundCognitionStatus> } {
@@ -86,10 +117,8 @@ class AutonomousAgentOrchestrator {
       this.internalNeeds.information_gap.level = Math.min(100, this.internalNeeds.information_gap.level + 10);
     } else {
       this.internalNeeds.system_optimization.level = Math.max(25, this.internalNeeds.system_optimization.level - 5);
-      this.internalNeeds.relationship_maintenance.level = Math.min(
-        100,
-        this.internalNeeds.relationship_maintenance.level + 3,
-      );
+      this.internalNeeds.relationship_maintenance.level = Math.min(100, this.internalNeeds.relationship_maintenance.level + 3);
+      this.internalNeeds.environment_exploration.level = Math.min(100, this.internalNeeds.environment_exploration.level + 4);
     }
 
     const needs = Object.values(this.internalNeeds).sort((a, b) => b.level - a.level);
@@ -104,6 +133,14 @@ class AutonomousAgentOrchestrator {
         need: "system_optimization",
         description: "恢复后台认知循环并验证运行状态",
         priority: 100,
+      };
+    }
+
+    if (topNeed.key === "environment_exploration") {
+      return {
+        need: topNeed.key,
+        description: "执行环境探索，扫描系统健康、资源压力与潜在优化入口",
+        priority: topNeed.level,
       };
     }
 
@@ -151,6 +188,14 @@ class AutonomousAgentOrchestrator {
     const report = getSelfDiagnostics().runDiagnostic();
     const diagnosticNote = `health=${report.overallHealth},issues=${report.issues.length}`;
 
+    if (goal.need === "environment_exploration") {
+      return {
+        decision: "explore_runtime_environment",
+        tool: "selfDiagnostics",
+        notes: `已完成环境探索扫描: ${diagnosticNote}`,
+      };
+    }
+
     if (goal.need === "relationship_maintenance") {
       return {
         decision: "maintain_relationship_signal",
@@ -182,12 +227,43 @@ class AutonomousAgentOrchestrator {
     return "stability_first";
   }
 
-  private updateMemory(goal: Goal, notes: string) {
+  private computeReward(goal: Goal, actionNotes: string): number {
+    let reward = 0;
+
+    if (actionNotes.includes("health=")) {
+      const m = actionNotes.match(/health=(\d+)/);
+      const health = m ? Number(m[1]) : 0;
+      reward += health / 25; // 0~4
+    }
+
+    if (goal.need === "environment_exploration") reward += 1.2;
+    if (goal.need === "system_optimization") reward += 1.5;
+    if (actionNotes.includes("issues=0")) reward += 1;
+
+    return Number(reward.toFixed(2));
+  }
+
+  private updateLongTermReward(reward: number) {
+    this.longTermReward.episodeCount += 1;
+    this.longTermReward.lastReward = reward;
+    this.longTermReward.bestReward = Math.max(this.longTermReward.bestReward, reward);
+
+    const n = this.longTermReward.episodeCount;
+    this.longTermReward.averageReward = Number(
+      (((this.longTermReward.averageReward * (n - 1)) + reward) / n).toFixed(3),
+    );
+
+    this.longTermReward.discountedReturn = Number(
+      (this.longTermReward.gamma * this.longTermReward.discountedReturn + reward).toFixed(3),
+    );
+  }
+
+  private updateMemory(goal: Goal, notes: string, reward: number) {
     const snapshot: AgentMemorySnapshot = {
       timestamp: new Date().toISOString(),
       dominantNeed: NEED_LABELS[goal.need],
       strategy: this.strategy,
-      summary: `${goal.description} | ${notes}`,
+      summary: `${goal.description} | reward=${reward} | ${notes}`,
     };
 
     this.memorySnapshots.unshift(snapshot);
@@ -206,7 +282,10 @@ class AutonomousAgentOrchestrator {
     const goal = this.generateGoal(perceived.needs, perceived.status);
     const action = await this.executeAction(goal);
     this.strategy = this.optimizeStrategy(action.notes);
-    this.updateMemory(goal, action.notes);
+
+    const reward = this.computeReward(goal, action.notes);
+    this.updateLongTermReward(reward);
+    this.updateMemory(goal, action.notes, reward);
 
     const result: AgentCycleResult = {
       timestamp: new Date().toISOString(),
@@ -216,9 +295,11 @@ class AutonomousAgentOrchestrator {
       toolCalled: action.tool,
       strategyBefore,
       strategyAfter: this.strategy,
+      reward,
       notes: [
         "循环步骤: 感知状态 → 生成目标 → 执行动作 → 更新记忆",
         `主导需求: ${NEED_LABELS[goal.need]}(priority=${goal.priority})`,
+        `长期奖励累计: G=${this.longTermReward.discountedReturn}, avg=${this.longTermReward.averageReward}`,
         action.notes,
       ].join(" | "),
     };
@@ -256,6 +337,7 @@ class AutonomousAgentOrchestrator {
       strategy: this.strategy,
       capabilities: ["自己决定做什么", "自己调用工具", "自己优化策略"],
       internalNeeds: Object.values(this.internalNeeds).sort((a, b) => b.level - a.level),
+      longTermReward: this.longTermReward,
       recentCycles: this.cycleHistory.slice(0, 10),
       memorySnapshots: this.memorySnapshots.slice(0, 10),
       loopDefinition: ["感知状态", "生成目标", "执行动作", "更新记忆"],

@@ -1,1 +1,6 @@
-{"version": 2,"buildCommand": "npm run build","installCommand": "npm install","framework": "nextjs","env": {"DEEPSEEK_API_KEY": "@deepseek_api_key"}}
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}

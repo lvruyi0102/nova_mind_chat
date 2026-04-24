@@ -1,1 +1,8 @@
-{"version": 2,"buildCommand": "npm run build","installCommand": "npm install","framework": "nextjs","env": {"DEEPSEEK_API_KEY": "@deepseek_api_key"}}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public"
+}

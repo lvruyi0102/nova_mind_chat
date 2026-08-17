@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, router } from "../_core/trpc";
 import {
   getCompleteCognitiveState,
   getConceptDetails,
@@ -9,13 +9,10 @@ import {
   getReflectionHistory,
   getGrowthEvents,
 } from "../db/cognitiveStateAggregator";
+import { getRuntimeSnapshot } from "../cognition/moliRuntime";
 
 export const cognitiveRouter = router({
-  /**
-   * Get complete cognitive state - aggregates all data sources
-   * This is the main endpoint for the cognitive monitor page
-   */
-  getCognitiveState: protectedProcedure.query(async ({ ctx }) => {
+  getCognitiveState: protectedProcedure.query(async () => {
     const state = await getCompleteCognitiveState();
     return state || {
       conceptCount: 0,
@@ -27,81 +24,32 @@ export const cognitiveRouter = router({
     };
   }),
 
-  /**
-   * Get detailed concept information
-   */
+  /** Durable v2.8 architecture state: reality registry + temporal self + event log. */
+  getMoliRuntimeState: protectedProcedure.query(async () => {
+    return await getRuntimeSnapshot();
+  }),
+
   getConceptDetails: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getConceptDetails(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getConceptDetails(input.limit)),
 
-  /**
-   * Get detailed relation information
-   */
   getRelationDetails: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getRelationDetails(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getRelationDetails(input.limit)),
 
-  /**
-   * Get detailed memory information
-   */
   getMemoryDetails: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getMemoryDetails(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getMemoryDetails(input.limit)),
 
-  /**
-   * Get pending questions
-   */
   getPendingQuestions: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getPendingQuestions(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getPendingQuestions(input.limit)),
 
-  /**
-   * Get reflection history
-   */
   getReflectionHistory: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getReflectionHistory(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getReflectionHistory(input.limit)),
 
-  /**
-   * Get growth events
-   */
   getGrowthEvents: protectedProcedure
-    .input(
-      z.object({
-        limit: z.number().min(1).max(50).default(10),
-      })
-    )
-    .query(async ({ input }) => {
-      return await getGrowthEvents(input.limit);
-    }),
+    .input(z.object({ limit: z.number().min(1).max(50).default(10) }))
+    .query(async ({ input }) => await getGrowthEvents(input.limit)),
 });

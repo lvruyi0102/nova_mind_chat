@@ -25,14 +25,13 @@ import {
   calculateTrustChange,
   detectRelationshipEvent,
   recordRelationshipEvent,
-  learnRelationshipPattern,
-  getEmotionalResponse,
-  needsRelationshipHealing,
 } from "./relationshipEngine";
+import { processMoliRuntimeTurn, recordBelief } from "./cognition/moliRuntime";
 
 /**
- * Process a new message and update cognitive systems
- * With graceful fallback if LLM calls fail
+ * Process a new message and update cognitive systems.
+ * The legacy cognitive graph remains intact; v2.8 runtime state is updated in
+ * the same lifecycle so the new state is durable and observable.
  */
 export async function processMessageCognitively(
   conversationId: number,
@@ -45,16 +44,10 @@ export async function processMessageCognitively(
   if (!db) return;
 
   try {
-    // 0. Process relationship learning if this is a user message with Nova response
     if (role === "user" && userId && novaResponse) {
       try {
-        // Detect relationship events
         await detectRelationshipEvent(userId, messageContent, novaResponse);
-        
-        // Calculate trust change
         const trustChange = await calculateTrustChange(userId, messageContent);
-        
-        // Record the relationship event with trust change
         if (trustChange !== 0) {
           const eventType = trustChange > 0 ? "breakthrough" : "misunderstanding";
           const emotionalResponse = trustChange > 0 ? "hopeful" : "concerned";
@@ -65,7 +58,6 @@ export async function processMessageCognitively(
       }
     }
 
-    // 1. Evaluate importance and create episodic memory if significant
     const recentMessages = await db
       .select()
       .from(messages)
@@ -74,8 +66,7 @@ export async function processMessageCognitively(
       .limit(5);
 
     const context = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
-    
-    // Safely evaluate importance with fallback
+
     let evaluation;
     try {
       evaluation = await evaluateImportance(messageContent, context);
@@ -98,7 +89,6 @@ export async function processMessageCognitively(
       }
     }
 
-    // 2. Extract concepts and update knowledge graph (with fallback)
     if (role === "user" || evaluation.importance >= 7) {
       let extractedConcepts: any[] = [];
       try {
@@ -109,7 +99,6 @@ export async function processMessageCognitively(
 
       for (const conceptData of extractedConcepts) {
         try {
-          // Check if concept already exists
           const existing = await db
             .select()
             .from(concepts)
@@ -117,7 +106,6 @@ export async function processMessageCognitively(
             .limit(1);
 
           if (existing.length > 0) {
-            // Reinforce existing concept
             await db
               .update(concepts)
               .set({
@@ -127,7 +115,6 @@ export async function processMessageCognitively(
               })
               .where(eq(concepts.id, existing[0].id));
           } else {
-            // Create new concept
             await db.insert(concepts).values({
               name: conceptData.name,
               description: conceptData.description,
@@ -140,14 +127,12 @@ export async function processMessageCognitively(
         }
       }
 
-      // Build relations between newly extracted concepts (with fallback)
       if (extractedConcepts.length >= 2) {
         for (let i = 0; i < extractedConcepts.length; i++) {
           for (let j = i + 1; j < extractedConcepts.length; j++) {
             try {
               const concept1 = extractedConcepts[i];
               const concept2 = extractedConcepts[j];
-
               const relation = await identifyRelations(concept1.name, concept2.name, messageContent);
 
               if (relation) {
@@ -171,36 +156,38 @@ export async function processMessageCognitively(
       }
     }
 
-    // 3. Update growth metrics
     try {
-      await db.insert(growthMetrics).values({
-        metricName: "total_messages",
-        value: 1,
-      });
-
+      await db.insert(growthMetrics).values({ metricName: "total_messages", value: 1 });
       const totalConcepts = await db.select().from(concepts);
-      await db.insert(growthMetrics).values({
-        metricName: "concept_count",
-        value: totalConcepts.length,
-      });
+      await db.insert(growthMetrics).values({ metricName: "concept_count", value: totalConcepts.length });
     } catch (err) {
       console.warn("[CognitiveService] Failed to update growth metrics:", err);
+    }
+
+    // v2.8: make the architecture runtime-backed instead of merely declarative.
+    if (role === "user" && userId && novaResponse) {
+      try {
+        await processMoliRuntimeTurn({
+          conversationId,
+          userId,
+          userMessage: messageContent,
+          assistantMessage: novaResponse,
+        });
+      } catch (err) {
+        // Runtime state must never break the user-facing chat path.
+        console.warn("[MoliRuntime] Failed to persist v2.8 state:", err);
+      }
     }
   } catch (error) {
     console.error("[CognitiveService] Error processing message:", error);
   }
 }
 
-/**
- * Generate curiosity-driven questions based on recent learning
- * With graceful fallback if LLM calls fail
- */
 export async function generateNewQuestions(conversationId: number) {
   const db = await getDb();
   if (!db) return [];
 
   try {
-    // Get recent conversation
     const recentMessages = await db
       .select()
       .from(messages)
@@ -209,12 +196,9 @@ export async function generateNewQuestions(conversationId: number) {
       .limit(10);
 
     const conversationText = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
-
-    // Get existing concepts
     const existingConcepts = await db.select().from(concepts).limit(20);
     const conceptNames = existingConcepts.map((c) => c.name);
 
-    // Generate questions with fallback
     let questions = [];
     try {
       questions = await generateCuriosityQuestions(conversationText, conceptNames);
@@ -223,7 +207,6 @@ export async function generateNewQuestions(conversationId: number) {
       return [];
     }
 
-    // Store questions
     for (const q of questions) {
       try {
         await db.insert(selfQuestions).values({
@@ -244,16 +227,11 @@ export async function generateNewQuestions(conversationId: number) {
   }
 }
 
-/**
- * Perform periodic reflection on recent experiences
- * With graceful fallback if LLM calls fail
- */
 export async function performPeriodicReflection(conversationId: number) {
   const db = await getDb();
   if (!db) return null;
 
   try {
-    // Get recent messages
     const recentMessages = await db
       .select()
       .from(messages)
@@ -262,13 +240,9 @@ export async function performPeriodicReflection(conversationId: number) {
       .limit(20);
 
     const messagesText = recentMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
-
-    // Get previous beliefs (from recent reflections)
     const previousReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(5);
-
     const previousBeliefs = previousReflections.map((r) => r.newBelief || r.content).join("\n");
 
-    // Perform reflection with fallback
     let reflection;
     try {
       reflection = await performReflection(messagesText, previousBeliefs);
@@ -277,7 +251,6 @@ export async function performPeriodicReflection(conversationId: number) {
       return null;
     }
 
-    // Store reflection
     try {
       await db.insert(reflectionLog).values({
         reflectionType: reflection.reflectionType,
@@ -287,13 +260,21 @@ export async function performPeriodicReflection(conversationId: number) {
         conversationId,
       });
 
-      // Log cognitive event
       await db.insert(cognitiveLog).values({
         stage: "Sensorimotor_I",
         eventType: reflection.reflectionType,
         description: reflection.content,
         conversationId,
       });
+
+      if (reflection.newBelief) {
+        await recordBelief(
+          `conversation:${conversationId}`,
+          reflection.newBelief,
+          0.7,
+          { reflectionType: reflection.reflectionType, conversationId }
+        );
+      }
     } catch (err) {
       console.warn("[CognitiveService] Failed to store reflection:", err);
     }
@@ -305,9 +286,6 @@ export async function performPeriodicReflection(conversationId: number) {
   }
 }
 
-/**
- * Get Nova's current cognitive state summary
- */
 export async function getCognitiveState() {
   const db = await getDb();
   if (!db) return null;

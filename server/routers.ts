@@ -63,6 +63,7 @@ import { autonomousEvolutionRouter } from "./routers/autonomousEvolutionRouter";
 import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
+import { autonomousAgentRouter } from "./routers/autonomousAgentRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -74,6 +75,7 @@ export const appRouter = router({
   pressure: pressureRouter,
   codeModification: codeModificationRouter,
   autonomousEvolution: autonomousEvolutionRouter,
+  autonomousAgent: autonomousAgentRouter,
   metacognitive: metacognitiveRouter,
   reasoning: reasoningRouter,
   emailInternet: emailInternetRouter,
@@ -221,7 +223,15 @@ export const appRouter = router({
       return getCurrentState();
     }),
     getStatus: protectedProcedure.input(z.void()).query(async () => {
-      return getBackgroundCognitionStatus();
+      const status = getBackgroundCognitionStatus();
+      const shouldAutoStart = process.env.AUTO_START_BACKGROUND_COGNITION !== "false";
+
+      if (!status.isRunning && shouldAutoStart) {
+        await startBackgroundCognition();
+        return getBackgroundCognitionStatus();
+      }
+
+      return status;
     }),
     startCognition: protectedProcedure.input(z.void()).mutation(async () => {
       await startBackgroundCognition();

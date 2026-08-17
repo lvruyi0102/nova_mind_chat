@@ -1,0 +1,46 @@
+name: GitHub Models Eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Prompt to evaluate
+        required: false
+        default: Summarize this repository purpose in 3 bullets.
+      models:
+        description: "Space-separated models, e.g. 'openai/gpt-4.1 openai/gpt-4.1-mini'"
+        required: false
+        default: openai/gpt-4.1 openai/gpt-4.1-mini
+
+permissions:
+  contents: read
+
+jobs:
+  compare-models:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r scripts/ai/requirements.txt
+
+      - name: Compare selected models
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN || github.token }}
+        run: |
+          python scripts/ai/compare_models.py \
+            --models ${{ inputs.models }} \
+            --prompt "${{ inputs.prompt }}" | tee model-comparison.md
+
+      - name: Upload comparison artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: model-comparison
+          path: model-comparison.md

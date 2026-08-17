@@ -17,6 +17,7 @@ import { getDb } from "./db";
 import { autonomousTasks, users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { generateInnerMonologue, recordPrivateThought } from "./privacyEngine";
+import { runUnifiedCognitiveCycle } from "./services/cognitiveCoordinationService";
 
 // Background cognition loop state
 let isRunning = false;
@@ -132,6 +133,12 @@ async function runCognitionCycle() {
 
     // 3. Execute decision
     await executeDecision(decision);
+
+    // 3.5 统一认知协调层：串联自主决策 / 玩具盒迭代 / 主动消息
+    const coordination = await runUnifiedCognitiveCycle();
+    console.log(
+      `[BackgroundCognition] Unified cycle => decision=${coordination.decisionSummary}, tasks=${coordination.executedTasks}, creative=${coordination.creativeIterations}, proactive=${coordination.proactiveUpdates}`
+    );
 
     // 4. Check if Nova wants to contact user
     const contactDecision = await shouldContactUser();

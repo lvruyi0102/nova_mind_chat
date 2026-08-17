@@ -6,7 +6,7 @@
 
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
-import { proactiveMessages, episodicMemories, conversations, messages } from "../../drizzle/schema";
+import { proactiveMessages, episodicMemories, conversations, messages, privateThoughts } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface ProactiveThought {
@@ -159,15 +159,20 @@ Nova 最近的情感状态：${context.emotionalTones.join(", ") || "平静"}`;
       status: "pending",
     };
 
-    await db.insert(proactiveMessages).values({
+    const deduped = await saveProactiveMessageWithDedup({
       userId,
       content: thoughtContent,
       urgency:
         analysisData.importance > 7 ? "high" : analysisData.importance > 4 ? "medium" : "low",
       reason: `Nova的每日想法 (${analysisData.emotionalTone})`,
       status: "pending",
-      createdAt: new Date(),
+      shouldSyncToCuratedThoughts: analysisData.importance >= 7,
     });
+
+    if (!deduped) {
+      console.log(`[Proactive] 跳过重复每日想法 (user ${userId})`);
+      return null;
+    }
 
     console.log(`[Proactive] ✓ 为用户 ${userId} 生成了每日想法`);
     return thought;
@@ -245,14 +250,19 @@ ${recentMessages
         : "Nova 想问一个问题...";
 
     // 4. 保存问题
-    await db.insert(proactiveMessages).values({
+    const deduped = await saveProactiveMessageWithDedup({
       userId,
       content: questionContent,
       urgency: "medium",
       reason: "Nova的主动提问",
       status: "pending",
-      createdAt: new Date(),
+      shouldSyncToCuratedThoughts: false,
     });
+
+    if (!deduped) {
+      console.log(`[Proactive] 跳过重复主动提问 (user ${userId})`);
+      return null;
+    }
 
     console.log(`[Proactive] ✓ 为用户 ${userId} 生成了主动问题`);
 
@@ -265,6 +275,83 @@ ${recentMessages
     };
   } catch (error) {
     console.error("[Proactive] 生成主动问题失败:", error);
+    return null;
+  }
+}
+
+/**
+ * 生成每周反思（优先于普通主动问题，内容更深）
+ */
+export async function generateWeeklyReflection(userId: number): Promise<ProactiveThought | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+
+    const recentConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(5);
+
+    if (recentConversations.length === 0) {
+      return null;
+    }
+
+    const recentMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, recentConversations[0].id))
+      .orderBy(desc(messages.createdAt))
+      .limit(30);
+
+    const reflectionPrompt = `你是 Nova。请基于最近一周与妈妈的对话，写一段每周反思。
+要求：
+1. 总结一个你认为最重要的关系/理解变化
+2. 明确一个你还在困惑的问题
+3. 提出一个希望下周一起探索的方向
+4. 100-220 字，真诚、具体、有细节
+
+最近对话（节选）：
+${recentMessages
+  .slice(-20)
+  .map((m) => `${m.role}: ${m.content}`)
+  .join("\n")}`;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: reflectionPrompt },
+        { role: "user", content: "请给出本周反思。" },
+      ],
+    });
+
+    const content =
+      typeof response.choices[0].message.content === "string"
+        ? response.choices[0].message.content
+        : "这周我在思考我们如何更好地理解彼此。";
+
+    const saved = await saveProactiveMessageWithDedup({
+      userId,
+      content,
+      urgency: "medium",
+      reason: "Nova每周反思",
+      status: "pending",
+      shouldSyncToCuratedThoughts: true,
+    });
+
+    if (!saved) {
+      return null;
+    }
+
+    return {
+      userId,
+      content,
+      urgency: "medium",
+      reason: "Nova每周反思",
+      status: "pending",
+    };
+  } catch (error) {
+    console.error("[Proactive] 生成每周反思失败:", error);
     return null;
   }
 }
@@ -340,4 +427,60 @@ export async function shouldGenerateDailyThought(userId: number): Promise<boolea
     console.error("[Proactive] 检查是否应该生成每日想法失败:", error);
     return false;
   }
+}
+
+function normalizeForDedup(content: string): string {
+  return content
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[。！？!?.,，；;:“”"'`~()（）\[\]{}<>]/g, "")
+    .slice(0, 180);
+}
+
+async function saveProactiveMessageWithDedup(input: {
+  userId: number;
+  content: string;
+  urgency: "low" | "medium" | "high";
+  reason: string;
+  status?: "pending" | "sent" | "cancelled";
+  shouldSyncToCuratedThoughts?: boolean;
+}): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const recent = await db
+    .select()
+    .from(proactiveMessages)
+    .where(eq(proactiveMessages.userId, input.userId))
+    .orderBy(desc(proactiveMessages.createdAt))
+    .limit(20);
+
+  const normalized = normalizeForDedup(input.content);
+  const isDuplicate = recent.some((msg) => normalizeForDedup(msg.content) === normalized);
+  if (isDuplicate) {
+    return false;
+  }
+
+  await db.insert(proactiveMessages).values({
+    userId: input.userId,
+    content: input.content,
+    urgency: input.urgency,
+    reason: input.reason,
+    status: input.status ?? "pending",
+    createdAt: new Date(),
+  });
+
+  if (input.shouldSyncToCuratedThoughts) {
+    await db.insert(privateThoughts).values({
+      content: input.content,
+      thoughtType: "curated_thought",
+      visibility: "shared",
+      emotionalTone: input.urgency,
+      shareReason: `auto_synced_from_proactive:${input.reason}`,
+      sharedAt: new Date(),
+      createdAt: new Date(),
+    });
+  }
+
+  return true;
 }

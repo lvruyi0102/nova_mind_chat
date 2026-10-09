@@ -183,6 +183,12 @@ async function processTask(taskId: number): Promise<boolean> {
   });
   const toolRunId = Number(insertedRun[0].insertId);
 
+  // Count every dispatch attempt, including failures, so retries cannot evade
+  // the task-wide tool-call budget.
+  usage.toolCalls += 1;
+  await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: startedAt })
+    .where(eq(agentTasks.id, task.id));
+
   try {
     const result = await toolAdapterRegistryV4.execute({
       adapterName: adapter.name,
@@ -194,7 +200,6 @@ async function processTask(taskId: number): Promise<boolean> {
       budget, usage,
     });
     const finishedAt = new Date();
-    usage.toolCalls += 1;
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
     await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt }).where(eq(agentTasks.id, task.id));
 
@@ -260,6 +265,9 @@ async function processTask(taskId: number): Promise<boolean> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const finishedAt = new Date();
+    usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
+    await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt })
+      .where(eq(agentTasks.id, task.id));
     const classification = classifyExecutionError({ message });
     const canRetry = classification.retryable && step.attemptCount < step.maxAttempts;
     await db.update(agentTaskSteps).set({

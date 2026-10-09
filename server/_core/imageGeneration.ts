@@ -18,6 +18,7 @@
 import { randomUUID } from "node:crypto";
 import { storagePut } from "server/storage";
 import { ENV } from "./env";
+import { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -35,7 +36,6 @@ export type GenerateImageResponse = {
 };
 
 export { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
-import { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
 
 export async function generateImage(
   options: GenerateImageOptions

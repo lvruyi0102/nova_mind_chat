@@ -5,6 +5,7 @@ import {
   canDispatchTask,
   ownsExecutionLease,
   ownsLiveExecutionLease,
+  normalizeExecutionError,
   isUncertainProviderOutcome,
   CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
@@ -30,6 +31,14 @@ describe("executionEngineV4", () => {
     expect(ownsExecutionLease("lease-b", "lease-a")).toBe(false);
     expect(ownsExecutionLease(null, "lease-a")).toBe(false);
     expect(ownsExecutionLease("lease-a", "")).toBe(false);
+  });
+
+  it("preserves provider error codes when the thrown value is a plain object", () => {
+    expect(normalizeExecutionError({ code: "ECONNRESET", message: "socket reset" })).toEqual({
+      code: "ECONNRESET",
+      message: "socket reset",
+      retryable: undefined,
+    });
   });
 
   it("rejects a matching worker token after its lease expires", () => {

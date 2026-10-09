@@ -6,12 +6,12 @@
  * SUCCEEDED: acceptance checks remain UNVERIFIED until a real validator is
  * registered and run. Enable explicitly with NOVA_AGENT_V4_WORKER_ENABLED=true.
  */
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, isUncertainProviderOutcome, ownsExecutionLease } from "./executionEngineV4";
+import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, isUncertainProviderOutcome, ownsLiveExecutionLease } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -281,6 +281,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     status: agentTasks.status,
     cancelRequested: agentTasks.cancelRequested,
     workerLeaseToken: agentTasks.workerLeaseToken,
+    workerLeaseUntil: agentTasks.workerLeaseUntil,
   }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
   if (!latestTaskBeforeDispatch ||
       !canDispatchTask(latestTaskBeforeDispatch.status as ExecutionStatus, latestTaskBeforeDispatch.cancelRequested)) {
@@ -302,7 +303,11 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     return true;
   }
 
-  if (!ownsExecutionLease(latestTaskBeforeDispatch.workerLeaseToken, leaseToken)) {
+  if (!ownsLiveExecutionLease(
+    latestTaskBeforeDispatch.workerLeaseToken,
+    leaseToken,
+    latestTaskBeforeDispatch.workerLeaseUntil,
+  )) {
     const message = "Worker lease was lost; external call was not started.";
     const finishedAt = new Date();
     await db.update(agentToolRuns).set({
@@ -326,6 +331,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
   }).where(and(
     eq(agentTasks.id, task.id),
     eq(agentTasks.workerLeaseToken, leaseToken),
+    gt(agentTasks.workerLeaseUntil, startedAt),
     inArray(agentTasks.status, ["READY", "RUNNING"]),
   ));
   if (affectedRows(usageReservation) !== 1) {

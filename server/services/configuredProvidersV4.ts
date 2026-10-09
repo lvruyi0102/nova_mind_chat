@@ -40,7 +40,7 @@ export function registerConfiguredProvidersV4(): { registered: string[]; skipped
           };
         }
 
-        const generated = await generateImage({ prompt });
+        const generated = await generateImage({ prompt, timeoutMs: request.timeoutMs });
         if (!generated.url?.trim()) {
           return {
             status: "FAILED",

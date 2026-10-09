@@ -1,4 +1,114 @@
 import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal } from "drizzle-orm/mysql-core";
+/**
+ * Durable V4 agent task records. Model-generated plans are stored as data;
+ * only the orchestrator may advance task/step state.
+ */
+export const agentTasks = mysqlTable("agentTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  taskKey: varchar("taskKey", { length: 64 }).notNull().unique(),
+  userId: int("userId").notNull().references(() => users.id),
+  goal: text("goal").notNull(),
+  planJson: text("planJson"),
+  status: mysqlEnum("status", ["CREATED", "PLANNING", "READY", "RUNNING", "RETRYING", "VERIFYING", "SUCCEEDED", "PARTIAL", "BLOCKED", "FAILED", "CANCELLED"]).notNull().default("CREATED"),
+  priority: int("priority").notNull().default(5),
+  budgetJson: text("budgetJson"),
+  usageJson: text("usageJson"),
+  cancelRequested: boolean("cancelRequested").notNull().default(false),
+  lastError: text("lastError"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AgentTask = typeof agentTasks.$inferSelect;
+export type InsertAgentTask = typeof agentTasks.$inferInsert;
+
+export const agentTaskSteps = mysqlTable("agentTaskSteps", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull().references(() => agentTasks.id),
+  stepKey: varchar("stepKey", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  capabilityId: varchar("capabilityId", { length: 191 }).notNull(),
+  dependsOnJson: text("dependsOnJson").notNull(),
+  acceptanceCriteriaJson: text("acceptanceCriteriaJson").notNull(),
+  inputJson: text("inputJson"),
+  outputJson: text("outputJson"),
+  status: mysqlEnum("status", ["PENDING", "READY", "RUNNING", "RETRYING", "VERIFYING", "SUCCEEDED", "PARTIAL", "BLOCKED", "FAILED", "CANCELLED"]).notNull().default("PENDING"),
+  attemptCount: int("attemptCount").notNull().default(0),
+  maxAttempts: int("maxAttempts").notNull().default(3),
+  externalJobId: varchar("externalJobId", { length: 191 }),
+  lastError: text("lastError"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AgentTaskStep = typeof agentTaskSteps.$inferSelect;
+export type InsertAgentTaskStep = typeof agentTaskSteps.$inferInsert;
+
+export const agentToolRuns = mysqlTable("agentToolRuns", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull().references(() => agentTasks.id),
+  stepId: int("stepId").references(() => agentTaskSteps.id),
+  adapterName: varchar("adapterName", { length: 191 }).notNull(),
+  capabilityId: varchar("capabilityId", { length: 191 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 191 }).notNull().unique(),
+  externalJobId: varchar("externalJobId", { length: 191 }),
+  status: mysqlEnum("status", ["CREATED", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED", "UNKNOWN"]).notNull().default("CREATED"),
+  requestMetadata: text("requestMetadata"),
+  responseMetadata: text("responseMetadata"),
+  errorMessage: text("errorMessage"),
+  startedAt: timestamp("startedAt"),
+  finishedAt: timestamp("finishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AgentToolRun = typeof agentToolRuns.$inferSelect;
+export type InsertAgentToolRun = typeof agentToolRuns.$inferInsert;
+
+export const agentArtifacts = mysqlTable("agentArtifacts", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull().references(() => agentTasks.id),
+  stepId: int("stepId").references(() => agentTaskSteps.id),
+  uri: text("uri").notNull(),
+  mediaType: varchar("mediaType", { length: 191 }).notNull(),
+  checksum: varchar("checksum", { length: 128 }),
+  sizeBytes: int("sizeBytes"),
+  metadataJson: text("metadataJson"),
+  validationStatus: mysqlEnum("validationStatus", ["UNVERIFIED", "PASSED", "FAILED"]).notNull().default("UNVERIFIED"),
+  validationDetails: text("validationDetails"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AgentArtifact = typeof agentArtifacts.$inferSelect;
+export type InsertAgentArtifact = typeof agentArtifacts.$inferInsert;
+
+export const agentAcceptanceChecks = mysqlTable("agentAcceptanceChecks", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull().references(() => agentTasks.id),
+  stepId: int("stepId").references(() => agentTaskSteps.id),
+  checkKey: varchar("checkKey", { length: 191 }).notNull(),
+  description: text("description").notNull(),
+  required: boolean("required").notNull().default(true),
+  status: mysqlEnum("status", ["UNVERIFIED", "PASSED", "FAILED"]).notNull().default("UNVERIFIED"),
+  evidenceJson: text("evidenceJson"),
+  diagnostic: text("diagnostic"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AgentAcceptanceCheck = typeof agentAcceptanceChecks.$inferSelect;
+export type InsertAgentAcceptanceCheck = typeof agentAcceptanceChecks.$inferInsert;
+
+export const agentTaskEvents = mysqlTable("agentTaskEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull().references(() => agentTasks.id),
+  actor: varchar("actor", { length: 64 }).notNull().default("system"),
+  eventType: varchar("eventType", { length: 191 }).notNull(),
+  payloadJson: text("payloadJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AgentTaskEvent = typeof agentTaskEvents.$inferSelect;
+export type InsertAgentTaskEvent = typeof agentTaskEvents.$inferInsert;
+
+
 
 /**
  * Core user table backing auth flow.

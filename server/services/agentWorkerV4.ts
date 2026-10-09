@@ -263,7 +263,7 @@ async function processTask(taskId: number): Promise<boolean> {
       message,
       retryable: result.error?.retryable,
     });
-    const canRetry = result.status === "FAILED" && classification.retryable && step.attemptCount < step.maxAttempts;
+    const canRetry = result.status === "FAILED" && classification.retryable && step.attemptCount + 1 < step.maxAttempts;
     await db.update(agentTaskSteps).set({
       status: result.status === "BLOCKED" ? "BLOCKED" : canRetry ? "RETRYING" : "FAILED",
       lastError: message, updatedAt: finishedAt,
@@ -289,7 +289,7 @@ async function processTask(taskId: number): Promise<boolean> {
     await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt })
       .where(eq(agentTasks.id, task.id));
     const classification = classifyExecutionError({ message });
-    const canRetry = classification.retryable && step.attemptCount < step.maxAttempts;
+    const canRetry = classification.retryable && step.attemptCount + 1 < step.maxAttempts;
     await db.update(agentTaskSteps).set({
       status: canRetry ? "RETRYING" : "FAILED", lastError: message, updatedAt: finishedAt,
     }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));

@@ -329,6 +329,18 @@ export async function reconcileStaleAgentStepsV4(
     }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     if (affectedRows(changed) !== 1) continue;
 
+    // Keep the durable tool-run ledger consistent with the blocked step.
+    // Otherwise an interrupted dispatch would remain RUNNING forever in task
+    // details even though the worker has explicitly quarantined the step.
+    await db.update(agentToolRuns).set({
+      status: "UNKNOWN",
+      errorMessage: message,
+      finishedAt: new Date(),
+    }).where(and(
+      eq(agentToolRuns.stepId, step.id),
+      eq(agentToolRuns.status, "RUNNING"),
+    ));
+
     const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
     if (task) {
       await blockTask(db, task, message);

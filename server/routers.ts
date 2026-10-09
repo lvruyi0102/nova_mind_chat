@@ -74,6 +74,15 @@ import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
 
+function assertV4TaskStoreEnabled() {
+  if (process.env.NOVA_AGENT_V4_TASK_STORE_ENABLED !== "true") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Nova-Mind V4 task storage is disabled until its database migration has been reviewed and applied.",
+    });
+  }
+}
+
 export const appRouter = router({
   agentV4: router({
     listCapabilities: protectedProcedure.input(z.void()).query(() => {
@@ -110,6 +119,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         try {
+          assertV4TaskStoreEnabled();
           const planned = await planTaskV4(input);
           return await createAgentTaskV4({
             userId: ctx.user.id,
@@ -141,6 +151,7 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
       .query(async ({ ctx, input }) => {
         try {
+          assertV4TaskStoreEnabled();
           return await listAgentTasksV4(ctx.user.id, input?.limit ?? 20);
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {
@@ -153,6 +164,7 @@ export const appRouter = router({
       .input(z.object({ taskId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         try {
+          assertV4TaskStoreEnabled();
           return await getAgentTaskV4(ctx.user.id, input.taskId);
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {
@@ -169,6 +181,7 @@ export const appRouter = router({
       .input(z.object({ taskId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         try {
+          assertV4TaskStoreEnabled();
           return { accepted: await requestAgentTaskCancellationV4(ctx.user.id, input.taskId) };
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {

@@ -29,6 +29,7 @@ export type GenerateImageOptions = {
 
 export type GenerateImageResponse = {
   url?: string;
+  mimeType?: string;
 };
 
 export async function generateImage(
@@ -88,5 +89,6 @@ export async function generateImage(
   );
   return {
     url,
+    mimeType: result.image.mimeType,
   };
 }

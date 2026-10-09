@@ -205,6 +205,25 @@ async function processTask(taskId: number): Promise<boolean> {
     await event(db, task.id, "EXECUTION_BUDGET_EXCEEDED", { stepId: step.id, message });
     return true;
   }
+  const remainingDurationMs = budget.maxDurationMs === undefined
+    ? 120_000
+    : budget.maxDurationMs - (usage.elapsedMs ?? 0);
+  // The provider timeout must fit inside the task's remaining time budget,
+  // rather than always receiving a fresh 120-second window on every step.
+  if (remainingDurationMs <= 0) {
+    const message = "Execution budget exceeded: maxDurationMs";
+    await db.update(agentToolRuns).set({
+      status: "BLOCKED", errorMessage: message, finishedAt: startedAt,
+    }).where(eq(agentToolRuns.id, toolRunId));
+    await db.update(agentTaskSteps).set({
+      status: "BLOCKED", lastError: message, updatedAt: startedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+    if (freshTask) await blockTask(db, freshTask, message);
+    await event(db, task.id, "EXECUTION_BUDGET_EXCEEDED", { stepId: step.id, message });
+    return true;
+  }
+
   usage.toolCalls += 1;
   await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: startedAt })
     .where(eq(agentTasks.id, task.id));
@@ -215,7 +234,7 @@ async function processTask(taskId: number): Promise<boolean> {
       request: {
         taskId: String(task.id), stepId: String(step.id), capabilityId: step.capabilityId,
         input: { goal: task.goal, description: step.description, ...parse<Record<string, unknown>>(step.inputJson, {}) },
-        idempotencyKey: providerIdempotencyKey, timeoutMs: 120_000,
+        idempotencyKey: providerIdempotencyKey, timeoutMs: Math.max(1, Math.min(120_000, remainingDurationMs)),
       },
       budget, usage: usageBeforeDispatch,
     });

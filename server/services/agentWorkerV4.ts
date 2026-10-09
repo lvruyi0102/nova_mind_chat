@@ -46,13 +46,20 @@ async function blockTask(
   task: typeof agentTasks.$inferSelect,
   message: string,
   leaseToken?: string,
+  requireExpiredLease = false,
 ) {
   const from = task.status as ExecutionStatus;
   if (from === "BLOCKED" || from === "FAILED" || from === "CANCELLED" || from === "SUCCEEDED") return;
   try { assertExecutionTransition(from, "BLOCKED"); } catch { /* keep the failure visible in the audit log */ }
   const whereClause = leaseToken
     ? and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status), eq(agentTasks.workerLeaseToken, leaseToken))
-    : and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status));
+    : requireExpiredLease
+      ? and(
+          eq(agentTasks.id, task.id),
+          eq(agentTasks.status, task.status),
+          or(isNull(agentTasks.workerLeaseUntil), lt(agentTasks.workerLeaseUntil, new Date())),
+        )
+      : and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status));
   const changed = await db.update(agentTasks).set({
     status: "BLOCKED", lastError: message, updatedAt: new Date(),
   }).where(whereClause);
@@ -545,7 +552,7 @@ export async function reconcileStaleAgentStepsV4(
 
     const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
     if (task) {
-      await blockTask(db, task, message);
+      await blockTask(db, task, message, undefined, true);
       await event(db, task.id, "STALE_STEP_RECONCILED", {
         stepId: step.id, attemptCount: step.attemptCount, cutoff: cutoff.toISOString(),
       });

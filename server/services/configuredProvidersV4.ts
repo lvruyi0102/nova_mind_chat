@@ -48,7 +48,14 @@ export function registerConfiguredProvidersV4(): { registered: string[]; skipped
             error: { code: "PROVIDER_EMPTY_OUTPUT", message: "Image provider returned no durable artifact URL." },
           };
         }
-        const mediaType = generated.mimeType?.trim() || "application/octet-stream";
+        const mediaType = generated.mimeType?.trim();
+        if (!mediaType?.startsWith("image/")) {
+          return {
+            status: "FAILED",
+            artifacts: [],
+            error: { code: "PROVIDER_INVALID_MEDIA_TYPE", message: "Image provider did not return a valid image MIME type." },
+          };
+        }
         return {
           status: "SUCCEEDED",
           artifacts: [{ uri: generated.url, mediaType }],

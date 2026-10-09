@@ -6,7 +6,8 @@
  * SUCCEEDED: acceptance checks remain UNVERIFIED until a real validator is
  * registered and run. Enable explicitly with NOVA_AGENT_V4_WORKER_ENABLED=true.
  */
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
@@ -76,7 +77,7 @@ async function refreshReadySteps(db: NonNullable<Awaited<ReturnType<typeof getDb
   }
 }
 
-async function processTask(taskId: number): Promise<boolean> {
+async function processTaskUnderLease(taskId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
   const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, taskId)).limit(1);
@@ -333,6 +334,40 @@ async function processTask(taskId: number): Promise<boolean> {
     if (freshTask) await blockTask(db, freshTask, message);
     await event(db, task.id, "STEP_FAILED", { stepId: step.id, message, category: classification.category });
     return true;
+  }
+}
+
+/**
+ * A database CAS lease serializes processing for one task across worker
+ * processes. The local tickInFlight flag only protects a single process.
+ */
+async function processTask(taskId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const leaseToken = randomUUID();
+  const now = new Date();
+  const leaseUntil = new Date(now.getTime() + 10 * 60 * 1000);
+  const lease = await db.update(agentTasks).set({
+    workerLeaseToken: leaseToken,
+    workerLeaseUntil: leaseUntil,
+  }).where(and(
+    eq(agentTasks.id, taskId),
+    inArray(agentTasks.status, ["READY", "RUNNING"]),
+    or(isNull(agentTasks.workerLeaseUntil), lt(agentTasks.workerLeaseUntil, now)),
+  ));
+  if (affectedRows(lease) !== 1) return false;
+
+  try {
+    return await processTaskUnderLease(taskId);
+  } finally {
+    // A late worker must never clear a lease acquired by a newer worker.
+    await db.update(agentTasks).set({
+      workerLeaseToken: null,
+      workerLeaseUntil: null,
+    }).where(and(
+      eq(agentTasks.id, taskId),
+      eq(agentTasks.workerLeaseToken, leaseToken),
+    ));
   }
 }
 

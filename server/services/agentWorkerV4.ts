@@ -433,9 +433,8 @@ async function processTask(taskId: number): Promise<boolean> {
         ));
         if (affectedRows(renewal) !== 1) leaseLost = true;
       } catch (error) {
-        // Fence further task-level writes if the lease cannot be renewed.
-        // The provider result, if already in flight, still needs ledger reconciliation.
-        leaseLost = true;
+        // Keep retrying on the next heartbeat after transient DB failures.
+        // If renewal actually loses the compare-and-set, leaseLost is set above.
         console.error("[agentWorkerV4] lease heartbeat failed", {
           taskId,
           error: error instanceof Error ? error.message : String(error),

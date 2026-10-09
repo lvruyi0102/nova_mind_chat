@@ -106,6 +106,27 @@ export interface ExecutionError {
   retryable?: boolean;
 }
 
+/** Preserve structured codes even when a provider throws a plain object. */
+export function normalizeExecutionError(error: unknown): ExecutionError {
+  if (error instanceof Error) {
+    const coded = error as Error & { code?: unknown; retryable?: unknown };
+    return {
+      code: typeof coded.code === "string" ? coded.code : undefined,
+      message: error.message || error.name || "Unknown execution error",
+      retryable: typeof coded.retryable === "boolean" ? coded.retryable : undefined,
+    };
+  }
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+    return {
+      code: typeof record.code === "string" ? record.code : undefined,
+      message: typeof record.message === "string" ? record.message : String(error),
+      retryable: typeof record.retryable === "boolean" ? record.retryable : undefined,
+    };
+  }
+  return { message: String(error) };
+}
+
 export interface FailureClassification {
   category: FailureCategory;
   retryable: boolean;

@@ -148,7 +148,17 @@ async function processTask(taskId: number): Promise<boolean> {
     return true;
   }
 
-  const budget = { ...defaultBudget(), ...parse<Partial<ExecutionBudget>>(task.budgetJson, {}) };
+  const storedBudget = parse<Record<string, unknown>>(task.budgetJson, {});
+  const requestedDuration = typeof storedBudget.maxDurationMs === "number"
+    ? storedBudget.maxDurationMs
+    : typeof storedBudget.maxEstimatedDurationMs === "number"
+      ? storedBudget.maxEstimatedDurationMs
+      : undefined;
+  const budget: ExecutionBudget = {
+    ...defaultBudget(),
+    ...parse<Partial<ExecutionBudget>>(task.budgetJson, {}),
+    ...(requestedDuration !== undefined ? { maxDurationMs: requestedDuration } : {}),
+  };
   const usage = { ...defaultUsage(), ...parse<Partial<ExecutionUsage>>(task.usageJson, {}) };
   const idempotencyKey = `nova-v4:${task.id}:${step.id}:${step.attemptCount + 1}`;
   const startedAt = new Date();

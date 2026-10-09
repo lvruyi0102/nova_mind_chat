@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertAcceptanceAllowsSuccess,
+  boundedExecutionTimeoutMs,
   assertExecutionTransition,
   assertToolResultIsConsistent,
   assertWithinExecutionBudget,
@@ -53,6 +54,26 @@ describe("executionEngineV4", () => {
       { toolCalls: 3 },
       1,
     )).toThrow(/maxToolCalls/);
+  });
+
+  it("caps provider timeout to the remaining task duration budget", () => {
+    expect(boundedExecutionTimeoutMs(
+      { maxToolCalls: 5, maxRetriesPerStep: 2, maxDurationMs: 90_000 },
+      { toolCalls: 1, elapsedMs: 25_000 },
+      120_000,
+    )).toBe(65_000);
+
+    expect(boundedExecutionTimeoutMs(
+      { maxToolCalls: 5, maxRetriesPerStep: 2, maxDurationMs: 900_000 },
+      { toolCalls: 1, elapsedMs: 25_000 },
+      120_000,
+    )).toBe(120_000);
+
+    expect(() => boundedExecutionTimeoutMs(
+      { maxToolCalls: 5, maxRetriesPerStep: 2, maxDurationMs: 25_000 },
+      { toolCalls: 1, elapsedMs: 25_000 },
+      120_000,
+    )).toThrow(/maxDurationMs/);
   });
 
   it("classifies permission failures as non-retryable", () => {

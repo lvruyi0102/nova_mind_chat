@@ -117,6 +117,39 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     return true;
   }
 
+  // A newly acquired task lease must never dispatch a different step while
+  // an older step is still RUNNING. That claim may belong to a worker whose
+  // provider call outlived its lease; its external outcome is not safe to replay.
+  const orphanedRunningSteps = await db.select().from(agentTaskSteps).where(and(
+    eq(agentTaskSteps.taskId, task.id),
+    eq(agentTaskSteps.status, "RUNNING"),
+  ));
+  if (orphanedRunningSteps.length > 0) {
+    const message = "A previous worker left a RUNNING step without a live lease. External outcome is unknown; automatic replay is suppressed.";
+    const quarantinedAt = new Date();
+    for (const orphanedStep of orphanedRunningSteps) {
+      const changed = await db.update(agentTaskSteps).set({
+        status: "BLOCKED", lastError: message, updatedAt: quarantinedAt,
+      }).where(and(
+        eq(agentTaskSteps.id, orphanedStep.id),
+        eq(agentTaskSteps.status, "RUNNING"),
+      ));
+      if (affectedRows(changed) !== 1) continue;
+      await db.update(agentToolRuns).set({
+        status: "UNKNOWN", errorMessage: message, finishedAt: quarantinedAt,
+      }).where(and(
+        eq(agentToolRuns.stepId, orphanedStep.id),
+        eq(agentToolRuns.status, "RUNNING"),
+      ));
+      await event(db, task.id, "ORPHANED_STEP_QUARANTINED", {
+        stepId: orphanedStep.id, attemptCount: orphanedStep.attemptCount, message,
+      });
+    }
+    const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
+    return true;
+  }
+
   await promoteDueRetries(db, task.id);
   await refreshReadySteps(db, task.id);
   const [step] = await db.select().from(agentTaskSteps)

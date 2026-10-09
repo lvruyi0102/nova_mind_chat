@@ -82,8 +82,11 @@ async function processTask(taskId: number): Promise<boolean> {
   const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, taskId)).limit(1);
   if (!task || !["READY", "RUNNING"].includes(task.status)) return false;
   if (task.cancelRequested) {
+    // Do not relabel an in-flight RUNNING step as CANCELLED: its external
+    // provider may still complete or charge after this request. Keep the claim
+    // visible so the result can be reconciled, or marked UNKNOWN if the worker dies.
     await db.update(agentTaskSteps).set({ status: "CANCELLED", updatedAt: new Date() })
-      .where(and(eq(agentTaskSteps.taskId, task.id), inArray(agentTaskSteps.status, ["PENDING", "READY", "RUNNING", "RETRYING"])));
+      .where(and(eq(agentTaskSteps.taskId, task.id), inArray(agentTaskSteps.status, ["PENDING", "READY", "RETRYING"])));
     await db.update(agentTasks).set({ status: "CANCELLED", completedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
     await event(db, task.id, "TASK_CANCELLED", { reason: "User requested cancellation." });

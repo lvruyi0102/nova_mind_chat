@@ -82,9 +82,9 @@ Subjective model-based scoring is supplementary and must not replace determinist
 
 ## Persistence implementation status
 
-Schema definitions now exist in `drizzle/schema.ts` for `agentTasks`, `agentTaskSteps`, `agentToolRuns`, `agentArtifacts`, `agentAcceptanceChecks`, and `agentTaskEvents`. `server/services/agentTaskStoreV4.ts` adds transactional task/step/check/event creation, owner-scoped reads, compare-and-set task transitions, and cancellation requests. The protected API exposes task submission, listing, details, and cancellation.
+Schema definitions exist in `drizzle/schema.ts` for `agentTasks`, `agentTaskSteps`, `agentToolRuns`, `agentArtifacts`, `agentAcceptanceChecks`, and `agentTaskEvents`. `server/services/agentTaskStoreV4.ts` adds transactional task/step/check/event creation, owner-scoped reads, compare-and-set task transitions, and cancellation requests. The protected API exposes task submission, listing, details, and cancellation. The SQL migration is `drizzle/0026_nova_agent_execution.sql`; its journal entry and schema snapshot are also committed. The migration has not been applied to any database and must be reviewed and tested against a disposable/staging database first.
 
-**Migration blocker:** the corresponding SQL migration has not yet been generated, reviewed, committed, or applied. These routes must not be used against a database until the migration is in place. A durable worker that claims and executes persisted steps is also not connected yet.
+`server/services/agentWorkerV4.ts` adds an opt-in poller with compare-and-set step claims, dependency promotion, cancellation handling, tool-run receipts, artifact persistence, and audit events. It starts only when `NOVA_AGENT_V4_WORKER_ENABLED=true`. `server/services/configuredProvidersV4.ts` registers a real image-generation adapter only when the built-in image service credentials are present. The V4 worker calls `evaluateActionGateV4` before dispatch; the current user-submission grant is scoped to reversible image creation, and unknown capability classes default to denied. The registry remains empty for unconfigured modalities. The worker intentionally leaves acceptance checks unverified and does not mark tasks successful. Async external-job reconciliation and modality-specific acceptance validators are still missing. Legacy generation endpoints still need a separate action-gate review.
 
 The intended persistence model is:
 
@@ -100,14 +100,14 @@ State changes and corresponding events should be committed transactionally where
 
 ## Next implementation sequence
 
-1. Generate and review the migration for the six V4 persistence tables; verify it against a disposable database before applying it to any shared environment.
-2. Run TypeScript checks, deterministic tests, and a production build; fix all failures before proceeding.
-3. Implement atomic dependency-aware step claiming, tool-run receipts, artifact persistence, and step completion/verification transitions.
-4. Add a durable worker loop with cancellation checks, deadlines, bounded retries, and restart reconciliation.
-5. Wire scoped action authorization into every execution entrypoint.
-6. Add real provider adapters and modality-specific validators.
+1. Run CI/typecheck/build/tests and fix all failures; no successful CI result is currently confirmed.
+2. Review the six-table migration and apply it to a disposable/staging database; do not run it against production without explicit operational review.
+3. Add stale RUNNING-step recovery, multi-process claim tests, provider idempotency/reconciliation, and deadlines.
+4. Add real provider adapters for music, audio, video, 3D, code, and game generation where configured.
+5. Implement modality-specific validators and persist evidence to acceptance checks before a task may become SUCCEEDED.
+6. Review and wire scoped action authorization into all legacy execution entrypoints.
 7. Test success, provider failure, ambiguous timeout, duplicate dispatch, process restart, cancellation, and acceptance failure.
-8. Enable behind a feature flag only after the migration and recovery tests pass.
+8. Enable behind a feature flag only after migration, CI, authorization, validation, and recovery tests pass.
 
 ## Current known limitation
 

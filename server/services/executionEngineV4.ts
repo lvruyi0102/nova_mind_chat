@@ -244,6 +244,11 @@ export function boundedExecutionTimeoutMs(
   return Math.max(1, Math.floor(Math.min(requestedTimeoutMs, remainingMs)));
 }
 
+/** Return true when a transport error does not prove whether the remote operation finished. */
+export function isUncertainProviderOutcome(error: ExecutionError): boolean {
+  return classifyExecutionError(error).category === "EXTERNAL_DEPENDENCY";
+}
+
 /** Retry only explicitly retryable failures and never exceed the configured cap. */
 export function shouldRetryExecution(input: {
   retryable: boolean;

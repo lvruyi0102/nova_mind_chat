@@ -12,6 +12,7 @@ import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
 import { assertExecutionTransition } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
+import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
 const POLL_MS = 5_000;
 const MAX_TASKS_PER_TICK = 10;
@@ -112,6 +113,38 @@ async function processTask(taskId: number): Promise<boolean> {
       .where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
     if (freshTask) await blockTask(db, freshTask, message);
+    return true;
+  }
+
+  const budgetRecord = parse<Record<string, unknown>>(task.budgetJson, {});
+  const approval = budgetRecord.executionApproval as {
+    approved?: boolean; actionClasses?: string[]; expiresAt?: string; maxCost?: number;
+  } | undefined;
+  // Only the user-submitted image-generation action currently has a scoped
+  // reversible-write grant. New capability classes default to denied.
+  const actionClass: ActionRiskClassV4 = step.capabilityId === "image.generate"
+    ? "reversible_write"
+    : "security_sensitive";
+  const gate = evaluateActionGateV4({
+    actionClass,
+    description: step.description,
+    resource: `agentTask:${task.id}/step:${step.id}`,
+  }, {
+    mode: "execute_approved",
+    authorization: approval ? {
+      approved: approval.approved === true,
+      actionClasses: new Set((approval.actionClasses ?? []) as ActionRiskClassV4[]),
+      expiresAt: approval.expiresAt ? new Date(approval.expiresAt) : undefined,
+      maxCost: approval.maxCost,
+    } : undefined,
+  });
+  if (!gate.allowed) {
+    const message = `Action gate denied execution: ${gate.reason}`;
+    await db.update(agentTaskSteps).set({ status: "BLOCKED", lastError: message, updatedAt: new Date() })
+      .where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+    if (freshTask) await blockTask(db, freshTask, message);
+    await event(db, task.id, "ACTION_GATE_DENIED", { stepId: step.id, actionClass, reason: gate.reason });
     return true;
   }
 

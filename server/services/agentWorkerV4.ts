@@ -359,6 +359,41 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
       },
       budget, usage: usageBeforeDispatch,
     });
+
+    // A provider can outlive its lease if the heartbeat/database was unavailable.
+    // Preserve the returned outcome as an audit event, but do not let an expired
+    // worker commit artifacts or step state after another worker may have taken over.
+    const [leaseAfterProvider] = await db.select({
+      workerLeaseToken: agentTasks.workerLeaseToken,
+      workerLeaseUntil: agentTasks.workerLeaseUntil,
+    }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+    if (!leaseAfterProvider || !ownsLiveExecutionLease(
+      leaseAfterProvider.workerLeaseToken,
+      leaseToken,
+      leaseAfterProvider.workerLeaseUntil,
+    )) {
+      const observedAt = new Date();
+      const message = "Provider returned after the worker lease expired or changed; result requires reconciliation.";
+      await db.update(agentToolRuns).set({
+        status: "UNKNOWN",
+        errorMessage: message,
+        responseMetadata: JSON.stringify({
+          observedProviderStatus: result.status,
+          externalJobId: result.externalJobId ?? null,
+          artifactCount: result.artifacts.length,
+        }),
+        finishedAt: observedAt,
+      }).where(and(eq(agentToolRuns.id, toolRunId), eq(agentToolRuns.status, "RUNNING")));
+      await event(db, task.id, "PROVIDER_RESULT_AFTER_LEASE_LOSS", {
+        stepId: step.id,
+        toolRunId,
+        observedProviderStatus: result.status,
+        externalJobId: result.externalJobId ?? null,
+        artifactCount: result.artifacts.length,
+      });
+      return true;
+    }
+
     const finishedAt = new Date();
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
     await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt }).where(and(

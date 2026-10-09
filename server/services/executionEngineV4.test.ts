@@ -34,11 +34,13 @@ describe("executionEngineV4", () => {
   });
 
   it("preserves provider error codes when the thrown value is a plain object", () => {
-    expect(normalizeExecutionError({ code: "ECONNRESET", message: "socket reset" })).toEqual({
+    const normalized = normalizeExecutionError({ code: "ECONNRESET", message: "socket reset" });
+    expect(normalized).toEqual({
       code: "ECONNRESET",
       message: "socket reset",
       retryable: undefined,
     });
+    expect(isUncertainProviderOutcome(normalized)).toBe(true);
   });
 
   it("rejects a matching worker token after its lease expires", () => {

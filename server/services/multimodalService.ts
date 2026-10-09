@@ -4,8 +4,8 @@
  */
 
 import { getDb } from "../db";
-import { creativeGenRequests, genGames, genMedia, genHistory, creativeWorks } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { creativeGenRequests, genGames, genHistory, creativeWorks } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { generateImage } from "../_core/imageGeneration";
 import { invokeLLM } from "../_core/llm";
 

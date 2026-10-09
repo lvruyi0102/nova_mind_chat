@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertAcceptanceAllowsSuccess,
   boundedExecutionTimeoutMs,
+  canDispatchTask,
   CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
   assertToolResultIsConsistent,
@@ -12,6 +13,15 @@ import {
 } from "./executionEngineV4";
 
 describe("executionEngineV4", () => {
+  it("blocks provider dispatch for cancelled or non-active tasks", () => {
+    expect(canDispatchTask("READY", false)).toBe(true);
+    expect(canDispatchTask("RUNNING", false)).toBe(true);
+    expect(canDispatchTask("READY", true)).toBe(false);
+    expect(canDispatchTask("CANCELLED", false)).toBe(false);
+    expect(canDispatchTask("BLOCKED", false)).toBe(false);
+    expect(canDispatchTask("SUCCEEDED", false)).toBe(false);
+  });
+
   it("does not mark in-flight steps cancelled before their provider result is reconciled", () => {
     expect(CANCELLABLE_STEP_STATUSES).toEqual(["PENDING", "READY", "RETRYING"]);
     expect(CANCELLABLE_STEP_STATUSES).not.toContain("RUNNING");

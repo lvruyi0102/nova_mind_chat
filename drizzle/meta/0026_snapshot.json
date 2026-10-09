@@ -8561,7 +8561,48 @@
           "onUpdate": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "agentTaskSteps_taskId_stepKey_unique": {
+          "name": "agentTaskSteps_taskId_stepKey_unique",
+          "columns": [
+            {
+              "expression": "taskId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stepKey",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree"
+        },
+        "agentTaskSteps_taskId_status_idx": {
+          "name": "agentTaskSteps_taskId_status_idx",
+          "columns": [
+            {
+              "expression": "taskId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree"
+        }
+      },
       "foreignKeys": {
         "agentTaskSteps_taskId_agentTasks_id_fk": {
           "name": "agentTaskSteps_taskId_agentTasks_id_fk",
@@ -8585,15 +8626,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "agentTaskSteps_taskId_stepKey_unique": {
-          "name": "agentTaskSteps_taskId_stepKey_unique",
-          "columns": [
-            "taskId",
-            "stepKey"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "agentToolRuns": {
@@ -8700,7 +8733,28 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "agentToolRuns_taskId_createdAt_idx": {
+          "name": "agentToolRuns_taskId_createdAt_idx",
+          "columns": [
+            {
+              "expression": "taskId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree"
+        }
+      },
       "foreignKeys": {
         "agentToolRuns_taskId_agentTasks_id_fk": {
           "name": "agentToolRuns_taskId_agentTasks_id_fk",
@@ -8956,7 +9010,28 @@
           "onUpdate": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "agentAcceptanceChecks_taskId_checkKey_unique": {
+          "name": "agentAcceptanceChecks_taskId_checkKey_unique",
+          "columns": [
+            {
+              "expression": "taskId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "checkKey",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree"
+        }
+      },
       "foreignKeys": {
         "agentAcceptanceChecks_taskId_agentTasks_id_fk": {
           "name": "agentAcceptanceChecks_taskId_agentTasks_id_fk",
@@ -8993,15 +9068,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "agentAcceptanceChecks_taskId_checkKey_unique": {
-          "name": "agentAcceptanceChecks_taskId_checkKey_unique",
-          "columns": [
-            "taskId",
-            "checkKey"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "agentTaskEvents": {
@@ -9052,7 +9119,28 @@
           "default": "(now())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "agentTaskEvents_taskId_createdAt_idx": {
+          "name": "agentTaskEvents_taskId_createdAt_idx",
+          "columns": [
+            {
+              "expression": "taskId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree"
+        }
+      },
       "foreignKeys": {
         "agentTaskEvents_taskId_agentTasks_id_fk": {
           "name": "agentTaskEvents_taskId_agentTasks_id_fk",

@@ -510,6 +510,17 @@ export async function reconcileStaleAgentStepsV4(
   let recovered = 0;
 
   for (const step of stale) {
+    // A live task lease is stronger evidence than an old step timestamp. This
+    // also protects recovery if a heartbeat renewed the task but its step
+    // timestamp refresh temporarily failed.
+    const [leaseOwner] = await db.select({
+      workerLeaseToken: agentTasks.workerLeaseToken,
+      workerLeaseUntil: agentTasks.workerLeaseUntil,
+    }).from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
+    if (leaseOwner?.workerLeaseToken && leaseOwner.workerLeaseUntil && leaseOwner.workerLeaseUntil > new Date()) {
+      continue;
+    }
+
     const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
     const changed = await db.update(agentTaskSteps).set({
       status: "BLOCKED", lastError: message, updatedAt: new Date(),

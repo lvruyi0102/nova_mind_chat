@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertAcceptanceAllowsSuccess,
   boundedExecutionTimeoutMs,
+  CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
   assertToolResultIsConsistent,
   assertWithinExecutionBudget,
@@ -11,6 +12,11 @@ import {
 } from "./executionEngineV4";
 
 describe("executionEngineV4", () => {
+  it("does not mark in-flight steps cancelled before their provider result is reconciled", () => {
+    expect(CANCELLABLE_STEP_STATUSES).toEqual(["PENDING", "READY", "RETRYING"]);
+    expect(CANCELLABLE_STEP_STATUSES).not.toContain("RUNNING");
+  });
+
   it("allows only declared status transitions", () => {
     expect(() => assertExecutionTransition("RUNNING", "VERIFYING")).not.toThrow();
     expect(() => assertExecutionTransition("SUCCEEDED", "RUNNING")).toThrow(

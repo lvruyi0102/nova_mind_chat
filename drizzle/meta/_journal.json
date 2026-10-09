@@ -120,6 +120,13 @@
       "when": 1791557007433,
       "tag": "0026_nova_agent_execution",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1791590400000,
+      "tag": "0027_nova_agent_task_lease",
+      "breakpoints": true
     }
   ]
 }

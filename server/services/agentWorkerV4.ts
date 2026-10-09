@@ -513,7 +513,11 @@ export async function reconcileStaleAgentStepsV4(
     const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
     const changed = await db.update(agentTaskSteps).set({
       status: "BLOCKED", lastError: message, updatedAt: new Date(),
-    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    }).where(and(
+      eq(agentTaskSteps.id, step.id),
+      eq(agentTaskSteps.status, "RUNNING"),
+      lt(agentTaskSteps.updatedAt, cutoff),
+    ));
     if (affectedRows(changed) !== 1) continue;
 
     // Keep the durable tool-run ledger consistent with the blocked step.

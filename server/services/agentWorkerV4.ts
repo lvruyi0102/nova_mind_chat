@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, ownsExecutionLease } from "./executionEngineV4";
+import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, isUncertainProviderOutcome, ownsExecutionLease } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -394,12 +394,27 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
         eq(agentTasks.workerLeaseToken, leaseToken),
       ));
     const classification = classifyExecutionError({ message });
-    const canRetry = classification.retryable && step.attemptCount + 1 < step.maxAttempts;
+    const uncertainOutcome = isUncertainProviderOutcome({ message });
+    const canRetry = !uncertainOutcome && classification.retryable && step.attemptCount + 1 < step.maxAttempts;
+    const reconciledMessage = uncertainOutcome
+      ? `Provider outcome is uncertain; automatic replay is suppressed to avoid a duplicate external action. Original error: ${message}`
+      : message;
     await db.update(agentTaskSteps).set({
-      status: canRetry ? "RETRYING" : "FAILED", lastError: message, updatedAt: finishedAt,
+      status: uncertainOutcome ? "BLOCKED" : canRetry ? "RETRYING" : "FAILED",
+      lastError: reconciledMessage, updatedAt: finishedAt,
     }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
-    await db.update(agentToolRuns).set({ status: "FAILED", errorMessage: message, finishedAt })
-      .where(eq(agentToolRuns.id, toolRunId));
+    await db.update(agentToolRuns).set({
+      status: uncertainOutcome ? "UNKNOWN" : "FAILED",
+      errorMessage: reconciledMessage, finishedAt,
+    }).where(eq(agentToolRuns.id, toolRunId));
+    if (uncertainOutcome) {
+      const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+      if (freshTask) await blockTask(db, freshTask, reconciledMessage, leaseToken);
+      await event(db, task.id, "EXTERNAL_OUTCOME_UNKNOWN", {
+        stepId: step.id, toolRunId, category: classification.category, message: reconciledMessage,
+      });
+      return true;
+    }
     if (canRetry) {
       await event(db, task.id, "STEP_RETRY_SCHEDULED", {
         stepId: step.id, attemptCount: step.attemptCount, maxAttempts: step.maxAttempts,

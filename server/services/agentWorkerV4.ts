@@ -393,8 +393,9 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
         eq(agentTasks.id, task.id),
         eq(agentTasks.workerLeaseToken, leaseToken),
       ));
-    const classification = classifyExecutionError({ message });
-    const uncertainOutcome = isUncertainProviderOutcome({ message });
+    const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
+    const classification = classifyExecutionError({ code: errorCode, message });
+    const uncertainOutcome = isUncertainProviderOutcome({ code: errorCode, message });
     const canRetry = !uncertainOutcome && classification.retryable && step.attemptCount + 1 < step.maxAttempts;
     const reconciledMessage = uncertainOutcome
       ? `Provider outcome is uncertain; automatic replay is suppressed to avoid a duplicate external action. Original error: ${message}`

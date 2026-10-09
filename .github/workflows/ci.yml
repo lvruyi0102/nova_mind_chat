@@ -50,7 +50,8 @@ jobs:
             server/services/taskPlanValidatorV4.test.ts \
             server/services/taskPlanningV4.test.ts \
             server/services/toolAdapterRegistryV4.test.ts \
-            server/services/__tests__/multimodalService.test.ts
+            server/services/__tests__/multimodalService.test.ts \
+            server/_core/imageGeneration.test.ts
 
       - name: Build
         run: pnpm build

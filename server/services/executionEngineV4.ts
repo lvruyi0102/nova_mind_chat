@@ -44,6 +44,18 @@ export function ownsExecutionLease(
   return expectedToken.length > 0 && currentToken === expectedToken;
 }
 
+/** A matching token is insufficient after its lease has expired. */
+export function ownsLiveExecutionLease(
+  currentToken: string | null | undefined,
+  expectedToken: string,
+  leaseUntil: Date | string | null | undefined,
+  now = new Date(),
+): boolean {
+  if (!ownsExecutionLease(currentToken, expectedToken) || !leaseUntil) return false;
+  const expiry = leaseUntil instanceof Date ? leaseUntil.getTime() : Date.parse(leaseUntil);
+  return Number.isFinite(expiry) && expiry > now.getTime();
+}
+
 
 
 export type FailureCategory =

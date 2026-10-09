@@ -10,7 +10,7 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition, classifyExecutionError } from "./executionEngineV4";
+import { assertExecutionTransition, assertWithinExecutionBudget, classifyExecutionError } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -183,8 +183,24 @@ async function processTask(taskId: number): Promise<boolean> {
   });
   const toolRunId = Number(insertedRun[0].insertId);
 
-  // Count every dispatch attempt, including failures, so retries cannot evade
-  // the task-wide tool-call budget.
+  // Check the budget against prior usage, then reserve this call before
+  // dispatch so a failed provider attempt still consumes budget exactly once.
+  const usageBeforeDispatch = { ...usage };
+  try {
+    assertWithinExecutionBudget(budget, usageBeforeDispatch);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await db.update(agentToolRuns).set({
+      status: "BLOCKED", errorMessage: message, finishedAt: startedAt,
+    }).where(eq(agentToolRuns.id, toolRunId));
+    await db.update(agentTaskSteps).set({
+      status: "BLOCKED", lastError: message, updatedAt: startedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+    if (freshTask) await blockTask(db, freshTask, message);
+    await event(db, task.id, "EXECUTION_BUDGET_EXCEEDED", { stepId: step.id, message });
+    return true;
+  }
   usage.toolCalls += 1;
   await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: startedAt })
     .where(eq(agentTasks.id, task.id));
@@ -197,7 +213,7 @@ async function processTask(taskId: number): Promise<boolean> {
         input: { goal: task.goal, description: step.description, ...parse<Record<string, unknown>>(step.inputJson, {}) },
         idempotencyKey, timeoutMs: 120_000,
       },
-      budget, usage,
+      budget, usage: usageBeforeDispatch,
     });
     const finishedAt = new Date();
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());

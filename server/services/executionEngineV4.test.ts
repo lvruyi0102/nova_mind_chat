@@ -4,6 +4,7 @@ import {
   boundedExecutionTimeoutMs,
   canDispatchTask,
   ownsExecutionLease,
+  isUncertainProviderOutcome,
   CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
   assertToolResultIsConsistent,
@@ -105,6 +106,14 @@ describe("executionEngineV4", () => {
       code: "FORBIDDEN",
       message: "Permission denied",
     })).toMatchObject({ category: "PERMISSION_ERROR", retryable: false });
+  });
+
+  it("treats transport failures as uncertain instead of assuming the provider did nothing", () => {
+    expect(isUncertainProviderOutcome({ code: "TIMEOUT", message: "request timed out" })).toBe(true);
+    expect(isUncertainProviderOutcome({ code: "ECONNRESET", message: "connection reset" })).toBe(true);
+    expect(isUncertainProviderOutcome({ code: "FORBIDDEN", message: "Permission denied" })).toBe(false);
+    // A provider's explicit completed failure can still be retried under policy.
+    expect(classifyExecutionError({ code: "TOOL_ERROR", message: "temporary render issue", retryable: true }).retryable).toBe(true);
   });
 
   it("retries only retryable failures within the retry cap", () => {

@@ -14,6 +14,7 @@ import { initializeConcurrencyController } from "../optimization/concurrencyCont
 import { initializeAutonomousBackgroundLoop } from "../autonomy/autonomousBackgroundLoop";
 import { startBackgroundCognition } from "../backgroundCognitionOptimized";
 import { startAgentWorkerV4 } from "../services/agentWorkerV4";
+import { registerConfiguredProvidersV4 } from "../services/configuredProvidersV4";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,7 +44,8 @@ async function startServer() {
   console.log("[Server] Initializing optimized database connection...");
   await initializeOptimizedDb();
 
-  // V4 task execution is opt-in until providers and acceptance validators are configured.
+  // Register only providers backed by configured credentials, then start the opt-in worker.
+  registerConfiguredProvidersV4();
   startAgentWorkerV4();
 
   // Step 3: Initialize aggressive cache cleaner

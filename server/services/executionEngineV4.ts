@@ -36,6 +36,14 @@ export function canDispatchTask(
   return !cancelRequested && (status === "READY" || status === "RUNNING");
 }
 
+/** Fencing check: only the holder of the currently persisted lease may dispatch. */
+export function ownsExecutionLease(
+  currentToken: string | null | undefined,
+  expectedToken: string,
+): boolean {
+  return expectedToken.length > 0 && currentToken === expectedToken;
+}
+
 
 
 export type FailureCategory =

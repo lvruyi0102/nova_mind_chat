@@ -10,7 +10,7 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition } from "./executionEngineV4";
+import { assertExecutionTransition, classifyExecutionError } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -50,6 +50,19 @@ async function blockTask(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, tas
   await event(db, task.id, "TASK_BLOCKED", { message });
 }
 
+async function promoteDueRetries(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, taskId: number) {
+  const steps = await db.select().from(agentTaskSteps).where(eq(agentTaskSteps.taskId, taskId));
+  const now = Date.now();
+  for (const step of steps) {
+    if (step.status !== "RETRYING" || !step.updatedAt) continue;
+    const delayMs = Math.min(30_000, Math.max(5_000, step.attemptCount * 5_000));
+    if (now - step.updatedAt.getTime() < delayMs) continue;
+    await db.update(agentTaskSteps).set({ status: "READY", updatedAt: new Date() })
+      .where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RETRYING")));
+    await event(db, taskId, "STEP_RETRY_READY", { stepId: step.id, attemptCount: step.attemptCount });
+  }
+}
+
 async function refreshReadySteps(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, taskId: number) {
   const steps = await db.select().from(agentTaskSteps).where(eq(agentTaskSteps.taskId, taskId));
   const byKey = new Map(steps.map(s => [s.stepKey, s]));
@@ -77,6 +90,7 @@ async function processTask(taskId: number): Promise<boolean> {
     return true;
   }
 
+  await promoteDueRetries(db, task.id);
   await refreshReadySteps(db, task.id);
   const [step] = await db.select().from(agentTaskSteps)
     .where(and(eq(agentTaskSteps.taskId, task.id), eq(agentTaskSteps.status, "READY")))
@@ -219,25 +233,50 @@ async function processTask(taskId: number): Promise<boolean> {
     }
 
     const message = result.error?.message ?? `Provider returned ${result.status}`;
-    await db.update(agentTaskSteps).set({ status: result.status === "BLOCKED" ? "BLOCKED" : "FAILED", lastError: message, updatedAt: finishedAt })
-      .where(eq(agentTaskSteps.id, step.id));
+    const classification = classifyExecutionError({
+      code: result.error?.code,
+      message,
+      retryable: result.error?.retryable,
+    });
+    const canRetry = result.status === "FAILED" && classification.retryable && step.attemptCount < step.maxAttempts;
+    await db.update(agentTaskSteps).set({
+      status: result.status === "BLOCKED" ? "BLOCKED" : canRetry ? "RETRYING" : "FAILED",
+      lastError: message, updatedAt: finishedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     await db.update(agentToolRuns).set({
       status: result.status === "BLOCKED" ? "BLOCKED" : "FAILED", errorMessage: message,
       responseMetadata: JSON.stringify(result), finishedAt,
     }).where(eq(agentToolRuns.id, toolRunId));
+    if (canRetry) {
+      await event(db, task.id, "STEP_RETRY_SCHEDULED", {
+        stepId: step.id, attemptCount: step.attemptCount, maxAttempts: step.maxAttempts,
+        category: classification.category, reason: message,
+      });
+      return true;
+    }
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
     if (freshTask) await blockTask(db, freshTask, message);
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const finishedAt = new Date();
-    await db.update(agentTaskSteps).set({ status: "FAILED", lastError: message, updatedAt: finishedAt })
-      .where(eq(agentTaskSteps.id, step.id));
+    const classification = classifyExecutionError({ message });
+    const canRetry = classification.retryable && step.attemptCount < step.maxAttempts;
+    await db.update(agentTaskSteps).set({
+      status: canRetry ? "RETRYING" : "FAILED", lastError: message, updatedAt: finishedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     await db.update(agentToolRuns).set({ status: "FAILED", errorMessage: message, finishedAt })
       .where(eq(agentToolRuns.id, toolRunId));
+    if (canRetry) {
+      await event(db, task.id, "STEP_RETRY_SCHEDULED", {
+        stepId: step.id, attemptCount: step.attemptCount, maxAttempts: step.maxAttempts,
+        category: classification.category, reason: message,
+      });
+      return true;
+    }
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
     if (freshTask) await blockTask(db, freshTask, message);
-    await event(db, task.id, "STEP_FAILED", { stepId: step.id, message });
+    await event(db, task.id, "STEP_FAILED", { stepId: step.id, message, category: classification.category });
     return true;
   }
 }

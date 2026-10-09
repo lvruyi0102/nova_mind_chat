@@ -61,7 +61,9 @@ export async function generateCreativeImage(
   emotionalContext?: string
 ) {
   try {
-    const imageUrl = await generateImage({ prompt });
+    const generatedImage = await generateImage({ prompt });
+    const imageUrl = generatedImage.url;
+    if (!imageUrl) throw new Error("Image generation provider returned no artifact URL");
 
     // Create generation request and save as creative work
     const db = await getDb();

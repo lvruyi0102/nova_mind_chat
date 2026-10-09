@@ -373,9 +373,51 @@ async function processTask(taskId: number): Promise<boolean> {
   ));
   if (affectedRows(lease) !== 1) return false;
 
+  // Renew well before expiry so slow providers cannot silently let another
+  // worker acquire the same task while this worker is still reconciling results.
+  const leaseTtlMs = 10 * 60 * 1000;
+  const leaseRenewEveryMs = 60 * 1000;
+  let heartbeatInFlight = false;
+  let leaseLost = false;
+  const heartbeat = setInterval(() => {
+    if (heartbeatInFlight || leaseLost) return;
+    heartbeatInFlight = true;
+    void (async () => {
+      try {
+        const renewedAt = new Date();
+        const renewal = await db.update(agentTasks).set({
+          workerLeaseUntil: new Date(renewedAt.getTime() + leaseTtlMs),
+          updatedAt: renewedAt,
+        }).where(and(
+          eq(agentTasks.id, taskId),
+          eq(agentTasks.workerLeaseToken, leaseToken),
+          inArray(agentTasks.status, ["READY", "RUNNING"]),
+        ));
+        if (affectedRows(renewal) !== 1) leaseLost = true;
+      } catch (error) {
+        // A transient DB error is observable, but does not falsely declare
+        // success. The lease will expire naturally if renewals keep failing.
+        console.error("[agentWorkerV4] lease heartbeat failed", {
+          taskId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        heartbeatInFlight = false;
+      }
+    })();
+  }, leaseRenewEveryMs);
+  heartbeat.unref?.();
+
   try {
-    return await processTaskUnderLease(taskId, leaseToken);
+    const processed = await processTaskUnderLease(taskId, leaseToken);
+    if (leaseLost) {
+      await event(db, taskId, "WORKER_LEASE_LOST", {
+        reason: "Lease renewal did not update the current task lease; task state may require reconciliation.",
+      });
+    }
+    return processed;
   } finally {
+    clearInterval(heartbeat);
     // A late worker must never clear a lease acquired by a newer worker.
     await db.update(agentTasks).set({
       workerLeaseToken: null,

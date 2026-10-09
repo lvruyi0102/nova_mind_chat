@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertImagePayloadMatchesMime } from "./imageGeneration";
+import { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
 
 describe("assertImagePayloadMatchesMime", () => {
   it("accepts matching PNG, JPEG and WebP signatures", () => {

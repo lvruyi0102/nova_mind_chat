@@ -41,14 +41,26 @@ async function event(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, taskId:
   });
 }
 
-async function blockTask(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, task: typeof agentTasks.$inferSelect, message: string) {
+async function blockTask(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  task: typeof agentTasks.$inferSelect,
+  message: string,
+  leaseToken?: string,
+) {
   const from = task.status as ExecutionStatus;
-  if (from !== "BLOCKED" && from !== "FAILED" && from !== "CANCELLED" && from !== "SUCCEEDED") {
-    try { assertExecutionTransition(from, "BLOCKED"); } catch { /* keep the failure visible in the audit log */ }
-    await db.update(agentTasks).set({ status: "BLOCKED", lastError: message, updatedAt: new Date() })
-      .where(and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status)));
+  if (from === "BLOCKED" || from === "FAILED" || from === "CANCELLED" || from === "SUCCEEDED") return;
+  try { assertExecutionTransition(from, "BLOCKED"); } catch { /* keep the failure visible in the audit log */ }
+  const whereClause = leaseToken
+    ? and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status), eq(agentTasks.workerLeaseToken, leaseToken))
+    : and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status));
+  const changed = await db.update(agentTasks).set({
+    status: "BLOCKED", lastError: message, updatedAt: new Date(),
+  }).where(whereClause);
+  if (affectedRows(changed) === 1) {
+    await event(db, task.id, "TASK_BLOCKED", { message });
+  } else if (leaseToken) {
+    await event(db, task.id, "STALE_WORKER_TASK_BLOCK_FENCED", { message });
   }
-  await event(db, task.id, "TASK_BLOCKED", { message });
 }
 
 async function promoteDueRetries(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, taskId: number) {
@@ -130,7 +142,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     await db.update(agentTaskSteps).set({ status: "BLOCKED", lastError: message, updatedAt: new Date() })
       .where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-    if (freshTask) await blockTask(db, freshTask, message);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     return true;
   }
 
@@ -161,7 +173,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     await db.update(agentTaskSteps).set({ status: "BLOCKED", lastError: message, updatedAt: new Date() })
       .where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-    if (freshTask) await blockTask(db, freshTask, message);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     await event(db, task.id, "ACTION_GATE_DENIED", { stepId: step.id, actionClass, reason: gate.reason });
     return true;
   }
@@ -205,7 +217,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
       status: "BLOCKED", lastError: message, updatedAt: startedAt,
     }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-    if (freshTask) await blockTask(db, freshTask, message);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     await event(db, task.id, "EXECUTION_BUDGET_EXCEEDED", { stepId: step.id, message });
     return true;
   }
@@ -320,7 +332,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
         responseMetadata: JSON.stringify(result), finishedAt,
       }).where(eq(agentToolRuns.id, toolRunId));
       const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-      if (freshTask) await blockTask(db, freshTask, "External job reconciliation is not configured.");
+      if (freshTask) await blockTask(db, freshTask, "External job reconciliation is not configured.", leaseToken);
       return true;
     }
 
@@ -347,7 +359,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
       return true;
     }
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-    if (freshTask) await blockTask(db, freshTask, message);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -373,7 +385,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
       return true;
     }
     const [freshTask] = await db.select().from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
-    if (freshTask) await blockTask(db, freshTask, message);
+    if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     await event(db, task.id, "STEP_FAILED", { stepId: step.id, message, category: classification.category });
     return true;
   }
@@ -421,8 +433,9 @@ async function processTask(taskId: number): Promise<boolean> {
         ));
         if (affectedRows(renewal) !== 1) leaseLost = true;
       } catch (error) {
-        // A transient DB error is observable, but does not falsely declare
-        // success. The lease will expire naturally if renewals keep failing.
+        // Fence further task-level writes if the lease cannot be renewed.
+        // The provider result, if already in flight, still needs ledger reconciliation.
+        leaseLost = true;
         console.error("[agentWorkerV4] lease heartbeat failed", {
           taskId,
           error: error instanceof Error ? error.message : String(error),

@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, isUncertainProviderOutcome, ownsLiveExecutionLease } from "./executionEngineV4";
+import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, isUncertainProviderOutcome, normalizeExecutionError, ownsLiveExecutionLease } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -425,7 +425,8 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     if (freshTask) await blockTask(db, freshTask, message, leaseToken);
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const normalizedError = normalizeExecutionError(error);
+    const message = normalizedError.message;
     const finishedAt = new Date();
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
     await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt })
@@ -433,9 +434,8 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
         eq(agentTasks.id, task.id),
         eq(agentTasks.workerLeaseToken, leaseToken),
       ));
-    const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
-    const classification = classifyExecutionError({ code: errorCode, message });
-    const uncertainOutcome = isUncertainProviderOutcome({ code: errorCode, message });
+    const classification = classifyExecutionError(normalizedError);
+    const uncertainOutcome = isUncertainProviderOutcome(normalizedError);
     const canRetry = !uncertainOutcome && classification.retryable && step.attemptCount + 1 < step.maxAttempts;
     const reconciledMessage = uncertainOutcome
       ? `Provider outcome is uncertain; automatic replay is suppressed to avoid a duplicate external action. Original error: ${message}`

@@ -242,12 +242,51 @@ async function processTask(taskId: number): Promise<boolean> {
   }
 }
 
+/**
+ * Recover claims left RUNNING by a process that disappeared.
+ *
+ * Do not automatically re-dispatch these steps: a provider may have completed
+ * an external side effect before the process crashed. Mark them BLOCKED for
+ * explicit reconciliation instead of risking duplicate generation/charges.
+ */
+export async function reconcileStaleAgentStepsV4(
+  staleAfterMs = 10 * 60 * 1000,
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const cutoff = new Date(Date.now() - Math.max(120_000, staleAfterMs));
+  const stale = await db.select().from(agentTaskSteps)
+    .where(and(eq(agentTaskSteps.status, "RUNNING")));
+  let recovered = 0;
+
+  for (const step of stale) {
+    if (!step.updatedAt || step.updatedAt > cutoff) continue;
+    const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
+    const changed = await db.update(agentTaskSteps).set({
+      status: "BLOCKED", lastError: message, updatedAt: new Date(),
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    if (affectedRows(changed) !== 1) continue;
+
+    const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
+    if (task) {
+      await blockTask(db, task, message);
+      await event(db, task.id, "STALE_STEP_RECONCILED", {
+        stepId: step.id, attemptCount: step.attemptCount, cutoff: cutoff.toISOString(),
+      });
+    }
+    recovered++;
+  }
+  return recovered;
+}
+
 export async function runAgentWorkerTickV4(): Promise<number> {
   if (tickInFlight) return 0;
   tickInFlight = true;
   try {
     const db = await getDb();
     if (!db) return 0;
+    // Reconcile stale RUNNING claims before dispatching any new work.
+    await reconcileStaleAgentStepsV4();
     const tasks = await db.select({ id: agentTasks.id }).from(agentTasks)
       .where(inArray(agentTasks.status, ["READY", "RUNNING"]))
       .orderBy(desc(agentTasks.priority), desc(agentTasks.createdAt))

@@ -101,7 +101,11 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     await db.update(agentTaskSteps).set({ status: "CANCELLED", updatedAt: new Date() })
       .where(and(eq(agentTaskSteps.taskId, task.id), inArray(agentTaskSteps.status, [...CANCELLABLE_STEP_STATUSES])));
     await db.update(agentTasks).set({ status: "CANCELLED", completedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
+      .where(and(
+        eq(agentTasks.id, task.id),
+        eq(agentTasks.workerLeaseToken, leaseToken),
+        inArray(agentTasks.status, ["READY", "RUNNING"]),
+      ));
     await event(db, task.id, "TASK_CANCELLED", { reason: "User requested cancellation." });
     return true;
   }
@@ -117,7 +121,11 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     if (steps.length > 0 && steps.every(s => ["SUCCEEDED", "VERIFYING"].includes(s.status))) {
       if (task.status === "READY" || task.status === "RUNNING") {
         await db.update(agentTasks).set({ status: "VERIFYING", updatedAt: new Date() })
-          .where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
+          .where(and(
+            eq(agentTasks.id, task.id),
+            eq(agentTasks.workerLeaseToken, leaseToken),
+            inArray(agentTasks.status, ["READY", "RUNNING"]),
+          ));
         await event(db, task.id, "ACCEPTANCE_VALIDATION_REQUIRED", {
           reason: "All executable steps finished; required acceptance checks remain unverified.",
         });
@@ -133,7 +141,11 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
 
   if (task.status === "READY") {
     await db.update(agentTasks).set({ status: "RUNNING", startedAt: task.startedAt ?? new Date(), updatedAt: new Date() })
-      .where(and(eq(agentTasks.id, task.id), eq(agentTasks.status, "READY")));
+      .where(and(
+        eq(agentTasks.id, task.id),
+        eq(agentTasks.workerLeaseToken, leaseToken),
+        eq(agentTasks.status, "READY"),
+      ));
   }
 
   const adapter = toolAdapterRegistryV4.findAdapterForCapability(step.capabilityId);
@@ -241,7 +253,11 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
     await db.update(agentTasks).set({
       status: "CANCELLED", completedAt: new Date(), updatedAt: new Date(),
-    }).where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
+    }).where(and(
+      eq(agentTasks.id, task.id),
+      eq(agentTasks.workerLeaseToken, leaseToken),
+      inArray(agentTasks.status, ["READY", "RUNNING"]),
+    ));
     await event(db, task.id, "CANCELLATION_BEFORE_DISPATCH", { stepId: step.id, message });
     return true;
   }

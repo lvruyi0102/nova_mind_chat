@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
-import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError } from "./executionEngineV4";
+import { assertExecutionTransition, assertWithinExecutionBudget, boundedExecutionTimeoutMs, canDispatchTask, CANCELLABLE_STEP_STATUSES, classifyExecutionError, ownsExecutionLease } from "./executionEngineV4";
 import { toolAdapterRegistryV4 } from "./toolAdapterRegistryV4";
 import { evaluateActionGateV4, type ActionRiskClassV4 } from "./agentGovernanceV4";
 
@@ -234,7 +234,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     return true;
   }
 
-  if (latestTaskBeforeDispatch.workerLeaseToken !== leaseToken) {
+  if (!ownsExecutionLease(latestTaskBeforeDispatch.workerLeaseToken, leaseToken)) {
     const message = "Worker lease was lost; external call was not started.";
     const finishedAt = new Date();
     await db.update(agentToolRuns).set({

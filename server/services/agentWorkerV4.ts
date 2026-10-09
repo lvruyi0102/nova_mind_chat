@@ -333,6 +333,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     eq(agentTasks.id, task.id),
     eq(agentTasks.workerLeaseToken, leaseToken),
     gt(agentTasks.workerLeaseUntil, reservationAt),
+    eq(agentTasks.cancelRequested, false),
     inArray(agentTasks.status, ["READY", "RUNNING"]),
   ));
   if (affectedRows(usageReservation) !== 1) {

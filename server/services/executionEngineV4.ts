@@ -28,6 +28,15 @@ export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number];
  */
 export const CANCELLABLE_STEP_STATUSES = ["PENDING", "READY", "RETRYING"] as const;
 
+/** A task may dispatch external work only while active and not cancellation-requested. */
+export function canDispatchTask(
+  status: ExecutionStatus,
+  cancelRequested: boolean,
+): boolean {
+  return !cancelRequested && (status === "READY" || status === "RUNNING");
+}
+
+
 
 export type FailureCategory =
   | "INPUT_ERROR"

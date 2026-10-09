@@ -42,15 +42,16 @@ export async function createAgentTaskV4(input: {
       const taskId = Number(inserted[0].insertId);
 
       for (const step of input.plan.steps) {
-        await tx.insert(agentTaskSteps).values({
+        const insertedStep = await tx.insert(agentTaskSteps).values({
           taskId, stepKey: step.id, description: step.description,
           capabilityId: step.capabilityId, dependsOnJson: JSON.stringify(step.dependsOn),
           acceptanceCriteriaJson: JSON.stringify(step.acceptanceCriteria),
           status: step.dependsOn.length === 0 ? "READY" : "PENDING", maxAttempts: 3,
         });
+        const stepId = Number(insertedStep[0].insertId);
         for (let i = 0; i < step.acceptanceCriteria.length; i++) {
           await tx.insert(agentAcceptanceChecks).values({
-            taskId, checkKey: `step:${step.id}:check:${i + 1}`,
+            taskId, stepId, checkKey: `step:${step.id}:check:${i + 1}`,
             description: step.acceptanceCriteria[i], required: true, status: "UNVERIFIED",
           });
         }

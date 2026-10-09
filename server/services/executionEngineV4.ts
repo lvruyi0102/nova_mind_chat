@@ -202,6 +202,24 @@ export function classifyExecutionError(
   };
 }
 
+/** Return a provider timeout that cannot exceed the task's remaining duration budget. */
+export function boundedExecutionTimeoutMs(
+  budget: ExecutionBudget,
+  usage: ExecutionUsage,
+  requestedTimeoutMs = 120_000,
+): number {
+  if (!Number.isFinite(requestedTimeoutMs) || requestedTimeoutMs <= 0) {
+    throw new Error("Provider timeout must be a positive finite number");
+  }
+  const remainingMs = budget.maxDurationMs === undefined
+    ? requestedTimeoutMs
+    : budget.maxDurationMs - (usage.elapsedMs ?? 0);
+  if (remainingMs <= 0) {
+    throw new Error("Execution budget exceeded: maxDurationMs");
+  }
+  return Math.max(1, Math.floor(Math.min(requestedTimeoutMs, remainingMs)));
+}
+
 /** Retry only explicitly retryable failures and never exceed the configured cap. */
 export function shouldRetryExecution(input: {
   retryable: boolean;

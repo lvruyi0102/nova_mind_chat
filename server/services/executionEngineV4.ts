@@ -22,6 +22,13 @@ export const EXECUTION_STATUSES = [
 
 export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number];
 
+/**
+ * Steps that can be safely cancelled without losing track of an in-flight
+ * external side effect. RUNNING is deliberately excluded until reconciled.
+ */
+export const CANCELLABLE_STEP_STATUSES = ["PENDING", "READY", "RETRYING"] as const;
+
+
 export type FailureCategory =
   | "INPUT_ERROR"
   | "TOOL_ERROR"

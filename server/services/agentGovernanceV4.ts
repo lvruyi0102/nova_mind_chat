@@ -117,3 +117,54 @@ export function evaluateActionGateV4(
     reason: "Action is within the configured execution policy",
   };
 }
+
+export interface ValidatedAutonomousDecisionV4 {
+  decision: "explore_concept" | "reflect" | "integrate_knowledge" | "ask_question" | "change_state" | "rest" | "initiate_contact";
+  reasoning: string;
+  action: string;
+  shouldContactUser: boolean;
+  urgency: "low" | "medium" | "high";
+}
+
+/** Validate model-proposed autonomous decisions before they enter durable state. */
+export function validateAutonomousDecisionV4(input: unknown): ValidatedAutonomousDecisionV4 {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Autonomous decision must be an object");
+  }
+
+  const value = input as Record<string, unknown>;
+  const allowedDecisions = new Set([
+    "explore_concept",
+    "reflect",
+    "integrate_knowledge",
+    "ask_question",
+    "change_state",
+    "rest",
+    "initiate_contact",
+  ]);
+  const allowedUrgencies = new Set(["low", "medium", "high"]);
+
+  if (typeof value.decision !== "string" || !allowedDecisions.has(value.decision)) {
+    throw new Error("Autonomous decision type is not allowed");
+  }
+  if (typeof value.reasoning !== "string" || !value.reasoning.trim()) {
+    throw new Error("Autonomous decision requires reasoning");
+  }
+  if (typeof value.action !== "string" || !value.action.trim()) {
+    throw new Error("Autonomous decision requires an action");
+  }
+  if (typeof value.shouldContactUser !== "boolean") {
+    throw new Error("Autonomous decision requires a boolean shouldContactUser");
+  }
+  if (typeof value.urgency !== "string" || !allowedUrgencies.has(value.urgency)) {
+    throw new Error("Autonomous decision urgency is invalid");
+  }
+
+  return {
+    decision: value.decision as ValidatedAutonomousDecisionV4["decision"],
+    reasoning: value.reasoning.slice(0, 8000),
+    action: value.action.slice(0, 4000),
+    shouldContactUser: value.shouldContactUser,
+    urgency: value.urgency as ValidatedAutonomousDecisionV4["urgency"],
+  };
+}

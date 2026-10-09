@@ -447,7 +447,16 @@ async function processTask(taskId: number): Promise<boolean> {
           eq(agentTasks.workerLeaseToken, leaseToken),
           inArray(agentTasks.status, ["READY", "RUNNING"]),
         ));
-        if (affectedRows(renewal) !== 1) leaseLost = true;
+        if (affectedRows(renewal) !== 1) {
+          leaseLost = true;
+        } else {
+          // Stale-step recovery uses step.updatedAt. Refresh active claims too,
+          // so it cannot quarantine a provider call while its task lease is live.
+          await db.update(agentTaskSteps).set({ updatedAt: renewedAt }).where(and(
+            eq(agentTaskSteps.taskId, taskId),
+            eq(agentTaskSteps.status, "RUNNING"),
+          ));
+        }
       } catch (error) {
         // Keep retrying on the next heartbeat after transient DB failures.
         // If renewal actually loses the compare-and-set, leaseLost is set above.

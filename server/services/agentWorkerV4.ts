@@ -6,7 +6,7 @@
  * SUCCEEDED: acceptance checks remain UNVERIFIED until a real validator is
  * registered and run. Enable explicitly with NOVA_AGENT_V4_WORKER_ENABLED=true.
  */
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
@@ -256,11 +256,10 @@ export async function reconcileStaleAgentStepsV4(
   if (!db) return 0;
   const cutoff = new Date(Date.now() - Math.max(120_000, staleAfterMs));
   const stale = await db.select().from(agentTaskSteps)
-    .where(and(eq(agentTaskSteps.status, "RUNNING")));
+    .where(and(eq(agentTaskSteps.status, "RUNNING"), lt(agentTaskSteps.updatedAt, cutoff)));
   let recovered = 0;
 
   for (const step of stale) {
-    if (!step.updatedAt || step.updatedAt > cutoff) continue;
     const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
     const changed = await db.update(agentTaskSteps).set({
       status: "BLOCKED", lastError: message, updatedAt: new Date(),

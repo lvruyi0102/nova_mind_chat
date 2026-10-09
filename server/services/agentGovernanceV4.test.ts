@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateActionGateV4, type ScopedAuthorizationV4 } from "./agentGovernanceV4";
+import { evaluateActionGateV4, validateAutonomousDecisionV4, type ScopedAuthorizationV4 } from "./agentGovernanceV4";
 
 const grant: ScopedAuthorizationV4 = {
   approved: true,
@@ -82,5 +82,41 @@ describe("evaluateActionGateV4", () => {
         description: "Sensitive operation",
       }, { mode: "execute_approved" }).allowed).toBe(false);
     }
+  });
+});
+
+describe("validateAutonomousDecisionV4", () => {
+  it("accepts an allowlisted decision with a complete schema", () => {
+    expect(validateAutonomousDecisionV4({
+      decision: "reflect",
+      reasoning: "A task failed and needs review.",
+      action: "Review the failure and record a lesson.",
+      shouldContactUser: false,
+      urgency: "low",
+    })).toMatchObject({ decision: "reflect", shouldContactUser: false, urgency: "low" });
+  });
+
+  it("rejects arbitrary action types and malformed model output", () => {
+    expect(() => validateAutonomousDecisionV4({
+      decision: "run_unrestricted_shell",
+      reasoning: "Need to do anything.",
+      action: "Execute arbitrary command",
+      shouldContactUser: false,
+      urgency: "high",
+    })).toThrow(/not allowed/);
+
+    expect(() => validateAutonomousDecisionV4("not json object")).toThrow(/must be an object/);
+  });
+
+  it("bounds persisted reasoning and action strings", () => {
+    const result = validateAutonomousDecisionV4({
+      decision: "ask_question",
+      reasoning: "r".repeat(9000),
+      action: "a".repeat(5000),
+      shouldContactUser: true,
+      urgency: "medium",
+    });
+    expect(result.reasoning).toHaveLength(8000);
+    expect(result.action).toHaveLength(4000);
   });
 });

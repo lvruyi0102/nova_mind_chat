@@ -81,21 +81,30 @@ export async function generateImage(
       mimeType: string;
     };
   };
+  if (!result?.image || typeof result.image.b64Json !== "string" || !result.image.b64Json.trim()) {
+    throw new Error("Image provider returned an empty image payload");
+  }
+  const mimeType = result.image.mimeType;
+  if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+    throw new Error(`Image provider returned unsupported MIME type: ${String(mimeType)}`);
+  }
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
+  if (buffer.length === 0) {
+    throw new Error("Image provider returned an empty decoded image payload");
+  }
 
-  // Save to S3
-  const extension = result.image.mimeType === "image/jpeg" ? "jpg"
-    : result.image.mimeType === "image/webp" ? "webp"
-    : result.image.mimeType === "image/png" ? "png"
-    : "bin";
+  // Save to S3 only after validating that the provider returned a supported image.
+  const extension = mimeType === "image/jpeg" ? "jpg"
+    : mimeType === "image/webp" ? "webp"
+    : "png";
   const { url } = await storagePut(
     `generated/${randomUUID()}.${extension}`,
     buffer,
-    result.image.mimeType
+    mimeType
   );
   return {
     url,
-    mimeType: result.image.mimeType,
+    mimeType,
   };
 }

@@ -210,6 +210,29 @@ async function processTask(taskId: number): Promise<boolean> {
   }
   const providerTimeoutMs = boundedExecutionTimeoutMs(budget, usageBeforeDispatch, 120_000);
 
+  // Re-check immediately before the external side effect. Cancellation may
+  // have been requested while the step was being claimed or budget-checked.
+  const [latestTaskBeforeDispatch] = await db.select({
+    status: agentTasks.status,
+    cancelRequested: agentTasks.cancelRequested,
+  }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
+  if (!latestTaskBeforeDispatch ||
+      latestTaskBeforeDispatch.cancelRequested ||
+      latestTaskBeforeDispatch.status === "CANCELLED") {
+    const message = "Task cancellation observed before provider dispatch; external call was not started.";
+    await db.update(agentToolRuns).set({
+      status: "BLOCKED", errorMessage: message, finishedAt: new Date(),
+    }).where(eq(agentToolRuns.id, toolRunId));
+    await db.update(agentTaskSteps).set({
+      status: "CANCELLED", lastError: message, updatedAt: new Date(),
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    await db.update(agentTasks).set({
+      status: "CANCELLED", completedAt: new Date(), updatedAt: new Date(),
+    }).where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
+    await event(db, task.id, "CANCELLATION_BEFORE_DISPATCH", { stepId: step.id, message });
+    return true;
+  }
+
   usage.toolCalls += 1;
   await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: startedAt })
     .where(eq(agentTasks.id, task.id));

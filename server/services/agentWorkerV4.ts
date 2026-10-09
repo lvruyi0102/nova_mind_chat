@@ -250,8 +250,28 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
   }
 
   usage.toolCalls += 1;
-  await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: startedAt })
-    .where(eq(agentTasks.id, task.id));
+  // Reserve the call budget only while this worker still owns the lease. If
+  // ownership changed after the earlier check, do not invoke the provider.
+  const usageReservation = await db.update(agentTasks).set({
+    usageJson: JSON.stringify(usage),
+    updatedAt: startedAt,
+  }).where(and(
+    eq(agentTasks.id, task.id),
+    eq(agentTasks.workerLeaseToken, leaseToken),
+    inArray(agentTasks.status, ["READY", "RUNNING"]),
+  ));
+  if (affectedRows(usageReservation) !== 1) {
+    const message = "Worker lease was lost while reserving usage; external call was not started.";
+    const finishedAt = new Date();
+    await db.update(agentToolRuns).set({
+      status: "BLOCKED", errorMessage: message, finishedAt,
+    }).where(and(eq(agentToolRuns.id, toolRunId), eq(agentToolRuns.status, "RUNNING")));
+    await db.update(agentTaskSteps).set({
+      status: "READY", lastError: message, updatedAt: finishedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    await event(db, task.id, "WORKER_LEASE_LOST_BEFORE_USAGE_RESERVATION", { stepId: step.id, message });
+    return true;
+  }
 
   try {
     const result = await toolAdapterRegistryV4.execute({
@@ -265,7 +285,10 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     });
     const finishedAt = new Date();
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
-    await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt }).where(eq(agentTasks.id, task.id));
+    await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt }).where(and(
+      eq(agentTasks.id, task.id),
+      eq(agentTasks.workerLeaseToken, leaseToken),
+    ));
 
     if (result.status === "SUCCEEDED") {
       for (const artifact of result.artifacts) {
@@ -331,7 +354,10 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     const finishedAt = new Date();
     usage.elapsedMs = (usage.elapsedMs ?? 0) + (finishedAt.getTime() - startedAt.getTime());
     await db.update(agentTasks).set({ usageJson: JSON.stringify(usage), updatedAt: finishedAt })
-      .where(eq(agentTasks.id, task.id));
+      .where(and(
+        eq(agentTasks.id, task.id),
+        eq(agentTasks.workerLeaseToken, leaseToken),
+      ));
     const classification = classifyExecutionError({ message });
     const canRetry = classification.retryable && step.attemptCount + 1 < step.maxAttempts;
     await db.update(agentTaskSteps).set({

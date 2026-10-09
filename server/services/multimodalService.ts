@@ -206,7 +206,11 @@ Return ONLY the complete HTML code, wrapped in <html> tags.`;
 }
 
 /**
- * Generate media (music, video, audio, animation)
+ * Generate media (music, video, audio, animation).
+ *
+ * Important: an LLM-generated URL is not a media artifact. Until a real
+ * provider adapter is configured, fail closed and persist a failed request
+ * rather than recording fabricated output as completed.
  */
 export async function generateCreativeMedia(
   userId: number,
@@ -215,81 +219,33 @@ export async function generateCreativeMedia(
   context?: string,
   emotionalContext?: string
 ) {
-  try {
-    // Generate media URL using LLM (in real implementation, would call media generation API)
-    const mediaPrompt = `Generate a ${mediaType} based on:
-- Concept: ${prompt}
-- Context: ${context || "General creative work"}
-- Emotional tone: ${emotionalContext || "Creative and engaging"}
+  const message =
+    `No real media-generation provider is configured for "${mediaType}". ` +
+    "The request was not generated; configure a provider adapter before retrying.";
 
-Return ONLY a valid URL or file path for the generated ${mediaType}.`;
+  const db = await getDb();
+  if (db) {
+    const generationType: "music" | "video" | "animation" =
+      mediaType === "audio" ? "music" : mediaType;
 
-    const response = await invokeLLM({
-      messages: [
-        { role: "system", content: `You are a creative ${mediaType} generator. Generate high-quality ${mediaType} content.` },
-        { role: "user", content: mediaPrompt },
-      ],
+    await db.insert(creativeGenRequests).values({
+      userId,
+      generationType,
+      prompt,
+      context,
+      emotionalContext,
+      status: "failed",
+      progress: 0,
+      errorMessage: message,
+      generationModel: "unconfigured",
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
-
-    const mediaUrl = extractTextContent(response.choices[0]?.message?.content);
-
-    // Create generation request and save as creative work
-    const db = await getDb();
-    if (db) {
-      // Map media type to valid generationType
-      const generationType: "image" | "game" | "music" | "video" | "animation" | "interactive" = 
-        mediaType === "audio" ? "music" : mediaType;
-      
-      const reqResult = await db.insert(creativeGenRequests).values({
-        userId,
-        generationType,
-        prompt,
-        context,
-        emotionalContext,
-        status: "completed",
-        progress: 100,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      const requestId = (reqResult as any).insertId || reqResult[0];
-
-      // Save media
-      const genMediaType: "music" | "video" | "audio" | "animation" = mediaType;
-      await db.insert(genMedia).values({
-        userId,
-        genReqId: requestId,
-        title: prompt.substring(0, 100),
-        description: `Generated ${mediaType}: ${prompt}`,
-        mediaUrl: mediaUrl,
-        mediaType: genMediaType,
-        duration: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-            // Save as creative work
-      await db.insert(creativeWorks).values({
-        userId,
-        type: "audio",
-        title: prompt.substring(0, 100),
-        description: `Generated audio from prompt: ${prompt}`,
-        metadata: JSON.stringify({
-          generationType: "audio",
-          prompt,
-          generationRequestId: requestId,
-        }),
-        isSaved: true,
-        visibility: "shared",
-        emotionalState: emotionalContext,
-        inspiration: context,
-        createdAt: new Date(),
-        updatedAt: new Date(),rn { requestId, url: mediaUrl, mediaType, success: true };
-    }
-
-    return { url: mediaUrl, mediaType, success: true };
-  } catch (error) {
-    console.error("Error generating media:", error);
-    throw error;
   }
+
+  const error = new Error(message) as Error & { code: string };
+  error.code = "MEDIA_PROVIDER_NOT_CONFIGURED";
+  throw error;
 }
 
 /**

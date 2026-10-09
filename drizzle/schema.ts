@@ -1949,6 +1949,8 @@ export const agentTasks = mysqlTable("agentTasks", {
   budgetJson: text("budgetJson"),
   usageJson: text("usageJson"),
   cancelRequested: boolean("cancelRequested").notNull().default(false),
+  workerLeaseToken: varchar("workerLeaseToken", { length: 64 }),
+  workerLeaseUntil: timestamp("workerLeaseUntil"),
   lastError: text("lastError"),
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),

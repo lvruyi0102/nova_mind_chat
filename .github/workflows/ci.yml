@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - work
+      - "feat/**"
+  workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
 

@@ -4,6 +4,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { planTaskV4, TaskPlanningErrorV4 } from "./services/taskPlanningV4";
+import { toolAdapterRegistryV4 } from "./services/toolAdapterRegistryV4";
 import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
 import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
@@ -65,6 +68,39 @@ import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
 
 export const appRouter = router({
+  agentV4: router({
+    listCapabilities: protectedProcedure.input(z.void()).query(() => {
+      return toolAdapterRegistryV4.listCapabilities({ enabledOnly: false }).map(({ adapterName, capability }) => ({
+        adapterName,
+        ...capability,
+      }));
+    }),
+    planTask: protectedProcedure
+      .input(z.object({
+        goal: z.string().trim().min(1).max(5000),
+        maxSteps: z.number().int().min(1).max(30).optional(),
+        maxEstimatedCost: z.number().finite().min(0).max(10000).optional(),
+        maxEstimatedDurationMs: z.number().int().min(1).max(24 * 60 * 60 * 1000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          return await planTaskV4(input);
+        } catch (error) {
+          if (error instanceof TaskPlanningErrorV4) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: error.message,
+              cause: error,
+            });
+          }
+          console.error("[AgentV4] Task planning failed:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Task planning failed unexpectedly",
+          });
+        }
+      }),
+  }),
   system: systemRouter,
   cognitive: cognitiveRouter,
   autonomy: autonomyRouter,

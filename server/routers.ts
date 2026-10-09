@@ -128,7 +128,7 @@ export const appRouter = router({
           }
           if (error instanceof AgentTaskStoreErrorV4) {
             throw new TRPCError({
-              code: error.code === "DATABASE_UNAVAILABLE" ? "SERVICE_UNAVAILABLE" : "INTERNAL_SERVER_ERROR",
+              code: error.code === "DATABASE_UNAVAILABLE" ? "INTERNAL_SERVER_ERROR" : "INTERNAL_SERVER_ERROR",
               message: error.message,
               cause: error,
             });
@@ -144,7 +144,7 @@ export const appRouter = router({
           return await listAgentTasksV4(ctx.user.id, input?.limit ?? 20);
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {
-            throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: error.message, cause: error });
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message, cause: error });
           }
           throw error;
         }
@@ -157,7 +157,7 @@ export const appRouter = router({
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {
             throw new TRPCError({
-              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "SERVICE_UNAVAILABLE",
+              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
               message: error.message,
               cause: error,
             });
@@ -173,7 +173,7 @@ export const appRouter = router({
         } catch (error) {
           if (error instanceof AgentTaskStoreErrorV4) {
             throw new TRPCError({
-              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "SERVICE_UNAVAILABLE",
+              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
               message: error.message,
               cause: error,
             });

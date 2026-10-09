@@ -1,6 +1,6 @@
 # Nova-Mind V4 Adaptive Execution Engine
 
-Status: initial implementation scaffold on `feat/v4-adaptive-execution-engine`.
+Status: active draft implementation on `feat/v4-adaptive-execution-engine`. Database schema and store code have been added, but the migration is not yet generated/applied and no worker loop is connected. Do not merge or enable in production.
 
 This document defines the first safe integration milestone. It does not claim that every modality is already connected to a real generation provider.
 
@@ -80,9 +80,13 @@ For asynchronous jobs, poll or receive callbacks until the provider reports comp
 
 Subjective model-based scoring is supplementary and must not replace deterministic checks for objective constraints.
 
-## Persistence model to map onto existing tables
+## Persistence implementation status
 
-Before adding migrations, audit the current schema and reuse existing entities where possible.
+Schema definitions now exist in `drizzle/schema.ts` for `agentTasks`, `agentTaskSteps`, `agentToolRuns`, `agentArtifacts`, `agentAcceptanceChecks`, and `agentTaskEvents`. `server/services/agentTaskStoreV4.ts` adds transactional task/step/check/event creation, owner-scoped reads, compare-and-set task transitions, and cancellation requests. The protected API exposes task submission, listing, details, and cancellation.
+
+**Migration blocker:** the corresponding SQL migration has not yet been generated, reviewed, committed, or applied. These routes must not be used against a database until the migration is in place. A durable worker that claims and executes persisted steps is also not connected yet.
+
+The intended persistence model is:
 
 Required logical records:
 - Task: stable ID, goal/specification, status, owner, budget, timestamps.
@@ -94,17 +98,16 @@ Required logical records:
 
 State changes and corresponding events should be committed transactionally where possible. External tool calls cannot generally be included in the database transaction; use idempotency and reconciliation for those boundaries.
 
-## First implementation sequence
+## Next implementation sequence
 
-1. Run the new unit tests and TypeScript checks.
-2. Trace existing creative request routes, database writes, and provider calls.
-3. Fix false-success reporting in media generation before adding more media providers.
-4. Map the logical records above onto the existing schema; add only necessary migrations.
-5. Implement persistent task orchestration and atomic step claiming.
-6. Add a provider registry and real adapters.
-7. Add modality-specific validators and bounded recovery.
-8. Test success, provider failure, ambiguous timeout, duplicate dispatch, process restart, and acceptance failure.
-9. Enable the new engine behind a feature flag before routing existing production tasks through it.
+1. Generate and review the migration for the six V4 persistence tables; verify it against a disposable database before applying it to any shared environment.
+2. Run TypeScript checks, deterministic tests, and a production build; fix all failures before proceeding.
+3. Implement atomic dependency-aware step claiming, tool-run receipts, artifact persistence, and step completion/verification transitions.
+4. Add a durable worker loop with cancellation checks, deadlines, bounded retries, and restart reconciliation.
+5. Wire scoped action authorization into every execution entrypoint.
+6. Add real provider adapters and modality-specific validators.
+7. Test success, provider failure, ambiguous timeout, duplicate dispatch, process restart, cancellation, and acceptance failure.
+8. Enable behind a feature flag only after the migration and recovery tests pass.
 
 ## Current known limitation
 

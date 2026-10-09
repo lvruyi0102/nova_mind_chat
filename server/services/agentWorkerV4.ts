@@ -325,13 +325,14 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
   usage.toolCalls += 1;
   // Reserve the call budget only while this worker still owns the lease. If
   // ownership changed after the earlier check, do not invoke the provider.
+  const reservationAt = new Date();
   const usageReservation = await db.update(agentTasks).set({
     usageJson: JSON.stringify(usage),
-    updatedAt: startedAt,
+    updatedAt: reservationAt,
   }).where(and(
     eq(agentTasks.id, task.id),
     eq(agentTasks.workerLeaseToken, leaseToken),
-    gt(agentTasks.workerLeaseUntil, startedAt),
+    gt(agentTasks.workerLeaseUntil, reservationAt),
     inArray(agentTasks.status, ["READY", "RUNNING"]),
   ));
   if (affectedRows(usageReservation) !== 1) {

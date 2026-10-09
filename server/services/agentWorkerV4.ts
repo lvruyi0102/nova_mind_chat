@@ -264,8 +264,11 @@ export async function runAgentWorkerTickV4(): Promise<number> {
 
 export function startAgentWorkerV4(): void {
   if (timer) return;
-  if (process.env.NOVA_AGENT_V4_WORKER_ENABLED !== "true") {
-    console.log("[AgentWorkerV4] Disabled; set NOVA_AGENT_V4_WORKER_ENABLED=true to enable.");
+  if (
+    process.env.NOVA_AGENT_V4_TASK_STORE_ENABLED !== "true" ||
+    process.env.NOVA_AGENT_V4_WORKER_ENABLED !== "true"
+  ) {
+    console.log("[AgentWorkerV4] Disabled; review/apply the V4 migration, then set NOVA_AGENT_V4_TASK_STORE_ENABLED=true and NOVA_AGENT_V4_WORKER_ENABLED=true.");
     return;
   }
   console.log(`[AgentWorkerV4] Starting durable task poller (every ${POLL_MS}ms)`);

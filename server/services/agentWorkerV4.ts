@@ -174,7 +174,11 @@ async function processTask(taskId: number): Promise<boolean> {
     ...(requestedDuration !== undefined ? { maxDurationMs: requestedDuration } : {}),
   };
   const usage = { ...defaultUsage(), ...parse<Partial<ExecutionUsage>>(task.usageJson, {}) };
-  const idempotencyKey = `nova-v4:${task.id}:${step.id}:${step.attemptCount + 1}`;
+  // Keep provider idempotency stable across retries to avoid repeating an
+  // external side effect after an ambiguous timeout. The internal ledger still
+  // gets a unique key per attempt so every dispatch is auditable.
+  const providerIdempotencyKey = `nova-v4:${task.id}:${step.id}`;
+  const idempotencyKey = `${providerIdempotencyKey}:attempt:${step.attemptCount + 1}`;
   const startedAt = new Date();
   const insertedRun = await db.insert(agentToolRuns).values({
     taskId: task.id, stepId: step.id, adapterName: adapter.name, capabilityId: step.capabilityId,
@@ -211,7 +215,7 @@ async function processTask(taskId: number): Promise<boolean> {
       request: {
         taskId: String(task.id), stepId: String(step.id), capabilityId: step.capabilityId,
         input: { goal: task.goal, description: step.description, ...parse<Record<string, unknown>>(step.inputJson, {}) },
-        idempotencyKey, timeoutMs: 120_000,
+        idempotencyKey: providerIdempotencyKey, timeoutMs: 120_000,
       },
       budget, usage: usageBeforeDispatch,
     });

@@ -7,7 +7,7 @@
  * registered and run. Enable explicitly with NOVA_AGENT_V4_WORKER_ENABLED=true.
  */
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { agentAcceptanceChecks, agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
+import { agentArtifacts, agentTaskEvents, agentTasks, agentTaskSteps, agentToolRuns } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { ExecutionBudget, ExecutionStatus, ExecutionUsage } from "./executionEngineV4";
 import { assertExecutionTransition } from "./executionEngineV4";
@@ -23,7 +23,8 @@ function parse<T>(raw: string | null | undefined, fallback: T): T {
   try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 function affectedRows(result: unknown): number {
-  return Number((result as Array<{ affectedRows?: number }> | undefined)?.[0]?.affectedRows ?? 0);
+  const raw = Array.isArray(result) ? result[0] : result;
+  return Number((raw as { affectedRows?: number } | undefined)?.affectedRows ?? 0);
 }
 function defaultBudget(): ExecutionBudget {
   return { maxToolCalls: 20, maxRetriesPerStep: 3, maxDurationMs: 15 * 60 * 1000 };

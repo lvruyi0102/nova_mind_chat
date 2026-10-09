@@ -219,7 +219,6 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     workerLeaseToken: agentTasks.workerLeaseToken,
   }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
   if (!latestTaskBeforeDispatch ||
-      latestTaskBeforeDispatch.workerLeaseToken !== leaseToken ||
       !canDispatchTask(latestTaskBeforeDispatch.status as ExecutionStatus, latestTaskBeforeDispatch.cancelRequested)) {
     const message = "Task no longer permits dispatch; external call was not started.";
     await db.update(agentToolRuns).set({
@@ -232,6 +231,21 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
       status: "CANCELLED", completedAt: new Date(), updatedAt: new Date(),
     }).where(and(eq(agentTasks.id, task.id), inArray(agentTasks.status, ["READY", "RUNNING"])));
     await event(db, task.id, "CANCELLATION_BEFORE_DISPATCH", { stepId: step.id, message });
+    return true;
+  }
+
+  if (latestTaskBeforeDispatch.workerLeaseToken !== leaseToken) {
+    const message = "Worker lease was lost; external call was not started.";
+    const finishedAt = new Date();
+    await db.update(agentToolRuns).set({
+      status: "BLOCKED", errorMessage: message, finishedAt,
+    }).where(eq(agentToolRuns.id, toolRunId));
+    // No external side effect occurred, so make the step eligible for the
+    // current lease holder. Never change task state from a stale worker.
+    await db.update(agentTaskSteps).set({
+      status: "READY", lastError: message, updatedAt: finishedAt,
+    }).where(and(eq(agentTaskSteps.id, step.id), eq(agentTaskSteps.status, "RUNNING")));
+    await event(db, task.id, "WORKER_LEASE_LOST_BEFORE_DISPATCH", { stepId: step.id, message });
     return true;
   }
 

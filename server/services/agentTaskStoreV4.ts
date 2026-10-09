@@ -36,7 +36,15 @@ export async function createAgentTaskV4(input: {
       const inserted = await tx.insert(agentTasks).values({
         taskKey, userId: input.userId, goal, planJson: JSON.stringify(input.plan),
         status: "READY", priority: Math.max(1, Math.min(10, Math.trunc(input.priority ?? 5))),
-        budgetJson: input.budget ? JSON.stringify(input.budget) : null,
+        budgetJson: JSON.stringify({
+          ...(input.budget ?? {}),
+          executionApproval: {
+            approved: true,
+            actionClasses: ["reversible_write"],
+            source: "explicit_user_task_submission",
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          },
+        }),
         usageJson: JSON.stringify({ toolCalls: 0, retries: 0, estimatedCost: 0 }),
       });
       const taskId = Number(inserted[0].insertId);

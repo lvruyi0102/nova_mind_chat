@@ -1,6 +1,6 @@
 # Nova-Mind V4 Adaptive Execution Engine
 
-Status: active draft implementation on `feat/v4-adaptive-execution-engine`. The six-table migration, journal entry, and schema snapshot are committed on the feature branch. The opt-in worker and configured image provider adapter are wired, but CI/build, staging migration, async reconciliation, and acceptance validators remain unverified/incomplete. Do not enable in production.
+Status: active draft implementation on `feat/v4-adaptive-execution-engine`. The six-table migration, journal entry, and schema snapshot are committed on the feature branch. The opt-in worker and configured image provider adapter are wired. A conservative stale-claim reconciler now blocks old RUNNING steps instead of blindly replaying potentially completed external side effects. CI/build, staging migration, provider-side async reconciliation, and acceptance validators remain unverified/incomplete. Do not enable in production.
 
 This document defines the first safe integration milestone. It does not claim that every modality is already connected to a real generation provider.
 
@@ -84,7 +84,7 @@ Subjective model-based scoring is supplementary and must not replace determinist
 
 Schema definitions exist in `drizzle/schema.ts` for `agentTasks`, `agentTaskSteps`, `agentToolRuns`, `agentArtifacts`, `agentAcceptanceChecks`, and `agentTaskEvents`. `server/services/agentTaskStoreV4.ts` adds transactional task/step/check/event creation, owner-scoped reads, compare-and-set task transitions, and cancellation requests. The protected API exposes task submission, listing, details, and cancellation. The SQL migration is `drizzle/0026_nova_agent_execution.sql`; its journal entry and schema snapshot are also committed. The migration has not been applied to any database and must be reviewed and tested against a disposable/staging database first.
 
-`server/services/agentWorkerV4.ts` adds an opt-in poller with compare-and-set step claims, dependency promotion, cancellation handling, tool-run receipts, artifact persistence, and audit events. It starts only when both `NOVA_AGENT_V4_TASK_STORE_ENABLED=true` and `NOVA_AGENT_V4_WORKER_ENABLED=true` are set after migration review/application. `server/services/configuredProvidersV4.ts` registers a real image-generation adapter only when the built-in image service credentials are present. The V4 worker calls `evaluateActionGateV4` before dispatch; the current user-submission grant is scoped to reversible image creation, and unknown capability classes default to denied. The registry remains empty for unconfigured modalities. The worker intentionally leaves acceptance checks unverified and does not mark tasks successful. Async external-job reconciliation and modality-specific acceptance validators are still missing. Legacy generation endpoints still need a separate action-gate review.
+`server/services/agentWorkerV4.ts` adds an opt-in poller with compare-and-set step claims, dependency promotion, cancellation handling, tool-run receipts, artifact persistence, and audit events. It starts only when both `NOVA_AGENT_V4_TASK_STORE_ENABLED=true` and `NOVA_AGENT_V4_WORKER_ENABLED=true` are set after migration review/application. `server/services/configuredProvidersV4.ts` registers a real image-generation adapter only when the built-in image service credentials are present. The V4 worker calls `evaluateActionGateV4` before dispatch; the current user-submission grant is scoped to reversible image creation, and unknown capability classes default to denied. The registry remains empty for unconfigured modalities. The worker intentionally leaves acceptance checks unverified and does not mark tasks successful. If a worker claim remains RUNNING for over ten minutes, the reconciler blocks the step and task rather than risking a duplicate external action; this behavior has not yet been validated by integration tests. Provider-side async external-job reconciliation and modality-specific acceptance validators are still missing. Legacy generation endpoints still need a separate action-gate review.
 
 The intended persistence model is:
 
@@ -102,7 +102,7 @@ State changes and corresponding events should be committed transactionally where
 
 1. Run CI/typecheck/build/tests and fix all failures; no successful CI result is currently confirmed.
 2. Review the six-table migration and apply it to a disposable/staging database; do not run it against production without explicit operational review.
-3. Add stale RUNNING-step recovery, multi-process claim tests, provider idempotency/reconciliation, and deadlines.
+3. Add integration tests for stale RUNNING-step recovery and multi-process claims; implement provider idempotency/reconciliation and deadline enforcement.
 4. Add real provider adapters for music, audio, video, 3D, code, and game generation where configured.
 5. Implement modality-specific validators and persist evidence to acceptance checks before a task may become SUCCEEDED.
 6. Review and wire scoped action authorization into all legacy execution entrypoints.

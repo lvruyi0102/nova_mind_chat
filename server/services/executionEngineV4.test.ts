@@ -4,6 +4,7 @@ import {
   boundedExecutionTimeoutMs,
   canDispatchTask,
   ownsExecutionLease,
+  ownsLiveExecutionLease,
   isUncertainProviderOutcome,
   CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
@@ -29,6 +30,14 @@ describe("executionEngineV4", () => {
     expect(ownsExecutionLease("lease-b", "lease-a")).toBe(false);
     expect(ownsExecutionLease(null, "lease-a")).toBe(false);
     expect(ownsExecutionLease("lease-a", "")).toBe(false);
+  });
+
+  it("rejects a matching worker token after its lease expires", () => {
+    const now = new Date("2026-10-10T12:00:00.000Z");
+    expect(ownsLiveExecutionLease("lease-a", "lease-a", new Date("2026-10-10T12:01:00.000Z"), now)).toBe(true);
+    expect(ownsLiveExecutionLease("lease-a", "lease-a", new Date("2026-10-10T11:59:59.000Z"), now)).toBe(false);
+    expect(ownsLiveExecutionLease("lease-b", "lease-a", new Date("2026-10-10T12:01:00.000Z"), now)).toBe(false);
+    expect(ownsLiveExecutionLease("lease-a", "lease-a", null, now)).toBe(false);
   });
 
   it("does not mark in-flight steps cancelled before their provider result is reconciled", () => {

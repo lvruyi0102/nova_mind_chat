@@ -337,7 +337,7 @@ async function processTaskUnderLease(taskId: number, leaseToken: string): Promis
     inArray(agentTasks.status, ["READY", "RUNNING"]),
   ));
   if (affectedRows(usageReservation) !== 1) {
-    const message = "Worker lease was lost while reserving usage; external call was not started.";
+    const message = "Dispatch reservation was rejected; provider call was not started.";
     const finishedAt = new Date();
     await db.update(agentToolRuns).set({
       status: "BLOCKED", errorMessage: message, finishedAt,

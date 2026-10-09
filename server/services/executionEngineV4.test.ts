@@ -3,6 +3,7 @@ import {
   assertAcceptanceAllowsSuccess,
   boundedExecutionTimeoutMs,
   canDispatchTask,
+  ownsExecutionLease,
   CANCELLABLE_STEP_STATUSES,
   assertExecutionTransition,
   assertToolResultIsConsistent,
@@ -20,6 +21,13 @@ describe("executionEngineV4", () => {
     expect(canDispatchTask("CANCELLED", false)).toBe(false);
     expect(canDispatchTask("BLOCKED", false)).toBe(false);
     expect(canDispatchTask("SUCCEEDED", false)).toBe(false);
+  });
+
+  it("fences stale workers when their lease token is no longer current", () => {
+    expect(ownsExecutionLease("lease-a", "lease-a")).toBe(true);
+    expect(ownsExecutionLease("lease-b", "lease-a")).toBe(false);
+    expect(ownsExecutionLease(null, "lease-a")).toBe(false);
+    expect(ownsExecutionLease("lease-a", "")).toBe(false);
   });
 
   it("does not mark in-flight steps cancelled before their provider result is reconciled", () => {

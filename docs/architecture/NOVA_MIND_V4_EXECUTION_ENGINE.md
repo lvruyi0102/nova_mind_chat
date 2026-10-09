@@ -1,6 +1,6 @@
 # Nova-Mind V4 Adaptive Execution Engine
 
-Status: active draft implementation on `feat/v4-adaptive-execution-engine`. Database schema and store code have been added, but the migration is not yet generated/applied and no worker loop is connected. Do not merge or enable in production.
+Status: active draft implementation on `feat/v4-adaptive-execution-engine`. The six-table migration, journal entry, and schema snapshot are committed on the feature branch. The opt-in worker and configured image provider adapter are wired, but CI/build, staging migration, async reconciliation, and acceptance validators remain unverified/incomplete. Do not enable in production.
 
 This document defines the first safe integration milestone. It does not claim that every modality is already connected to a real generation provider.
 
@@ -111,7 +111,7 @@ State changes and corresponding events should be committed transactionally where
 
 ## Current known limitation
 
-The current media-generation implementation includes a path that asks an LLM to return a URL or file path and then stores the response as a completed result. This is not a real media-provider integration and must not be treated as proof that audio/video was generated. Replace it with actual provider adapters and acceptance checks; until then, report the capability as unavailable or blocked.
+Image generation now has a real V4 adapter path through the configured built-in image service and durable storage. Music/audio/video/animation remain unavailable in the V4 registry unless a real provider adapter is configured; LLM-generated URL-shaped text is not an artifact. Image artifacts are persisted as UNVERIFIED until deterministic checks are implemented. The worker is a first implementation, not yet production-grade multi-process orchestration.
 
 ## Release gate
 

@@ -132,13 +132,48 @@ export async function planTaskV4(input: PlanTaskInputV4): Promise<PlannedTaskV4>
     throw new TaskPlanningErrorV4("Planner returned no structured plan content");
   }
 
-  let plan: ProposedTaskPlanV4;
+  let rawPlan: unknown;
   try {
-    plan = JSON.parse(content) as ProposedTaskPlanV4;
+    rawPlan = JSON.parse(content);
   } catch {
     throw new TaskPlanningErrorV4("Planner returned invalid JSON");
   }
 
+  if (
+    !rawPlan ||
+    typeof rawPlan !== "object" ||
+    Array.isArray(rawPlan) ||
+    typeof (rawPlan as Record<string, unknown>).goal !== "string" ||
+    !Array.isArray((rawPlan as Record<string, unknown>).steps) ||
+    !Array.isArray((rawPlan as Record<string, unknown>).finalAcceptanceCriteria)
+  ) {
+    throw new TaskPlanningErrorV4("Planner returned a plan with an invalid top-level shape");
+  }
+
+  const candidate = rawPlan as Record<string, unknown>;
+  const malformedStep = (candidate.steps as unknown[]).some((step) => {
+    if (!step || typeof step !== "object" || Array.isArray(step)) return true;
+    const value = step as Record<string, unknown>;
+    return (
+      typeof value.id !== "string" ||
+      typeof value.description !== "string" ||
+      typeof value.capabilityId !== "string" ||
+      !Array.isArray(value.dependsOn) ||
+      !value.dependsOn.every((item) => typeof item === "string") ||
+      !Array.isArray(value.acceptanceCriteria) ||
+      !value.acceptanceCriteria.every((item) => typeof item === "string") ||
+      (value.estimatedCost !== undefined && typeof value.estimatedCost !== "number") ||
+      (value.estimatedDurationMs !== undefined && typeof value.estimatedDurationMs !== "number")
+    );
+  });
+  if (malformedStep) {
+    throw new TaskPlanningErrorV4("Planner returned a step with an invalid shape");
+  }
+  if (!(candidate.finalAcceptanceCriteria as unknown[]).every((item) => typeof item === "string")) {
+    throw new TaskPlanningErrorV4("Planner returned invalid final acceptance criteria");
+  }
+
+  const plan = rawPlan as ProposedTaskPlanV4;
   const validation = validateProposedTaskPlanV4(plan, {
     allowedCapabilityIds,
     maxSteps: input.maxSteps ?? 20,

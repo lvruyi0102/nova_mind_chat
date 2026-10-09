@@ -133,6 +133,7 @@ export const appRouter = router({
             },
           });
         } catch (error) {
+          if (error instanceof TRPCError) throw error;
           if (error instanceof TaskPlanningErrorV4) {
             throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
           }

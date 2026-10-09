@@ -15,6 +15,7 @@
  *     }]
  *   });
  */
+import { randomUUID } from "node:crypto";
 import { storagePut } from "server/storage";
 import { ENV } from "./env";
 
@@ -87,7 +88,7 @@ export async function generateImage(
     : result.image.mimeType === "image/png" ? "png"
     : "bin";
   const { url } = await storagePut(
-    `generated/${Date.now()}.${extension}`,
+    `generated/${randomUUID()}.${extension}`,
     buffer,
     result.image.mimeType
   );

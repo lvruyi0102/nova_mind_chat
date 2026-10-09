@@ -21,6 +21,7 @@ import { ENV } from "./env";
 
 export type GenerateImageOptions = {
   prompt: string;
+  timeoutMs?: number;
   originalImages?: Array<{
     url?: string;
     b64Json?: string;
@@ -54,6 +55,7 @@ export async function generateImage(
 
   const response = await fetch(fullUrl, {
     method: "POST",
+    signal: AbortSignal.timeout(Math.max(1, options.timeoutMs ?? 120_000)),
     headers: {
       accept: "application/json",
       "content-type": "application/json",

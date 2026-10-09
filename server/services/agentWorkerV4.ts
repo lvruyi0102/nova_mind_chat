@@ -77,7 +77,7 @@ async function refreshReadySteps(db: NonNullable<Awaited<ReturnType<typeof getDb
   }
 }
 
-async function processTaskUnderLease(taskId: number): Promise<boolean> {
+async function processTaskUnderLease(taskId: number, leaseToken: string): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
   const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, taskId)).limit(1);
@@ -216,8 +216,10 @@ async function processTaskUnderLease(taskId: number): Promise<boolean> {
   const [latestTaskBeforeDispatch] = await db.select({
     status: agentTasks.status,
     cancelRequested: agentTasks.cancelRequested,
+    workerLeaseToken: agentTasks.workerLeaseToken,
   }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
   if (!latestTaskBeforeDispatch ||
+      latestTaskBeforeDispatch.workerLeaseToken !== leaseToken ||
       !canDispatchTask(latestTaskBeforeDispatch.status as ExecutionStatus, latestTaskBeforeDispatch.cancelRequested)) {
     const message = "Task no longer permits dispatch; external call was not started.";
     await db.update(agentToolRuns).set({
@@ -358,7 +360,7 @@ async function processTask(taskId: number): Promise<boolean> {
   if (affectedRows(lease) !== 1) return false;
 
   try {
-    return await processTaskUnderLease(taskId);
+    return await processTaskUnderLease(taskId, leaseToken);
   } finally {
     // A late worker must never clear a lease acquired by a newer worker.
     await db.update(agentTasks).set({

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, decimal, uniqueIndex, index } from "drizzle-orm/mysql-core";
 /**
  * Durable V4 agent task records. Model-generated plans are stored as data;
  * only the orchestrator may advance task/step state.
@@ -42,7 +42,10 @@ export const agentTaskSteps = mysqlTable("agentTaskSteps", {
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  taskStepKeyUnique: uniqueIndex("agentTaskSteps_taskId_stepKey_unique").on(table.taskId, table.stepKey),
+  taskStatusIdx: index("agentTaskSteps_taskId_status_idx").on(table.taskId, table.status),
+}));
 export type AgentTaskStep = typeof agentTaskSteps.$inferSelect;
 export type InsertAgentTaskStep = typeof agentTaskSteps.$inferInsert;
 
@@ -61,7 +64,9 @@ export const agentToolRuns = mysqlTable("agentToolRuns", {
   startedAt: timestamp("startedAt"),
   finishedAt: timestamp("finishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  taskToolRunsIdx: index("agentToolRuns_taskId_createdAt_idx").on(table.taskId, table.createdAt),
+}));
 export type AgentToolRun = typeof agentToolRuns.$inferSelect;
 export type InsertAgentToolRun = typeof agentToolRuns.$inferInsert;
 
@@ -93,7 +98,9 @@ export const agentAcceptanceChecks = mysqlTable("agentAcceptanceChecks", {
   diagnostic: text("diagnostic"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  taskCheckKeyUnique: uniqueIndex("agentAcceptanceChecks_taskId_checkKey_unique").on(table.taskId, table.checkKey),
+}));
 export type AgentAcceptanceCheck = typeof agentAcceptanceChecks.$inferSelect;
 export type InsertAgentAcceptanceCheck = typeof agentAcceptanceChecks.$inferInsert;
 
@@ -104,7 +111,9 @@ export const agentTaskEvents = mysqlTable("agentTaskEvents", {
   eventType: varchar("eventType", { length: 191 }).notNull(),
   payloadJson: text("payloadJson"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  taskEventsIdx: index("agentTaskEvents_taskId_createdAt_idx").on(table.taskId, table.createdAt),
+}));
 export type AgentTaskEvent = typeof agentTaskEvents.$inferSelect;
 export type InsertAgentTaskEvent = typeof agentTaskEvents.$inferInsert;
 

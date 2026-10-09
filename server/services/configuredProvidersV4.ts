@@ -49,11 +49,11 @@ export function registerConfiguredProvidersV4(): { registered: string[]; skipped
           };
         }
         const mediaType = generated.mimeType?.trim();
-        if (!mediaType?.startsWith("image/")) {
+        if (!mediaType || !["image/png", "image/jpeg", "image/webp"].includes(mediaType)) {
           return {
             status: "FAILED",
             artifacts: [],
-            error: { code: "PROVIDER_INVALID_MEDIA_TYPE", message: "Image provider did not return a valid image MIME type." },
+            error: { code: "PROVIDER_INVALID_MEDIA_TYPE", message: "Image provider returned an unsupported or missing image MIME type." },
           };
         }
         return {

@@ -218,8 +218,8 @@ async function processTask(taskId: number): Promise<boolean> {
   }).from(agentTasks).where(eq(agentTasks.id, task.id)).limit(1);
   if (!latestTaskBeforeDispatch ||
       latestTaskBeforeDispatch.cancelRequested ||
-      latestTaskBeforeDispatch.status === "CANCELLED") {
-    const message = "Task cancellation observed before provider dispatch; external call was not started.";
+      !["READY", "RUNNING"].includes(latestTaskBeforeDispatch.status)) {
+    const message = "Task no longer permits dispatch; external call was not started.";
     await db.update(agentToolRuns).set({
       status: "BLOCKED", errorMessage: message, finishedAt: new Date(),
     }).where(eq(agentToolRuns.id, toolRunId));

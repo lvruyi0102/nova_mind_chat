@@ -7,7 +7,6 @@ import { GenomeManager, Genome } from "./genomeManager";
 import { EvolutionEvaluator, EvaluationMetrics, TestCase } from "./evolutionEvaluator";
 import { MutationProposer, MutationProposal } from "./mutationProposer";
 import { getCodeModificationEngine, CodeModificationProposal } from "./codeModificationEngine";
-import { getCodeModificationExecutor } from "./codeModificationExecutor";
 
 export interface EvolutionCycle {
   cycleId: string;
@@ -31,9 +30,9 @@ export class EvolutionEngine {
   private evaluator: EvolutionEvaluator;
   private proposer: MutationProposer;
   private codeModificationEngine = getCodeModificationEngine();
-  private codeExecutor = getCodeModificationExecutor();
   private evolutionCycles: EvolutionCycle[] = [];
   private codeModifications: CodeModificationProposal[] = [];
+  private pendingCodeModifications: CodeModificationProposal[] = [];
   private isRunning: boolean = false;
   private config: {
     maxGenerations: number;
@@ -153,29 +152,28 @@ export class EvolutionEngine {
         await this.genomeManager.saveGenome(childGenome);
         console.log(`[EvolutionEngine] Evolution successful! Improvement: ${improvementRatio.toFixed(2)}%`);
         
-        // 尝试执行代码修改
+        // Self-evolution may accept a validated workflow genome, but it must never
+        // rewrite its own source code as a side effect. Generate a reviewable proposal
+        // and leave execution to an explicit, separately audited release process.
         try {
           const codeModification = await this.codeModificationEngine.generateModificationProposal({
             pressureLevel: 50,
             pressureType: 'latency',
             systemMetrics: {
               responseTime: childMetrics.compositeScore || 0,
-              accuracy: childMetrics.compositeScore || 0,
+              accuracy: childMetrics.correctnessScore || 0,
             },
             diagnosticResults: `Evolution successful with ${improvementRatio.toFixed(2)}% improvement`,
           });
-          
-          if (codeModification && codeModification.riskAssessment.level !== 'critical') {
-            const executionResult = await this.codeExecutor.executeModification(codeModification);
-            if (executionResult.success) {
-              console.log(`[EvolutionEngine] Code modification executed successfully`);
-              this.codeModifications.push(codeModification);
-            } else {
-              console.warn(`[EvolutionEngine] Code modification failed: ${executionResult.error}`);
-            }
+
+          if (codeModification) {
+            this.pendingCodeModifications.push(codeModification);
+            console.log(
+              `[EvolutionEngine] Stored code proposal ${codeModification.id} for review; no source files were changed.`
+            );
           }
         } catch (codeError) {
-          console.warn(`[EvolutionEngine] Code modification attempt failed:`, codeError);
+          console.warn(`[EvolutionEngine] Code proposal generation failed:`, codeError);
         }
       } else {
         console.log(`[EvolutionEngine] Evolution failed. Improvement: ${improvementRatio.toFixed(2)}% (threshold: ${this.config.minImprovementThreshold}%)`);
@@ -261,6 +259,13 @@ export class EvolutionEngine {
     }
 
     return cycles;
+  }
+
+  /**
+   * Return proposed source-code changes for review. Reading proposals never executes them.
+   */
+  getPendingCodeModifications(): CodeModificationProposal[] {
+    return [...this.pendingCodeModifications];
   }
 
   /**

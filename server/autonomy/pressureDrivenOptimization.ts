@@ -7,8 +7,7 @@
 
 import { getPressureAwarenessEngine, PressureResponse } from '../evolution/pressureAwarenessEngine';
 import { getAutonomousOptimizationEngine } from '../evolution/autonomousOptimizationEngine';
-import { getCodeModificationEngine } from '../evolution/codeModificationEngine';
-import { getCodeModificationExecutor } from '../evolution/codeModificationExecutor';
+import { getCodeModificationEngine, CodeModificationProposal } from '../evolution/codeModificationEngine';
 import { getCodeSafetyChecker } from '../evolution/codeSafetyChecker';
 import { getSelfDiagnostics } from './selfDiagnostics';
 import { getAutoOptimizationGuardrails } from './autoOptimizationGuardrails';
@@ -32,6 +31,7 @@ export interface OptimizationFlowResult {
  */
 export class PressureDrivenOptimizationFlow {
   private flowHistory: OptimizationFlowResult[] = [];
+  private pendingProposals: Array<{ proposal: CodeModificationProposal; createdAt: number; riskLevel: string }> = [];
   private maxHistorySize = 100;
   private isRunning = false;
 
@@ -165,28 +165,19 @@ export class PressureDrivenOptimizationFlow {
 
       details.push(`安全检查通过`);
 
-      // 5. 执行代码修改
-      console.log(`[PressureDrivenOptimization] Executing code modification...`);
-      const executor = getCodeModificationExecutor();
-      const executionResult = await executor.executeModification(proposal);
-
-      if (executionResult.success) {
-        successfulModifications++;
-        result.codeModificationsExecuted++;
-        details.push(`代码修改执行成功`);
-        details.push(`备份路径: ${executionResult.backupPath}`);
-        if (executionResult.metrics) {
-          details.push(`执行时间: ${executionResult.metrics.executionTime}ms`);
-          details.push(`文件大小变化: ${executionResult.metrics.fileSize.before} -> ${executionResult.metrics.fileSize.after} bytes`);
-        }
-      } else {
-        failedModifications++;
-        details.push(`代码修改执行失败: ${executionResult.error}`);
-        result.status = 'partial';
+      // 5. Keep source-code changes as reviewable proposals. A pressure signal
+      // is evidence to investigate, not permission to rewrite executable code.
+      this.pendingProposals.push({
+        proposal,
+        createdAt: Date.now(),
+        riskLevel: safetyResult.riskLevel,
+      });
+      if (this.pendingProposals.length > this.maxHistorySize) {
+        this.pendingProposals.shift();
       }
-
-      result.successfulModifications = successfulModifications;
-      result.failedModifications = failedModifications;
+      details.push('代码修改建议已进入待审阅队列；本流程不会直接改写源文件。');
+      result.successfulModifications = 0;
+      result.failedModifications = 0;
 
       // 6. 执行优化方案中的其他动作
       console.log(`[PressureDrivenOptimization] Executing optimization plan...`);
@@ -229,6 +220,13 @@ export class PressureDrivenOptimizationFlow {
     if (this.flowHistory.length > this.maxHistorySize) {
       this.flowHistory.shift();
     }
+  }
+
+  /**
+   * Source-code proposals are read-only until an explicit release workflow approves them.
+   */
+  getPendingProposals() {
+    return this.pendingProposals.map(item => ({ ...item }));
   }
 
   /**

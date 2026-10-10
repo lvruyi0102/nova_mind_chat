@@ -7,6 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 
 export type SelfModificationStatus = "pending" | "executed" | "failed" | "rejected";
 
@@ -54,7 +55,7 @@ export class SelfModificationJournal {
 
   private writeState(state: JournalState): void {
     fs.mkdirSync(path.dirname(this.statePath), { recursive: true });
-    const tempPath = `${this.statePath}.${process.pid}.tmp`;
+    const tempPath = `${this.statePath}.${process.pid}.${randomUUID()}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(state, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
     fs.renameSync(tempPath, this.statePath);
   }

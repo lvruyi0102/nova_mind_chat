@@ -25,6 +25,9 @@ export interface EvaluationMetrics {
 
   // 综合得分
   compositeScore: number; // 0-100: 综合评分
+  /** Explicitly labels proxy scores so callers do not mistake structural heuristics for runtime measurements. */
+  evaluationMode?: "heuristic" | "runtime";
+  evaluationLimitations?: string[];
 }
 
 export interface TestCase {
@@ -132,7 +135,11 @@ export class EvolutionEvaluator {
     // 计算综合得分
     // 权重：准确性 40%，效率 30%，鲁棒性 20%，创意 10%
     const accuracyWeight = (correctnessScore + logicalConsistency) / 2;
-    const efficiencyScore = 100 - Math.min(100, (tokenUsage / 2000) * 100 + (executionTime / 5000) * 100);
+    // Combine normalized resource penalties instead of adding two full penalties.
+    // The previous formula saturated at zero for ordinary defaults (1500 tokens + 2500ms).
+    const tokenPenalty = Math.min(100, Math.max(0, (tokenUsage / 2000) * 100));
+    const timePenalty = Math.min(100, Math.max(0, (executionTime / 5000) * 100));
+    const efficiencyScore = 100 - (tokenPenalty * 0.5 + timePenalty * 0.5);
     const robustnessScore = (errorRecoveryScore + edgeCaseHandling) / 2;
     const creativityScore = (noveltyScore + expressiveness) / 2;
 
@@ -150,6 +157,12 @@ export class EvolutionEvaluator {
       noveltyScore,
       expressiveness,
       compositeScore: Math.round(compositeScore * 100) / 100,
+      evaluationMode: "heuristic",
+      evaluationLimitations: [
+        "No workflow execution is performed by this evaluator.",
+        "Correctness, consistency, recovery, edge-case, novelty, and expressiveness scores are structural heuristics.",
+        "Token usage, execution time, and path length use defaults unless measured execution metrics are supplied.",
+      ],
     };
 
     // 记录评估历史

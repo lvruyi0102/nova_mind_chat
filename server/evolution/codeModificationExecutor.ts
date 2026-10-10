@@ -73,22 +73,26 @@ export class CodeModificationExecutor {
       // 3. 读取原始文件内容
       const originalContent = fs.readFileSync(fullPath, 'utf-8');
 
-      // 4. 验证原始内容与提议中的代码匹配
-      if (!this.contentMatches(originalContent, proposal.originalCode)) {
-        throw new Error('Original code does not match file content. File may have been modified.');
-      }
+      // 4. Build the resulting file content from either a whole-file proposal
+      // or one exact, uniquely occurring code-fragment replacement.
+      // A snippet must occur exactly once; ambiguous replacements are rejected.
+      const nextContent = this.buildModifiedContent(
+        originalContent,
+        proposal.originalCode,
+        proposal.modifiedCode
+      );
 
-      // 5. 创建备份
+      // 5. Create a recoverable backup before changing source.
       const backupPath = await this.createBackup(proposal.filePath, originalContent);
       result.backupPath = backupPath;
 
-      // 6. 执行修改
-      fs.writeFileSync(fullPath, proposal.modifiedCode, 'utf-8');
+      // 6. Apply the proposed change.
+      fs.writeFileSync(fullPath, nextContent, 'utf-8');
 
-      // 7. 验证修改
+      // 7. Verify the actual resulting file.
       const modifiedContent = fs.readFileSync(fullPath, 'utf-8');
-      if (modifiedContent !== proposal.modifiedCode) {
-        throw new Error('Verification failed: modified content does not match expected code');
+      if (modifiedContent !== nextContent) {
+        throw new Error('Verification failed: written file does not match the computed result');
       }
 
       // 8. 记录执行成功
@@ -247,11 +251,29 @@ export class CodeModificationExecutor {
   }
 
   /**
-   * 检查内容是否匹配（忽略空白差异）
+   * Apply a whole-file replacement or a unique exact snippet replacement.
+   * Exact matching is intentional: fuzzy edits can silently alter the wrong code.
    */
-  private contentMatches(actual: string, expected: string): boolean {
-    const normalize = (str: string) => str.replace(/\s+/g, ' ').trim();
-    return normalize(actual) === normalize(expected);
+  private buildModifiedContent(actual: string, original: string, modified: string): string {
+    if (!original || !modified) {
+      throw new Error('Both originalCode and modifiedCode must be non-empty');
+    }
+
+    if (actual === original) {
+      return modified;
+    }
+
+    const first = actual.indexOf(original);
+    if (first < 0) {
+      throw new Error('Original code snippet was not found; the file may have changed since the proposal was created.');
+    }
+
+    const second = actual.indexOf(original, first + original.length);
+    if (second >= 0) {
+      throw new Error('Original code snippet occurs more than once; refusing an ambiguous self-modification.');
+    }
+
+    return actual.slice(0, first) + modified + actual.slice(first + original.length);
   }
 
   /**

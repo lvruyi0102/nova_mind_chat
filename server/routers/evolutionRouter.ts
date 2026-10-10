@@ -151,7 +151,11 @@ export const evolutionRouter = router({
         filePath: result.filePath,
         backupPath: result.backupPath,
         error: result.error,
-        metrics: result.metrics,
+        metrics: {
+          execution: result.metrics,
+          validation: result.validation,
+          rollback: result.rollback,
+        },
         timestamp: result.timestamp,
       });
 

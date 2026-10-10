@@ -123,6 +123,11 @@ export class UnifiedMemoryManager {
   private async persistMemory(memory: MemoryItem): Promise<void> {
     const db = await getDb();
     if (!db) throw new Error("Database not available; persistent memory write failed");
+    const existing = await db.select({ userId: unifiedMemories.userId })
+      .from(unifiedMemories).where(eq(unifiedMemories.id, memory.id)).limit(1);
+    if (existing.length && existing[0].userId !== this.userId) {
+      throw new Error("Memory ID belongs to a different user");
+    }
     await db.insert(unifiedMemories).values({
       id: memory.id, userId: this.userId, type: memory.type, content: memory.content,
       title: memory.title ?? null,
@@ -183,12 +188,14 @@ export class UnifiedMemoryManager {
     let memory = this.memoryCache.get(id);
 
     if (memory) {
-      // 更新访问时间和计数
-      memory.lastAccessedAt = new Date();
-      memory.accessCount++;
+      // Persist access metadata too, so usage statistics survive process restarts.
+      const updated = { ...memory, lastAccessedAt: new Date(), accessCount: memory.accessCount + 1 };
+      await this.persistMemory(updated);
+      this.memoryCache.set(id, updated);
+      return updated;
     }
 
-    return memory || null;
+    return null;
   }
 
   /**

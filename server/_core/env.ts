@@ -9,5 +9,5 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   // Optional Google AI Studio free-tier provider. Keep this server-side only.
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite",
 };

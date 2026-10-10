@@ -39,7 +39,7 @@ export const emailInternetRouter = router({
       try {
         const authenticatedEmail = ctx.user.email?.trim().toLowerCase();
         if (!authenticatedEmail || input.userEmail.trim().toLowerCase() !== authenticatedEmail) {
-          return { success: false, error: "只能为当前登录账户的已验证邮箱启动对话" };
+          return { success: false, error: "只能为当前登录账户邮箱启动对话" };
         }
         const manager = getIntegrationManager().getEmailChatManager();
         const conversation = await manager.startEmailConversation(

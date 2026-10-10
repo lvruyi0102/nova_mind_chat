@@ -199,12 +199,17 @@ export class CodeModificationExecutor {
 
     try {
       // 1. 检查备份文件是否存在
-      if (!fs.existsSync(backupPath)) {
-        throw new Error(`Backup file not found: ${backupPath}`);
+      const resolvedBackupPath = path.resolve(backupPath);
+      const resolvedBackupRoot = fs.realpathSync(this.backupDir);
+      if (!this.isPathInside(resolvedBackupRoot, resolvedBackupPath) ||
+          !fs.existsSync(resolvedBackupPath) ||
+          !fs.statSync(resolvedBackupPath).isFile() ||
+          !this.isPathInside(resolvedBackupRoot, fs.realpathSync(resolvedBackupPath))) {
+        throw new Error("Backup path must reference a regular file inside the managed backup directory");
       }
 
-      // 2. 读取备份内容
-      const backupContent = fs.readFileSync(backupPath, 'utf-8');
+      // 2. Read the verified backup content.
+      const backupContent = fs.readFileSync(resolvedBackupPath, 'utf-8');
 
       // 3. Resolve and validate the target path again before restoring.
       const fullPath = this.resolveAllowedFilePath(filePath);

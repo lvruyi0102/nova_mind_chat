@@ -7,6 +7,7 @@ import { GenomeManager, Genome } from "./genomeManager";
 import { EvolutionEvaluator, EvaluationMetrics, TestCase } from "./evolutionEvaluator";
 import { MutationProposer, MutationProposal } from "./mutationProposer";
 import { getCodeModificationEngine, CodeModificationProposal } from "./codeModificationEngine";
+import { getSelfModificationJournal } from "./selfModificationJournal";
 
 export interface EvolutionCycle {
   cycleId: string;
@@ -32,7 +33,7 @@ export class EvolutionEngine {
   private codeModificationEngine = getCodeModificationEngine();
   private evolutionCycles: EvolutionCycle[] = [];
   private codeModifications: CodeModificationProposal[] = [];
-  private pendingCodeModifications: CodeModificationProposal[] = [];
+  private pendingCodeModifications: CodeModificationProposal[] = getSelfModificationJournal().listPending<CodeModificationProposal>();
   private isRunning: boolean = false;
   private config: {
     maxGenerations: number;
@@ -156,6 +157,16 @@ export class EvolutionEngine {
         // rewrite its own source code as a side effect. Generate a reviewable proposal
         // and leave execution to an explicit, separately audited release process.
         try {
+          // Feed recent real execution outcomes back into the next proposal. This is
+          // evidence-based adaptation: failures and rollback results become context,
+          // rather than being treated as if a proposal had succeeded.
+          const recentOutcomes = getSelfModificationJournal().listEvents(5);
+          const outcomeFeedback = recentOutcomes.length
+            ? recentOutcomes.map((event) =>
+                `- ${event.status} at ${event.timestamp}; file=${event.filePath || "unknown"}; error=${event.error || "none"}; validation=${JSON.stringify((event.metrics as any)?.validation || null)}; rollback=${JSON.stringify((event.metrics as any)?.rollback || null)}`
+              ).join("\n")
+            : "No prior source-modification execution outcomes are available yet.";
+
           const codeModification = await this.codeModificationEngine.generateModificationProposal({
             pressureLevel: 50,
             pressureType: 'latency',
@@ -163,11 +174,17 @@ export class EvolutionEngine {
               responseTime: childMetrics.compositeScore || 0,
               accuracy: childMetrics.correctnessScore || 0,
             },
-            diagnosticResults: `Evolution successful with ${improvementRatio.toFixed(2)}% improvement`,
+            diagnosticResults: [
+              `Current workflow-genome evolution improved by ${improvementRatio.toFixed(2)}%.`,
+              "Prior source-modification outcomes (observed evidence; do not assume success):",
+              outcomeFeedback,
+              "Use any prior validation errors to avoid repeating the same failure. If rollback failed, propose no further source edits until an operator resolves the repository state.",
+            ].join("\\n"),
           });
 
           if (codeModification) {
             this.pendingCodeModifications.push(codeModification);
+            getSelfModificationJournal().upsertProposal({ ...codeModification, status: "pending" });
             console.log(
               `[EvolutionEngine] Stored code proposal ${codeModification.id} for review; no source files were changed.`
             );
@@ -265,7 +282,34 @@ export class EvolutionEngine {
    * Return proposed source-code changes for review. Reading proposals never executes them.
    */
   getPendingCodeModifications(): CodeModificationProposal[] {
+    // Merge in durable state so proposals survive engine recreation and process restarts
+    // when the host provides a persistent filesystem.
+    const persisted = getSelfModificationJournal().listPending<CodeModificationProposal>();
+    const inMemoryPending = this.pendingCodeModifications.filter((proposal) => {
+      const status = (proposal as CodeModificationProposal & { status?: string }).status;
+      return !status || status === "pending";
+    });
+    const byId = new Map<string, CodeModificationProposal>();
+    for (const proposal of [...persisted, ...inMemoryPending]) byId.set(proposal.id, proposal);
+    this.pendingCodeModifications = [...byId.values()];
     return [...this.pendingCodeModifications];
+  }
+
+  /** Persist the outcome so a later process can learn from past execution results. */
+  recordSelfModificationOutcome(proposalId: string, status: "executed" | "failed", details: {
+    filePath?: string; backupPath?: string; error?: string; metrics?: unknown; timestamp?: Date | string;
+  }): void {
+    const proposal = this.pendingCodeModifications.find(item => item.id === proposalId);
+    if (proposal) (proposal as CodeModificationProposal & { status?: string }).status = status;
+    getSelfModificationJournal().recordEvent({
+      proposalId,
+      status,
+      timestamp: details.timestamp instanceof Date ? details.timestamp.toISOString() : (details.timestamp || new Date().toISOString()),
+      filePath: details.filePath,
+      backupPath: details.backupPath,
+      error: details.error,
+      metrics: details.metrics,
+    });
   }
 
   /**

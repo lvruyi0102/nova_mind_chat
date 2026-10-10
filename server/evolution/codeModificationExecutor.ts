@@ -7,6 +7,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { CodeModificationProposal } from './codeModificationEngine';
 
 export interface ExecutionResult {
@@ -47,6 +49,11 @@ export class CodeModificationExecutor {
     if (!fs.existsSync(this.backupDir)) {
       fs.mkdirSync(this.backupDir, { recursive: true });
     }
+    const evolutionRoot = fs.realpathSync(path.resolve(process.cwd(), "server/evolution"));
+    const realBackupDir = fs.realpathSync(this.backupDir);
+    if (!this.isPathInside(evolutionRoot, realBackupDir) || realBackupDir === evolutionRoot) {
+      throw new Error("Backup directory must resolve to a child of server/evolution");
+    }
   }
 
   /**
@@ -62,6 +69,16 @@ export class CodeModificationExecutor {
     };
 
     try {
+      // Source self-modification is opt-in and forbidden in production until an
+      // isolated worktree/container runner is available. Admin auth alone is not
+      // enough protection for code that can rewrite the running application.
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Source self-modification is disabled in production; use an isolated validation runner.");
+      }
+      if (process.env.NOVA_SELF_MODIFICATION_ENABLED !== "true") {
+        throw new Error("Self-modification is disabled. Set NOVA_SELF_MODIFICATION_ENABLED=true only in an isolated development/test environment.");
+      }
+
       // 1. Resolve and validate the target path, including symlink escapes.
       const fullPath = this.resolveAllowedFilePath(proposal.filePath);
 
@@ -125,6 +142,58 @@ export class CodeModificationExecutor {
   }
 
   /**
+   * Apply a proposed change, then run the repository's fixed validation scripts.
+   * If type-checking or tests fail, restore the pre-change backup automatically.
+   * Commands are fixed (no proposal-controlled shell text) and run with shell:false.
+   */
+  async executeAndValidateModification(proposal: CodeModificationProposal): Promise<ExecutionResult & {
+    validation?: { passed: boolean; stage: string; exitCode?: number | null; output?: string };
+    rollback?: RollbackResult;
+  }> {
+    const execution = await this.executeModification(proposal);
+    if (!execution.success || !execution.backupPath) {
+      return { ...execution, validation: { passed: false, stage: "write", output: execution.error || "Modification was not applied" } };
+    }
+
+    const checks: Array<{ stage: string; command: string; args: string[] }> = [
+      { stage: "typecheck", command: "npm", args: ["run", "check"] },
+      { stage: "tests", command: "npm", args: ["test"] },
+    ];
+
+    for (const check of checks) {
+      const result = spawnSync(check.command, check.args, {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        timeout: 120_000,
+        maxBuffer: 2 * 1024 * 1024,
+        shell: false,
+        env: { ...process.env, CI: "1" },
+      });
+      const output = [result.stdout, result.stderr, result.error?.message]
+        .filter(Boolean).join("\n").slice(-12_000);
+      if (result.error || result.status !== 0) {
+        const rollback = await this.rollbackModification(proposal.id, proposal.filePath, execution.backupPath);
+        const reason = result.error?.message || `${check.stage} exited with code ${result.status}`;
+        const rollbackMessage = rollback.success
+          ? "automatic rollback succeeded"
+          : `AUTOMATIC ROLLBACK FAILED: ${rollback.error || "unknown rollback error"}`;
+        return {
+          ...execution,
+          success: false,
+          error: `Validation failed at ${check.stage}: ${reason}; ${rollbackMessage}`,
+          validation: { passed: false, stage: check.stage, exitCode: result.status, output },
+          rollback,
+        };
+      }
+    }
+
+    return {
+      ...execution,
+      validation: { passed: true, stage: "typecheck+tests", exitCode: 0, output: "Type-check and test scripts passed." },
+    };
+  }
+
+  /**
    * 回滚修改
    */
   async rollbackModification(
@@ -141,12 +210,17 @@ export class CodeModificationExecutor {
 
     try {
       // 1. 检查备份文件是否存在
-      if (!fs.existsSync(backupPath)) {
-        throw new Error(`Backup file not found: ${backupPath}`);
+      const resolvedBackupPath = path.resolve(backupPath);
+      const resolvedBackupRoot = fs.realpathSync(this.backupDir);
+      if (!this.isPathInside(resolvedBackupRoot, resolvedBackupPath) ||
+          !fs.existsSync(resolvedBackupPath) ||
+          !fs.statSync(resolvedBackupPath).isFile() ||
+          !this.isPathInside(resolvedBackupRoot, fs.realpathSync(resolvedBackupPath))) {
+        throw new Error("Backup path must reference a regular file inside the managed backup directory");
       }
 
-      // 2. 读取备份内容
-      const backupContent = fs.readFileSync(backupPath, 'utf-8');
+      // 2. Read the verified backup content.
+      const backupContent = fs.readFileSync(resolvedBackupPath, 'utf-8');
 
       // 3. Resolve and validate the target path again before restoring.
       const fullPath = this.resolveAllowedFilePath(filePath);
@@ -174,7 +248,7 @@ export class CodeModificationExecutor {
   private async createBackup(filePath: string, content: string): Promise<string> {
     const timestamp = Date.now();
     const fileName = path.basename(filePath);
-    const backupFileName = `${fileName}.${timestamp}.backup`;
+    const backupFileName = `${fileName}.${timestamp}.${randomUUID()}.backup`;
     const backupPath = path.join(this.backupDir, backupFileName);
 
     fs.writeFileSync(backupPath, content, 'utf-8');
@@ -209,12 +283,17 @@ export class CodeModificationExecutor {
     }
   }
 
+  private isPathInside(base: string, target: string): boolean {
+    const relative = path.relative(base, target);
+    return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+  }
+
   /**
    * Resolve a target file and enforce directory containment.
    * Reject traversal, absolute paths, and symlinks that escape the allowed roots.
    */
   private resolveAllowedFilePath(filePath: string): string {
-    if (!filePath || path.isAbsolute(filePath) || filePath.includes("\\0")) {
+    if (!filePath || path.isAbsolute(filePath) || filePath.includes("\0")) {
       throw new Error(`Invalid file path: ${filePath}`);
     }
 
@@ -230,6 +309,15 @@ export class CodeModificationExecutor {
       path.resolve(root, "server/evolution"),
       path.resolve(root, "server/autonomy"),
     ];
+    const backupRoot = path.resolve(root, "server/evolution/backups");
+    const configuredJournalPath = process.env.NOVA_SELF_MODIFICATION_STATE_PATH;
+    const journalPaths = [
+      path.resolve(root, "server/evolution/self-modification-state.json"),
+      ...(configuredJournalPath ? [path.resolve(configuredJournalPath)] : []),
+    ];
+    if (this.isPathInside(backupRoot, candidate) || journalPaths.includes(candidate)) {
+      throw new Error(`Self-modification cannot target its own backups or journal: ${filePath}`);
+    }
     const isWithin = (base: string, target: string): boolean => {
       const relative = path.relative(base, target);
       return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
@@ -324,16 +412,24 @@ export class CodeModificationExecutor {
     };
 
     try {
-      const backupPath = path.join(this.backupDir, backupFileName);
-
-      if (!fs.existsSync(backupPath)) {
-        throw new Error(`Backup file not found: ${backupPath}`);
+      if (!backupFileName || path.basename(backupFileName) !== backupFileName) {
+        throw new Error("Invalid backup filename");
+      }
+      const backupPath = path.resolve(this.backupDir, backupFileName);
+      const backupRoot = fs.realpathSync(this.backupDir);
+      if (!this.isPathInside(backupRoot, backupPath) ||
+          !fs.existsSync(backupPath) ||
+          !fs.statSync(backupPath).isFile() ||
+          !this.isPathInside(backupRoot, fs.realpathSync(backupPath))) {
+        throw new Error("Backup file must be a regular file inside the managed backup directory");
       }
 
       const backupContent = fs.readFileSync(backupPath, 'utf-8');
-      const fullPath = path.join(process.cwd(), targetFilePath);
-
+      const fullPath = this.resolveAllowedFilePath(targetFilePath);
       fs.writeFileSync(fullPath, backupContent, 'utf-8');
+      if (fs.readFileSync(fullPath, 'utf-8') !== backupContent) {
+        throw new Error("Verification failed: restored content does not match backup");
+      }
 
       result.success = true;
       console.log(`[CodeModificationExecutor] Successfully rolled back to backup: ${backupFileName}`);

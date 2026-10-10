@@ -214,7 +214,7 @@ export class CodeModificationExecutor {
       throw new Error(`Invalid file path: ${filePath}`);
     }
 
-    const normalizedInput = filePath.replace(/\\\\/g, "/");
+    const normalizedInput = filePath.replace(/\\/g, "/");
     const segments = normalizedInput.split("/");
     if (segments.some(segment => segment === "." || segment === "..")) {
       throw new Error(`Path traversal is not allowed: ${filePath}`);

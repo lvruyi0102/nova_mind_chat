@@ -26,6 +26,7 @@ import { createConversation, createMessage, getConversation, getConversationMess
 import { invokeLLM } from "./_core/llm";
 import { getOllamaIntegration } from "./services/ollamaIntegration";
 import { NOVA_MIND_SYSTEM_PROMPT } from "./novaMindPrompt";
+import { memoryAugmentedConversation } from "./cognition/memoryAugmentedConversation";
 import { loadNovaIdentity, buildIdentityInjection } from "./identityRecovery";
 import {
   processMessageCognitively,
@@ -278,9 +279,21 @@ export const appRouter = router({
           const novaIdentity = await loadNovaIdentity(ctx.user.id);
           const identityInjection = buildIdentityInjection(novaIdentity);
           const systemPrompt = `${NOVA_MIND_SYSTEM_PROMPT}\n\n${identityInjection}`;
-          
+
+          // Retrieve only this user's memories and use them to ground the reply.
+          // Retrieval is best-effort: the memory module returns an empty context on failure.
+          const memoryContext = await memoryAugmentedConversation.retrieveContextualMemories(
+            ctx.user.id,
+            input.content,
+            5
+          );
+          const memoryEnhancedSystemPrompt = memoryAugmentedConversation.augmentPrompt(
+            systemPrompt,
+            memoryContext
+          );
+
           const messages = [
-            { role: "system" as const, content: systemPrompt },
+            { role: "system" as const, content: memoryEnhancedSystemPrompt },
             ...history.map((msg) => ({
               role: msg.role as "user" | "assistant" | "system",
               content: msg.content,

@@ -1,36 +1,42 @@
-# Use the free Gemini API tier with NOVA
+# Free model API setup for NOVA (China-friendly route)
 
-This option lets NOVA use Google's Gemini API free tier instead of relying on the paid Manus Forge model route. Google controls eligibility, available models, and rate limits; check the current limits in Google AI Studio.
+The recommended first option for users who cannot access Google AI Studio is SiliconFlow's China service, which offers a catalog containing some free models and an OpenAI-compatible API.
 
-## 1. Create a free API key
+## 1. Create a SiliconFlow China account and API key
 
-1. Open [Google AI Studio API keys](https://aistudio.google.com/app/apikey).
-2. Sign in and create an API key for a project that is eligible for the Gemini API free tier.
-3. Keep the key private. Never commit it to GitHub or paste it into a public chat.
+1. Open the [SiliconFlow China site](https://www.siliconflow.cn/) and sign in.
+2. Open the [model list/pricing page](https://siliconflow.cn/pricing) and confirm that the selected chat model is explicitly marked **免费** before using it.
+3. Create an API key from the account's API-key page.
 
-The default model is `gemini-3.5-flash-lite`, selected as a lightweight model for the free-tier path. If Google changes free-tier availability, set `GEMINI_MODEL` to a currently eligible model listed in the official [Gemini API models page](https://ai.google.dev/gemini-api/docs/models).
+SiliconFlow's documentation says free models require real-name verification. Free-model availability and rate limits can change. Do not select a paid model unless you deliberately want to pay.
 
-## 2. Add the key to the environment where NOVA actually runs
+Suggested initial model: `XingChenAGI/Xing4.0-29B` (listed as free in the model catalog when this guide was written). If it is no longer marked free in your account, choose a currently free general chat model and set `SILICONFLOW_MODEL` to its exact model ID.
 
-Configure these server-side environment variables in the hosting environment that runs NOVA (Manus is the primary environment; configure Vercel only if NOVA is actually running there):
+## 2. Configure the server-side secret where NOVA runs
+
+Set these server environment variables in the hosting environment that actually runs NOVA (Manus is the primary environment):
 
 ```env
-GEMINI_API_KEY=your_private_key_here
-GEMINI_MODEL=gemini-3.5-flash-lite
+SILICONFLOW_API_KEY=your_private_key_here
+SILICONFLOW_MODEL=XingChenAGI/Xing4.0-29B
 ```
 
-Do not use a `VITE_...` variable for the key: those variables may be exposed to browser code. Do not put the key in source files or GitHub.
+Keep the key server-side. Do not commit it to GitHub, put it in frontend `VITE_...` variables, or paste it into public chats.
+
+The code selects SiliconFlow when `SILICONFLOW_API_KEY` is present, then Gemini if configured, then the existing Manus Forge route.
 
 ## 3. Restart and test
 
-Restart/redeploy NOVA after adding the variables, then send a short message such as:
+Restart/redeploy NOVA after configuring the secret, then send:
 
 > Reply with exactly: NOVA is connected.
 
-If that succeeds, test a normal conversation. The existing Manus Forge route remains the fallback when no Gemini key is configured. When the Gemini key is configured, the adapter selects Gemini instead.
+If the request fails, capture the exact server-side error (remove/redact the API key first). Common causes include an unverified account, model ID not available to the account, rate limit, or a model that is no longer free.
 
-## Important limits
+## Free does not mean unlimited
 
-- This is a free-tier API, not unlimited service. Google can enforce per-model request/token quotas or change availability.
-- Free-tier terms may allow submitted content to be used to improve Google products; review the current terms before sending private conversations or sensitive data.
-- Adding this code to GitHub does not configure the key in Manus by itself. A person with access to the actual hosting environment must add the secret and restart the app.
+SiliconFlow documents fixed rate limits for free models and says real-name verification is required to use its free-model offerings. Check the current model catalog and your account's usage before relying on it. A free model may be rate-limited or removed from the free tier.
+
+## Alternative
+
+For users who can access Google AI Studio, the code also supports `GEMINI_API_KEY` and `GEMINI_MODEL`. This route is optional; NOVA does not have to depend on Google.

@@ -64,6 +64,34 @@ describe("Email System", () => {
       expect(Array.isArray(notifications)).toBe(true);
     });
 
+    it("should isolate notifications and statistics by email owner", () => {
+      const now = new Date();
+      const conversationA = {
+        id: "conv-owner-a", threadId: "thread-a", userEmail: "alice@example.com",
+        novaEmail: "nova@example.com", subject: "A", messages: [], lastMessageAt: now,
+        isActive: true, createdAt: now, updatedAt: now,
+      };
+      const conversationB = {
+        id: "conv-owner-b", threadId: "thread-b", userEmail: "bob@example.com",
+        novaEmail: "nova@example.com", subject: "B", messages: [], lastMessageAt: now,
+        isActive: true, createdAt: now, updatedAt: now,
+      };
+      const internal = emailChatManager as any;
+      internal.conversations.set(conversationA.id, conversationA);
+      internal.conversations.set(conversationB.id, conversationB);
+      internal.notifications.push(
+        { id: "notif-a", conversationId: conversationA.id, type: "reply_received", content: "A", read: false, createdAt: now },
+        { id: "notif-b", conversationId: conversationB.id, type: "reply_received", content: "B", read: false, createdAt: now },
+      );
+
+      expect(emailChatManager.getUnreadNotifications("ALICE@example.com").map((n) => n.id)).toEqual(["notif-a"]);
+      expect(emailChatManager.markNotificationAsRead("notif-b", "alice@example.com")).toBe(false);
+      expect(emailChatManager.getUnreadNotifications("bob@example.com").map((n) => n.id)).toEqual(["notif-b"]);
+      expect(emailChatManager.markNotificationAsRead("notif-a", "alice@example.com")).toBe(true);
+      expect(emailChatManager.getStats("alice@example.com").totalConversations).toBe(1);
+      expect(emailChatManager.getStats("alice@example.com").unreadNotifications).toBe(0);
+    });
+
     it("should get email statistics", () => {
       const stats = emailChatManager.getStats();
       expect(stats).toHaveProperty("totalConversations");

@@ -37,9 +37,13 @@ export const emailInternetRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const authenticatedEmail = ctx.user.email?.trim().toLowerCase();
+        if (!authenticatedEmail || input.userEmail.trim().toLowerCase() !== authenticatedEmail) {
+          return { success: false, error: "只能为当前登录账户邮箱启动对话" };
+        }
         const manager = getIntegrationManager().getEmailChatManager();
         const conversation = await manager.startEmailConversation(
-          input.userEmail,
+          authenticatedEmail,
           input.subject,
           input.message
         );
@@ -63,13 +67,14 @@ export const emailInternetRouter = router({
    */
   getEmailConversation: protectedProcedure
     .input(z.object({ conversationId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const manager = getIntegrationManager().getEmailChatManager();
         const conversation = manager.getConversation(input.conversationId);
 
-        if (!conversation) {
-          return { success: false, error: "对话不存在" };
+        if (!conversation || !ctx.user.email ||
+            conversation.userEmail.toLowerCase() !== ctx.user.email.trim().toLowerCase()) {
+          return { success: false, error: "对话不存在或无权访问" };
         }
 
         return {
@@ -90,10 +95,13 @@ export const emailInternetRouter = router({
    */
   getUserEmailConversations: protectedProcedure
     .input(z.object({ userEmail: z.string().email() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
+        if (!ctx.user.email || input.userEmail.trim().toLowerCase() !== ctx.user.email.trim().toLowerCase()) {
+          return { success: false, error: "只能查看当前登录账户的邮件对话" };
+        }
         const manager = getIntegrationManager().getEmailChatManager();
-        const conversations = manager.getUserConversations(input.userEmail);
+        const conversations = manager.getUserConversations(ctx.user.email);
 
         return {
           success: true,
@@ -117,9 +125,14 @@ export const emailInternetRouter = router({
    */
   closeEmailConversation: protectedProcedure
     .input(z.object({ conversationId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         const manager = getIntegrationManager().getEmailChatManager();
+        const conversation = manager.getConversation(input.conversationId);
+        if (!conversation || !ctx.user.email ||
+            conversation.userEmail.toLowerCase() !== ctx.user.email.trim().toLowerCase()) {
+          return { success: false, error: "对话不存在或无权操作" };
+        }
         manager.closeConversation(input.conversationId);
 
         return {
@@ -138,10 +151,11 @@ export const emailInternetRouter = router({
   /**
    * 获取邮件通知
    */
-  getEmailNotifications: protectedProcedure.query(async () => {
+  getEmailNotifications: protectedProcedure.query(async ({ ctx }) => {
     try {
+      if (!ctx.user.email) return { success: false, error: "当前账户未设置邮箱" };
       const manager = getIntegrationManager().getEmailChatManager();
-      const notifications = manager.getUnreadNotifications();
+      const notifications = manager.getUnreadNotifications(ctx.user.email);
 
       return {
         success: true,
@@ -162,10 +176,12 @@ export const emailInternetRouter = router({
    */
   markNotificationAsRead: protectedProcedure
     .input(z.object({ notificationId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
+        if (!ctx.user.email) return { success: false, error: "当前账户未设置邮箱" };
         const manager = getIntegrationManager().getEmailChatManager();
-        manager.markNotificationAsRead(input.notificationId);
+        const updated = manager.markNotificationAsRead(input.notificationId, ctx.user.email);
+        if (!updated) return { success: false, error: "通知不存在或无权操作" };
 
         return {
           success: true,
@@ -435,10 +451,11 @@ export const emailInternetRouter = router({
   /**
    * 获取邮件统计
    */
-  getEmailStats: protectedProcedure.query(async () => {
+  getEmailStats: protectedProcedure.query(async ({ ctx }) => {
     try {
+      if (!ctx.user.email) return { success: false, error: "当前账户未设置邮箱" };
       const manager = getIntegrationManager().getEmailChatManager();
-      const stats = manager.getStats();
+      const stats = manager.getStats(ctx.user.email);
 
       return {
         success: true,

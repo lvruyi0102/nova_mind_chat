@@ -62,12 +62,8 @@ export class CodeModificationExecutor {
     };
 
     try {
-      // 1. 验证文件路径
-      if (!this.isValidFilePath(proposal.filePath)) {
-        throw new Error(`Invalid file path: ${proposal.filePath}`);
-      }
-
-      const fullPath = path.join(process.cwd(), proposal.filePath);
+      // 1. Resolve and validate the target path, including symlink escapes.
+      const fullPath = this.resolveAllowedFilePath(proposal.filePath);
 
       // 2. 检查文件是否存在
       if (!fs.existsSync(fullPath)) {
@@ -148,8 +144,8 @@ export class CodeModificationExecutor {
       // 2. 读取备份内容
       const backupContent = fs.readFileSync(backupPath, 'utf-8');
 
-      // 3. 恢复文件
-      const fullPath = path.join(process.cwd(), filePath);
+      // 3. Resolve and validate the target path again before restoring.
+      const fullPath = this.resolveAllowedFilePath(filePath);
       fs.writeFileSync(fullPath, backupContent, 'utf-8');
 
       // 4. 验证恢复
@@ -210,16 +206,44 @@ export class CodeModificationExecutor {
   }
 
   /**
-   * 验证文件路径是否有效
+   * Resolve a target file and enforce directory containment.
+   * Reject traversal, absolute paths, and symlinks that escape the allowed roots.
    */
-  private isValidFilePath(filePath: string): boolean {
-    // 只允许修改特定目录下的文件
-    const allowedPaths = [
-      'server/evolution/',
-      'server/autonomy/',
-    ];
+  private resolveAllowedFilePath(filePath: string): string {
+    if (!filePath || path.isAbsolute(filePath) || filePath.includes("\\0")) {
+      throw new Error(`Invalid file path: ${filePath}`);
+    }
 
-    return allowedPaths.some(allowed => filePath.startsWith(allowed));
+    const normalizedInput = filePath.replace(/\\\\/g, "/");
+    const segments = normalizedInput.split("/");
+    if (segments.some(segment => segment === "." || segment === "..")) {
+      throw new Error(`Path traversal is not allowed: ${filePath}`);
+    }
+
+    const root = process.cwd();
+    const candidate = path.resolve(root, normalizedInput);
+    const allowedRoots = [
+      path.resolve(root, "server/evolution"),
+      path.resolve(root, "server/autonomy"),
+    ];
+    const isWithin = (base: string, target: string): boolean => {
+      const relative = path.relative(base, target);
+      return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+    };
+
+    if (!allowedRoots.some(base => isWithin(base, candidate))) {
+      throw new Error(`File path is outside allowed directories: ${filePath}`);
+    }
+    if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) {
+      throw new Error(`Target must be an existing regular file: ${filePath}`);
+    }
+
+    const realTarget = fs.realpathSync(candidate);
+    const realAllowedRoots = allowedRoots.map(base => fs.realpathSync(base));
+    if (!realAllowedRoots.some(base => isWithin(base, realTarget))) {
+      throw new Error(`Symlink target is outside allowed directories: ${filePath}`);
+    }
+    return realTarget;
   }
 
   /**

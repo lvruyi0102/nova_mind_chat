@@ -18,7 +18,7 @@
  */
 
 import { getDb } from '../db';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { unifiedMemories } from '../../drizzle/schema';
 
 /**
@@ -128,19 +128,9 @@ export class UnifiedMemoryManager {
     if (existing.length && existing[0].userId !== this.userId) {
       throw new Error("Memory ID belongs to a different user");
     }
-    await db.insert(unifiedMemories).values({
-      id: memory.id, userId: this.userId, type: memory.type, content: memory.content,
+    const values = {
+      type: memory.type, content: memory.content,
       title: memory.title ?? null,
-      metadataJson: memory.metadata ? JSON.stringify(memory.metadata) : null,
-      visibility: memory.visibility, commercializable: memory.commercializable ?? null,
-      confidenceMilli: Math.round(memory.confidence * 1000),
-      importanceMilli: Math.round(memory.importance * 1000),
-      relatedMemoriesJson: memory.relatedMemories ? JSON.stringify(memory.relatedMemories) : null,
-      sourceConversationsJson: memory.sourceConversations ? JSON.stringify(memory.sourceConversations) : null,
-      createdAt: memory.createdAt, updatedAt: memory.updatedAt,
-      lastAccessedAt: memory.lastAccessedAt ?? null, accessCount: memory.accessCount,
-    }).onDuplicateKeyUpdate({ set: {
-      content: memory.content, title: memory.title ?? null,
       metadataJson: memory.metadata ? JSON.stringify(memory.metadata) : null,
       visibility: memory.visibility, commercializable: memory.commercializable ?? null,
       confidenceMilli: Math.round(memory.confidence * 1000),
@@ -149,7 +139,21 @@ export class UnifiedMemoryManager {
       sourceConversationsJson: memory.sourceConversations ? JSON.stringify(memory.sourceConversations) : null,
       updatedAt: memory.updatedAt, lastAccessedAt: memory.lastAccessedAt ?? null,
       accessCount: memory.accessCount,
-    } });
+    };
+    if (existing.length) {
+      // Never use a blind upsert for an ID-keyed, user-owned row: a concurrent
+      // insert could otherwise turn a failed ownership check into a cross-user overwrite.
+      await db.update(unifiedMemories).set(values).where(
+        and(eq(unifiedMemories.id, memory.id), eq(unifiedMemories.userId, this.userId)),
+      );
+      return;
+    }
+    // If another user races to claim this ID, the primary-key constraint rejects
+    // the insert; it cannot silently update that user's row.
+    await db.insert(unifiedMemories).values({
+      id: memory.id, userId: this.userId, ...values,
+      createdAt: memory.createdAt,
+    });
   }
 
   /**
@@ -270,11 +274,11 @@ export class UnifiedMemoryManager {
       updatedAt: new Date(),
     };
 
+    await this.persistMemory(updated);
     if (updated.type !== memory.type) {
       this.memoryIndex.get(memory.type)?.delete(id);
       this.memoryIndex.get(updated.type)?.add(id);
     }
-    await this.persistMemory(updated);
     this.memoryCache.set(id, updated);
     console.log(`[UnifiedMemory] Updated durable memory: ${id}`);
 
@@ -293,7 +297,9 @@ export class UnifiedMemoryManager {
 
     const db = await getDb();
     if (!db) throw new Error("Database not available; persistent memory delete failed");
-    await db.delete(unifiedMemories).where(eq(unifiedMemories.id, id));
+    await db.delete(unifiedMemories).where(
+      and(eq(unifiedMemories.id, id), eq(unifiedMemories.userId, this.userId)),
+    );
     this.memoryCache.delete(id);
     this.memoryIndex.get(memory.type)?.delete(id);
 
@@ -420,6 +426,7 @@ export class UnifiedMemoryManager {
    * 清空记忆
    */
   async clearMemories(): Promise<void> {
+    await this.ensureLoaded();
     const db = await getDb();
     if (!db) throw new Error("Database not available; persistent memory clear failed");
     await db.delete(unifiedMemories).where(eq(unifiedMemories.userId, this.userId));

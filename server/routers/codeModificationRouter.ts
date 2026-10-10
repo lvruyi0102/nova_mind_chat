@@ -54,7 +54,7 @@ export const codeModificationRouter = router({
         throw new Error(`Proposal not found: ${input.proposalId}`);
       }
 
-      const result = await codeExecutor.executeModification(proposal);
+      const result = await codeExecutor.executeAndValidateModification(proposal);
       return result;
     }),
 

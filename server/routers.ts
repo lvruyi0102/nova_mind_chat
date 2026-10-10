@@ -391,8 +391,8 @@ export const appRouter = router({
     getWorks: publicProcedure
       .input(z.object({ userId: z.number().optional() }))
       .query(async ({ input }) => {
-        const { getCreativeWorks } = await import('./db');
-        return await getCreativeWorks(input.userId);
+        const { getPublicCreativeWorks } = await import('./db');
+        return await getPublicCreativeWorks(input.userId);
       }),
     saveWork: protectedProcedure
       .input(
@@ -414,8 +414,8 @@ export const appRouter = router({
     getWorkDetail: publicProcedure
       .input(z.object({ workId: z.number() }))
       .query(async ({ input }) => {
-        const { getCreativeWorkById } = await import('./db');
-        return await getCreativeWorkById(input.workId);
+        const { getPublicCreativeWorkById } = await import('./db');
+        return await getPublicCreativeWorkById(input.workId);
       }),
     saveCollaborationAsCreativeWork: protectedProcedure
       .input(z.object({ collaborationId: z.number(), title: z.string(), content: z.string() }))

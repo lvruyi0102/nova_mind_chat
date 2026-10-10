@@ -167,6 +167,49 @@ export const evolutionRouter = router({
     }),
 
   /**
+   * 执行并验证自我修改：先备份写入，再跑 typecheck 和 tests；
+   * 任一失败则尝试自动恢复备份，并把验证/回滚结果写入持久化历史。
+   */
+  executeAndValidateSelfModification: adminProcedure
+    .input(z.object({ proposalId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const engine = await initializeEvolutionEngine();
+      const proposal = engine.getPendingCodeModifications().find(
+        (item: any) => item.id === input.proposalId
+      );
+      if (!proposal) {
+        throw new Error("Self-modification proposal not found");
+      }
+
+      const executor = getCodeModificationExecutor();
+      const result = await executor.executeAndValidateModification(proposal);
+      const outcomeStatus = result.success ? "executed" : "failed";
+      engine.recordSelfModificationOutcome(proposal.id, outcomeStatus, {
+        filePath: result.filePath,
+        backupPath: result.backupPath,
+        error: result.error,
+        metrics: {
+          execution: result.metrics,
+          validation: result.validation,
+          rollback: result.rollback,
+        },
+        timestamp: result.timestamp,
+      });
+
+      return {
+        success: result.success,
+        proposalId: result.proposalId,
+        filePath: result.filePath,
+        timestamp: result.timestamp,
+        backupPath: result.backupPath,
+        error: result.error,
+        metrics: result.metrics,
+        validation: result.validation,
+        rollback: result.rollback,
+      };
+    }),
+
+  /**
    * 查询持久化的自我修改记录，用于复盘执行结果与失败原因。
    */
   getSelfModificationHistory: adminProcedure

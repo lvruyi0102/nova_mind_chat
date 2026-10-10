@@ -71,26 +71,35 @@ export interface MemoryStatistics {
  */
 export class UnifiedMemoryManager {
   private userId: number;
-  private memoryCache: Map<string, MemoryItem> = new Map();
-  private memoryIndex: Map<MemoryType, Set<string>> = new Map();
+  // Instances for the same user must share state; several learning modules construct
+  // their own manager instances. This remains process-local and is not durable storage.
+  private static memoryCaches = new Map<number, Map<string, MemoryItem>>();
+  private static memoryIndexes = new Map<number, Map<MemoryType, Set<string>>>();
+
+  private get memoryCache(): Map<string, MemoryItem> {
+    return UnifiedMemoryManager.memoryCaches.get(this.userId)!;
+  }
+
+  private get memoryIndex(): Map<MemoryType, Set<string>> {
+    return UnifiedMemoryManager.memoryIndexes.get(this.userId)!;
+  }
 
   constructor(userId: number) {
     this.userId = userId;
-    // 初始化索引
-    Object.values(MemoryType).forEach(type => {
-      this.memoryIndex.set(type, new Set());
-    });
+    if (!UnifiedMemoryManager.memoryCaches.has(userId)) {
+      UnifiedMemoryManager.memoryCaches.set(userId, new Map<string, MemoryItem>());
+      const index = new Map<MemoryType, Set<string>>();
+      Object.values(MemoryType).forEach(type => index.set(type, new Set<string>()));
+      UnifiedMemoryManager.memoryIndexes.set(userId, index);
+    }
   }
 
   /**
    * 添加记忆
    */
   async addMemory(memory: Omit<MemoryItem, 'id' | 'createdAt' | 'updatedAt' | 'accessCount'>): Promise<MemoryItem> {
-    const db = await getDb();
-    if (!db) {
-      throw new Error('Database not available');
-    }
-
+    // This method currently writes to the shared process-local cache only.
+    // Do not imply durability by requiring a database connection that is not used here.
     const now = new Date();
     const id = `mem_${this.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 

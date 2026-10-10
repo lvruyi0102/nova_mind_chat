@@ -39,7 +39,7 @@ class AutonomousBackgroundLoop {
     codeOptimizationEnabled: true, // 启用自动代码优化
     codeOptimizationInterval: 120000, // 2 分钟检查一次（提高可观察性）
     pressureThresholdForCodeOptimization: 10, // 压力 >= 10 时触发代码优化（确保可观察）
-    autoExecuteCodeModifications: true, // 自动执行代码修改
+    autoExecuteCodeModifications: false, // 默认只生成建议；必须经过显式审批才能执行代码修改
   };
 
   private lastDiagnosticTime = 0;
@@ -265,9 +265,9 @@ class AutonomousBackgroundLoop {
           proposal.description
         );
 
-          if (safetyResult.riskLevel === 'critical' || safetyResult.riskLevel === 'high') {
+          if (safetyResult.riskLevel !== 'safe' && safetyResult.riskLevel !== 'low') {
             console.log(
-              `[AutonomousBackgroundLoop] Proposal ${proposal.id} failed safety check (${safetyResult.riskLevel} risk): ${safetyResult.issues.map(i => i.description).join(", ")}`
+              `[AutonomousBackgroundLoop] Proposal ${proposal.id} blocked: only safe/low risk modifications may proceed (${safetyResult.riskLevel} risk): ${safetyResult.issues.map(i => i.description).join(", ")}`
             );
             return;
           }

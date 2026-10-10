@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { conversations, InsertConversation, InsertMessage, InsertUser, messages, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -172,6 +172,49 @@ export async function getCreativeWorkById(workId: number) {
     return result.length > 0 ? result[0] : undefined;
   } catch (error) {
     console.error("[Database] Failed to get creative work:", error);
+    return undefined;
+  }
+}
+
+
+/**
+ * Public-facing creative queries must never expose private or pending works.
+ * In this schema, "shared" is the only visibility state suitable for public reads.
+ */
+export async function getPublicCreativeWorks(userId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    const { creativeWorks } = await import("../drizzle/schema");
+    const visibilityCondition = eq(creativeWorks.visibility, "shared");
+    const query = db.select().from(creativeWorks).where(
+      userId === undefined
+        ? visibilityCondition
+        : and(visibilityCondition, eq(creativeWorks.userId, userId))
+    );
+    return await query.orderBy(desc(creativeWorks.createdAt));
+  } catch (error) {
+    console.error("[Database] Failed to get public creative works:", error);
+    return [];
+  }
+}
+
+export async function getPublicCreativeWorkById(workId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    const { creativeWorks } = await import("../drizzle/schema");
+    const result = await db.select().from(creativeWorks).where(
+      and(
+        eq(creativeWorks.id, workId),
+        eq(creativeWorks.visibility, "shared")
+      )
+    ).limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error("[Database] Failed to get public creative work:", error);
     return undefined;
   }
 }

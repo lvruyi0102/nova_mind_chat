@@ -9,6 +9,7 @@ import { getEvolutionEvaluator } from "../evolution/evolutionEvaluator";
 import { getMutationProposer } from "../evolution/mutationProposer";
 import { createEvolutionEngine } from "../evolution/evolutionEngine";
 import { getCodeModificationExecutor } from "../evolution/codeModificationExecutor";
+import { getSelfModificationJournal } from "../evolution/selfModificationJournal";
 
 let evolutionEngine: any = null;
 
@@ -145,7 +146,14 @@ export const evolutionRouter = router({
 
       const executor = getCodeModificationExecutor();
       const result = await executor.executeModification(proposal);
-      proposal.status = result.success ? "executed" : "failed";
+      const outcomeStatus = result.success ? "executed" : "failed";
+      engine.recordSelfModificationOutcome(proposal.id, outcomeStatus, {
+        filePath: result.filePath,
+        backupPath: result.backupPath,
+        error: result.error,
+        metrics: result.metrics,
+        timestamp: result.timestamp,
+      });
 
       return {
         success: result.success,
@@ -155,6 +163,26 @@ export const evolutionRouter = router({
         backupPath: result.backupPath,
         error: result.error,
         metrics: result.metrics,
+      };
+    }),
+
+  /**
+   * 查询持久化的自我修改记录，用于复盘执行结果与失败原因。
+   */
+  getSelfModificationHistory: adminProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      const journal = getSelfModificationJournal();
+      return {
+        proposals: journal.listProposals().slice(-input.limit).reverse().map((proposal: any) => ({
+          id: proposal.id,
+          filePath: proposal.filePath,
+          description: proposal.description,
+          status: proposal.status || "pending",
+          createdAt: proposal.createdAt,
+          lastOutcome: proposal.lastOutcome,
+        })),
+        events: journal.listEvents(input.limit),
       };
     }),
 

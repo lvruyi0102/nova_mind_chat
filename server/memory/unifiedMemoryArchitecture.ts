@@ -157,6 +157,15 @@ export class UnifiedMemoryManager {
    */
   async addMemory(memory: Omit<MemoryItem, 'id' | 'createdAt' | 'updatedAt' | 'accessCount'>): Promise<MemoryItem> {
     await this.ensureLoaded();
+    if (memory.userId !== this.userId) {
+      throw new Error("Cannot create memory for a different user");
+    }
+    if (
+      !Number.isFinite(memory.confidence) || memory.confidence < 0 || memory.confidence > 1 ||
+      !Number.isFinite(memory.importance) || memory.importance < 0 || memory.importance > 1
+    ) {
+      throw new Error("Memory confidence and importance must be between 0 and 1");
+    }
 
     const now = new Date();
     const id = `mem_${this.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -261,6 +270,10 @@ export class UnifiedMemoryManager {
       updatedAt: new Date(),
     };
 
+    if (updated.type !== memory.type) {
+      this.memoryIndex.get(memory.type)?.delete(id);
+      this.memoryIndex.get(updated.type)?.add(id);
+    }
     await this.persistMemory(updated);
     this.memoryCache.set(id, updated);
     console.log(`[UnifiedMemory] Updated durable memory: ${id}`);

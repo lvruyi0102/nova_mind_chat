@@ -270,8 +270,12 @@ export class EvolutionEngine {
     // Merge in durable state so proposals survive engine recreation and process restarts
     // when the host provides a persistent filesystem.
     const persisted = getSelfModificationJournal().listPending<CodeModificationProposal>();
+    const inMemoryPending = this.pendingCodeModifications.filter((proposal) => {
+      const status = (proposal as CodeModificationProposal & { status?: string }).status;
+      return !status || status === "pending";
+    });
     const byId = new Map<string, CodeModificationProposal>();
-    for (const proposal of [...persisted, ...this.pendingCodeModifications]) byId.set(proposal.id, proposal);
+    for (const proposal of [...persisted, ...inMemoryPending]) byId.set(proposal.id, proposal);
     this.pendingCodeModifications = [...byId.values()];
     return [...this.pendingCodeModifications];
   }

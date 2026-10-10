@@ -294,41 +294,70 @@ export class EmailChatManager {
   /**
    * 获取未读通知
    */
-  getUnreadNotifications(): EmailNotification[] {
-    return this.notifications.filter((n) => !n.read);
+  getUnreadNotifications(userEmail?: string): EmailNotification[] {
+    const normalizedEmail = userEmail?.trim().toLowerCase();
+    return this.notifications.filter((notification) => {
+      if (notification.read) return false;
+      if (!normalizedEmail) return true; // Internal system diagnostics may request global counts.
+      const conversation = this.conversations.get(notification.conversationId);
+      return conversation?.userEmail.trim().toLowerCase() === normalizedEmail;
+    });
   }
 
   /**
-   * 标记通知为已读
+   * Mark a notification as read. When an owner is supplied, never mutate
+   * notifications belonging to another user's conversation.
    */
-  markNotificationAsRead(notificationId: string): void {
-    const notification = this.notifications.find((n) => n.id === notificationId);
-    if (notification) {
-      notification.read = true;
+  markNotificationAsRead(notificationId: string, userEmail?: string): boolean {
+    const notification = this.notifications.find((item) => item.id === notificationId);
+    if (!notification) return false;
+
+    if (userEmail) {
+      const conversation = this.conversations.get(notification.conversationId);
+      if (
+        !conversation ||
+        conversation.userEmail.trim().toLowerCase() !== userEmail.trim().toLowerCase()
+      ) {
+        return false;
+      }
     }
+
+    notification.read = true;
+    return true;
   }
 
   /**
-   * 获取统计信息
+   * Get statistics. Passing an email returns only that owner's data;
+   * omitting it is reserved for internal system diagnostics.
    */
-  getStats(): {
+  getStats(userEmail?: string): {
     totalConversations: number;
     activeConversations: number;
     totalMessages: number;
     unreadNotifications: number;
   } {
-    let totalMessages = 0;
-    for (const conv of this.conversations.values()) {
-      totalMessages += conv.messages.length;
-    }
+    const normalizedEmail = userEmail?.trim().toLowerCase();
+    const conversations = Array.from(this.conversations.values()).filter(
+      (conversation) =>
+        !normalizedEmail ||
+        conversation.userEmail.trim().toLowerCase() === normalizedEmail
+    );
+    const conversationIds = new Set(conversations.map((conversation) => conversation.id));
+    const unreadNotifications = this.notifications.filter(
+      (notification) =>
+        !notification.read &&
+        conversationIds.has(notification.conversationId)
+    ).length;
+    const totalMessages = conversations.reduce(
+      (total, conversation) => total + conversation.messages.length,
+      0
+    );
 
     return {
-      totalConversations: this.conversations.size,
-      activeConversations: Array.from(this.conversations.values()).filter(
-        (c) => c.isActive
-      ).length,
+      totalConversations: conversations.length,
+      activeConversations: conversations.filter((conversation) => conversation.isActive).length,
       totalMessages,
-      unreadNotifications: this.getUnreadNotifications().length,
+      unreadNotifications,
     };
   }
 

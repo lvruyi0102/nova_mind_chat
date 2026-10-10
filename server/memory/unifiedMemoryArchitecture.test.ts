@@ -12,8 +12,9 @@ describe("UnifiedMemoryManager shared process-local cache", () => {
 
   it("shares imported memories across manager instances for the same user", async () => {
     const now = new Date();
-    const memory: MemoryItem = {
-      id: "mem-shared-test",
+    const writer = new UnifiedMemoryManager(userId);
+    const reader = new UnifiedMemoryManager(userId);
+    const memory = await writer.addMemory({
       userId,
       type: MemoryType.CONCEPT,
       content: "The user prefers evidence-backed explanations.",
@@ -21,14 +22,7 @@ describe("UnifiedMemoryManager shared process-local cache", () => {
       visibility: "private",
       confidence: 0.95,
       importance: 0.9,
-      createdAt: now,
-      updatedAt: now,
-      accessCount: 0,
-    };
-
-    const writer = new UnifiedMemoryManager(userId);
-    const reader = new UnifiedMemoryManager(userId);
-    await writer.importMemories([memory]);
+    });
 
     const retrieved = await reader.getMemoriesByType(MemoryType.CONCEPT);
     expect(retrieved.map((item) => item.id)).toContain(memory.id);

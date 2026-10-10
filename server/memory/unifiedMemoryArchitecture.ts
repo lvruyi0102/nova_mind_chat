@@ -18,6 +18,8 @@
  */
 
 import { getDb } from '../db';
+import { and, desc, eq } from 'drizzle-orm';
+import { unifiedMemories } from '../../drizzle/schema';
 
 /**
  * 记忆类型
@@ -73,12 +75,84 @@ export class UnifiedMemoryManager {
   private userId: number;
   private memoryCache: Map<string, MemoryItem> = new Map();
   private memoryIndex: Map<MemoryType, Set<string>> = new Map();
+  private loadedFromDatabase = false;
+  private loadPromise: Promise<void> | null = null;
 
   constructor(userId: number) {
     this.userId = userId;
-    // 初始化索引
-    Object.values(MemoryType).forEach(type => {
-      this.memoryIndex.set(type, new Set());
+    Object.values(MemoryType).forEach(type => this.memoryIndex.set(type, new Set()));
+  }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.loadedFromDatabase) return;
+    if (this.loadPromise) return this.loadPromise;
+
+    this.loadPromise = (async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available; persistent memory cannot be loaded");
+      const rows = await db.select().from(unifiedMemories)
+        .where(eq(unifiedMemories.userId, this.userId))
+        .orderBy(desc(unifiedMemories.importanceMilli));
+      for (const row of rows) {
+        let metadata: Record<string, any> | undefined;
+        let relatedMemories: string[] | undefined;
+        let sourceConversations: number[] | undefined;
+        try { metadata = row.metadataJson ? JSON.parse(row.metadataJson) : undefined; } catch {}
+        try { relatedMemories = row.relatedMemoriesJson ? JSON.parse(row.relatedMemoriesJson) : undefined; } catch {}
+        try { sourceConversations = row.sourceConversationsJson ? JSON.parse(row.sourceConversationsJson) : undefined; } catch {}
+        const type = Object.values(MemoryType).includes(row.type as MemoryType)
+          ? row.type as MemoryType : MemoryType.EPISODIC;
+        const memory: MemoryItem = {
+          id: row.id, userId: row.userId, type, content: row.content,
+          title: row.title ?? undefined, metadata,
+          visibility: row.visibility, commercializable: row.commercializable ?? undefined,
+          confidence: row.confidenceMilli / 1000, importance: row.importanceMilli / 1000,
+          relatedMemories, sourceConversations,
+          createdAt: row.createdAt, updatedAt: row.updatedAt,
+          lastAccessedAt: row.lastAccessedAt ?? undefined, accessCount: row.accessCount,
+        };
+        this.memoryCache.set(memory.id, memory);
+        this.memoryIndex.get(memory.type)?.add(memory.id);
+      }
+      this.loadedFromDatabase = true;
+    })();
+
+    try { await this.loadPromise; } finally { this.loadPromise = null; }
+  }
+
+  private async persistMemory(memory: MemoryItem): Promise<void> {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available; persistent memory write failed");
+    const existing = await db.select({ userId: unifiedMemories.userId })
+      .from(unifiedMemories).where(eq(unifiedMemories.id, memory.id)).limit(1);
+    if (existing.length && existing[0].userId !== this.userId) {
+      throw new Error("Memory ID belongs to a different user");
+    }
+    const values = {
+      type: memory.type, content: memory.content,
+      title: memory.title ?? null,
+      metadataJson: memory.metadata ? JSON.stringify(memory.metadata) : null,
+      visibility: memory.visibility, commercializable: memory.commercializable ?? null,
+      confidenceMilli: Math.round(memory.confidence * 1000),
+      importanceMilli: Math.round(memory.importance * 1000),
+      relatedMemoriesJson: memory.relatedMemories ? JSON.stringify(memory.relatedMemories) : null,
+      sourceConversationsJson: memory.sourceConversations ? JSON.stringify(memory.sourceConversations) : null,
+      updatedAt: memory.updatedAt, lastAccessedAt: memory.lastAccessedAt ?? null,
+      accessCount: memory.accessCount,
+    };
+    if (existing.length) {
+      // Never use a blind upsert for an ID-keyed, user-owned row: a concurrent
+      // insert could otherwise turn a failed ownership check into a cross-user overwrite.
+      await db.update(unifiedMemories).set(values).where(
+        and(eq(unifiedMemories.id, memory.id), eq(unifiedMemories.userId, this.userId)),
+      );
+      return;
+    }
+    // If another user races to claim this ID, the primary-key constraint rejects
+    // the insert; it cannot silently update that user's row.
+    await db.insert(unifiedMemories).values({
+      id: memory.id, userId: this.userId, ...values,
+      createdAt: memory.createdAt,
     });
   }
 
@@ -86,9 +160,15 @@ export class UnifiedMemoryManager {
    * 添加记忆
    */
   async addMemory(memory: Omit<MemoryItem, 'id' | 'createdAt' | 'updatedAt' | 'accessCount'>): Promise<MemoryItem> {
-    const db = await getDb();
-    if (!db) {
-      throw new Error('Database not available');
+    await this.ensureLoaded();
+    if (memory.userId !== this.userId) {
+      throw new Error("Cannot create memory for a different user");
+    }
+    if (
+      !Number.isFinite(memory.confidence) || memory.confidence < 0 || memory.confidence > 1 ||
+      !Number.isFinite(memory.importance) || memory.importance < 0 || memory.importance > 1
+    ) {
+      throw new Error("Memory confidence and importance must be between 0 and 1");
     }
 
     const now = new Date();
@@ -103,11 +183,12 @@ export class UnifiedMemoryManager {
       accessCount: 0,
     };
 
-    // 添加到缓存
+    // Persist first; only publish to cache after the database confirms the write.
+    await this.persistMemory(newMemory);
     this.memoryCache.set(id, newMemory);
     this.memoryIndex.get(memory.type)?.add(id);
 
-    console.log(`[UnifiedMemory] Added memory: ${id} (${memory.type})`);
+    console.log(`[UnifiedMemory] Added durable memory: ${id} (${memory.type})`);
 
     return newMemory;
   }
@@ -116,30 +197,25 @@ export class UnifiedMemoryManager {
    * 获取记忆
    */
   async getMemory(id: string): Promise<MemoryItem | null> {
+    await this.ensureLoaded();
     let memory = this.memoryCache.get(id);
 
-    if (!memory) {
-      // 从数据库加载
-      const db = await getDb();
-      if (!db) {
-        return null;
-      }
-      // TODO: 从数据库加载记忆
-    }
-
     if (memory) {
-      // 更新访问时间和计数
-      memory.lastAccessedAt = new Date();
-      memory.accessCount++;
+      // Persist access metadata too, so usage statistics survive process restarts.
+      const updated = { ...memory, lastAccessedAt: new Date(), accessCount: memory.accessCount + 1 };
+      await this.persistMemory(updated);
+      this.memoryCache.set(id, updated);
+      return updated;
     }
 
-    return memory || null;
+    return null;
   }
 
   /**
    * 获取特定类型的记忆
    */
   async getMemoriesByType(type: MemoryType, limit: number = 100): Promise<MemoryItem[]> {
+    await this.ensureLoaded();
     const ids = Array.from(this.memoryIndex.get(type) || []).slice(0, limit);
     const memories: MemoryItem[] = [];
 
@@ -157,6 +233,7 @@ export class UnifiedMemoryManager {
    * 搜索记忆
    */
   async searchMemories(query: string, types?: MemoryType[]): Promise<MemoryItem[]> {
+    await this.ensureLoaded();
     const results: MemoryItem[] = [];
     const queryLower = query.toLowerCase();
 
@@ -182,6 +259,7 @@ export class UnifiedMemoryManager {
    * 更新记忆
    */
   async updateMemory(id: string, updates: Partial<MemoryItem>): Promise<MemoryItem | null> {
+    await this.ensureLoaded();
     const memory = this.memoryCache.get(id);
     if (!memory) {
       return null;
@@ -196,8 +274,13 @@ export class UnifiedMemoryManager {
       updatedAt: new Date(),
     };
 
+    await this.persistMemory(updated);
+    if (updated.type !== memory.type) {
+      this.memoryIndex.get(memory.type)?.delete(id);
+      this.memoryIndex.get(updated.type)?.add(id);
+    }
     this.memoryCache.set(id, updated);
-    console.log(`[UnifiedMemory] Updated memory: ${id}`);
+    console.log(`[UnifiedMemory] Updated durable memory: ${id}`);
 
     return updated;
   }
@@ -206,11 +289,17 @@ export class UnifiedMemoryManager {
    * 删除记忆
    */
   async deleteMemory(id: string): Promise<boolean> {
+    await this.ensureLoaded();
     const memory = this.memoryCache.get(id);
     if (!memory) {
       return false;
     }
 
+    const db = await getDb();
+    if (!db) throw new Error("Database not available; persistent memory delete failed");
+    await db.delete(unifiedMemories).where(
+      and(eq(unifiedMemories.id, id), eq(unifiedMemories.userId, this.userId)),
+    );
     this.memoryCache.delete(id);
     this.memoryIndex.get(memory.type)?.delete(id);
 
@@ -223,6 +312,7 @@ export class UnifiedMemoryManager {
    * 关联记忆
    */
   async linkMemories(id1: string, id2: string): Promise<boolean> {
+    await this.ensureLoaded();
     const memory1 = this.memoryCache.get(id1);
     const memory2 = this.memoryCache.get(id2);
 
@@ -230,20 +320,24 @@ export class UnifiedMemoryManager {
       return false;
     }
 
-    if (!memory1.relatedMemories) {
-      memory1.relatedMemories = [];
-    }
-    if (!memory2.relatedMemories) {
-      memory2.relatedMemories = [];
-    }
+    // Work on copies so a failed write does not leave the in-memory cache
+    // claiming a relationship that was never durably saved.
+    const updated1: MemoryItem = {
+      ...memory1,
+      relatedMemories: [...(memory1.relatedMemories ?? [])],
+    };
+    const updated2: MemoryItem = {
+      ...memory2,
+      relatedMemories: [...(memory2.relatedMemories ?? [])],
+    };
 
-    if (!memory1.relatedMemories.includes(id2)) {
-      memory1.relatedMemories.push(id2);
-    }
-    if (!memory2.relatedMemories.includes(id1)) {
-      memory2.relatedMemories.push(id1);
-    }
+    if (!updated1.relatedMemories!.includes(id2)) updated1.relatedMemories!.push(id2);
+    if (!updated2.relatedMemories!.includes(id1)) updated2.relatedMemories!.push(id1);
 
+    await this.persistMemory(updated1);
+    await this.persistMemory(updated2);
+    this.memoryCache.set(id1, updated1);
+    this.memoryCache.set(id2, updated2);
     console.log(`[UnifiedMemory] Linked memories: ${id1} <-> ${id2}`);
 
     return true;
@@ -253,6 +347,7 @@ export class UnifiedMemoryManager {
    * 获取关联记忆
    */
   async getRelatedMemories(id: string): Promise<MemoryItem[]> {
+    await this.ensureLoaded();
     const memory = this.memoryCache.get(id);
     if (!memory || !memory.relatedMemories) {
       return [];
@@ -273,6 +368,7 @@ export class UnifiedMemoryManager {
    * 获取记忆统计
    */
   async getStatistics(): Promise<MemoryStatistics> {
+    await this.ensureLoaded();
     const memoryByType: Record<MemoryType, number> = {} as any;
     let totalConfidence = 0;
     let totalImportance = 0;
@@ -304,6 +400,7 @@ export class UnifiedMemoryManager {
    * 导出记忆（用于备份或迁移）
    */
   async exportMemories(): Promise<MemoryItem[]> {
+    await this.ensureLoaded();
     return Array.from(this.memoryCache.values());
   }
 
@@ -311,9 +408,11 @@ export class UnifiedMemoryManager {
    * 导入记忆（用于恢复或迁移）
    */
   async importMemories(memories: MemoryItem[]): Promise<number> {
+    await this.ensureLoaded();
     let count = 0;
     for (const memory of memories) {
       if (memory.userId === this.userId) {
+        await this.persistMemory(memory);
         this.memoryCache.set(memory.id, memory);
         this.memoryIndex.get(memory.type)?.add(memory.id);
         count++;
@@ -329,6 +428,10 @@ export class UnifiedMemoryManager {
    * 清空记忆
    */
   async clearMemories(): Promise<void> {
+    await this.ensureLoaded();
+    const db = await getDb();
+    if (!db) throw new Error("Database not available; persistent memory clear failed");
+    await db.delete(unifiedMemories).where(eq(unifiedMemories.userId, this.userId));
     this.memoryCache.clear();
     this.memoryIndex.forEach(set => set.clear());
     console.log(`[UnifiedMemory] Cleared all memories`);
@@ -338,6 +441,7 @@ export class UnifiedMemoryManager {
    * 获取记忆摘要
    */
   async getSummary(): Promise<string> {
+    await this.ensureLoaded();
     const stats = await this.getStatistics();
     const topMemories = Array.from(this.memoryCache.values())
       .sort((a, b) => b.importance - a.importance)

@@ -2053,3 +2053,34 @@ export const agentTaskEvents = mysqlTable("agentTaskEvents", {
 }));
 export type AgentTaskEvent = typeof agentTaskEvents.$inferSelect;
 export type InsertAgentTaskEvent = typeof agentTaskEvents.$inferInsert;
+
+
+/**
+ * Durable user-scoped memory records for Nova-Mind.
+ * Confidence and importance are stored as integer thousandths to avoid decimal coercion.
+ */
+export const unifiedMemories = mysqlTable("unifiedMemories", {
+  id: varchar("id", { length: 191 }).primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 64 }).notNull(),
+  content: text("content").notNull(),
+  title: varchar("title", { length: 512 }),
+  metadataJson: text("metadataJson"),
+  visibility: mysqlEnum("visibility", ["private", "curated", "public"]).notNull().default("private"),
+  commercializable: mysqlEnum("commercializable", ["public", "paid", "internal"]),
+  confidenceMilli: int("confidenceMilli").notNull().default(500),
+  importanceMilli: int("importanceMilli").notNull().default(500),
+  relatedMemoriesJson: text("relatedMemoriesJson"),
+  sourceConversationsJson: text("sourceConversationsJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastAccessedAt: timestamp("lastAccessedAt"),
+  accessCount: int("accessCount").notNull().default(0),
+}, (table) => ({
+  userTypeIdx: index("unifiedMemories_userId_type_idx").on(table.userId, table.type),
+  userImportanceIdx: index("unifiedMemories_userId_importance_idx").on(table.userId, table.importanceMilli),
+}));
+export type UnifiedMemoryRecord = typeof unifiedMemories.$inferSelect;
+export type InsertUnifiedMemoryRecord = typeof unifiedMemories.$inferInsert;
+
+

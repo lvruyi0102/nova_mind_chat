@@ -127,6 +127,13 @@
       "when": 1791590400000,
       "tag": "0027_nova_agent_task_lease",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1791594000000,
+      "tag": "0028_unified_memories",
+      "breakpoints": true
     }
   ]
 }

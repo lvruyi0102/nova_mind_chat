@@ -68,6 +68,16 @@ export class CodeModificationExecutor {
     };
 
     try {
+      // Source self-modification is opt-in and forbidden in production until an
+      // isolated worktree/container runner is available. Admin auth alone is not
+      // enough protection for code that can rewrite the running application.
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Source self-modification is disabled in production; use an isolated validation runner.");
+      }
+      if (process.env.NOVA_SELF_MODIFICATION_ENABLED !== "true") {
+        throw new Error("Self-modification is disabled. Set NOVA_SELF_MODIFICATION_ENABLED=true only in an isolated development/test environment.");
+      }
+
       // 1. Resolve and validate the target path, including symlink escapes.
       const fullPath = this.resolveAllowedFilePath(proposal.filePath);
 

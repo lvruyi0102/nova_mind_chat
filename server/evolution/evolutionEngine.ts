@@ -195,7 +195,7 @@ export class EvolutionEngine {
         failedTestCases,
         result,
         improvementRatio,
-        notes: `${mutationProposal.description} - ${comparison.winner === "second" ? "Improvement" : "No improvement"}`,
+        notes: `HEURISTIC-ONLY (runtime behavior not executed): ${mutationProposal.description} - ${comparison.winner === "second" ? "Structural proxy score improved" : "No structural proxy improvement"}`,
       };
 
       this.evolutionCycles.push(cycle);

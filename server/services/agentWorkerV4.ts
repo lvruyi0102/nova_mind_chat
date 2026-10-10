@@ -636,7 +636,10 @@ export async function reconcileStaleAgentStepsV4(
     // after step quarantine but before task blocking, leaving BLOCKED work on
     // a still-RUNNING task that no worker can make progress on.
     const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
-    if (!task || !(await blockTask(db, task, message, undefined, true))) continue;
+    // One task may have multiple stale RUNNING steps. The first recovery blocks
+    // the task; subsequent steps must still be quarantined without trying to
+    // transition BLOCKED -> BLOCKED a second time.
+    if (!task || (task.status !== "BLOCKED" && !(await blockTask(db, task, message, undefined, true)))) continue;
 
     // Once the task is BLOCKED, no new worker can acquire it. The lease fence
     // above is the authority check, so quarantine any remaining RUNNING claim

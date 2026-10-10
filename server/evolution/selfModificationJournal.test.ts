@@ -8,7 +8,8 @@ const tempDirs: string[] = [];
 function makeJournal() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nova-self-modification-"));
   tempDirs.push(dir);
-  return new SelfModificationJournal(path.join(dir, "state.json"));
+  const statePath = path.join(dir, "state.json");
+  return { journal: new SelfModificationJournal(statePath), statePath };
 }
 
 afterEach(() => {
@@ -17,15 +18,15 @@ afterEach(() => {
 
 describe("SelfModificationJournal", () => {
   it("persists pending proposals across journal instances", () => {
-    const first = makeJournal();
+    const { journal: first, statePath } = makeJournal();
     first.upsertProposal({ id: "proposal-1", filePath: "server/evolution/example.ts", status: "pending" });
 
-    const second = new SelfModificationJournal((first as any).statePath);
+    const second = new SelfModificationJournal(statePath);
     expect(second.listPending().map((item: any) => item.id)).toEqual(["proposal-1"]);
   });
 
   it("records execution outcomes and updates proposal status", () => {
-    const journal = makeJournal();
+    const { journal } = makeJournal();
     journal.upsertProposal({ id: "proposal-2", filePath: "server/evolution/example.ts", status: "pending" });
     journal.recordEvent({
       proposalId: "proposal-2",

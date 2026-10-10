@@ -1,6 +1,5 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   backupToGitHub,
@@ -30,13 +29,13 @@ async function buildUserScopedMemoryExport(db: any, userId: number) {
     try {
       return await table.findMany({
         where: (fields: any, operators: any) => {
-          if (!fields.userId) throw new Error(\`Table \${tableName} has no userId ownership column\`);
+          if (!fields.userId) throw new Error(`Table ${tableName} has no userId ownership column`);
           return operators.eq(fields.userId, userId);
         },
         limit,
       });
     } catch (error) {
-      console.warn(\`[export] Skipping \${tableName}: ownership-scoped query failed\`);
+      console.warn(`[export] Skipping ${tableName}: ownership-scoped query failed`);
       return [];
     }
   };

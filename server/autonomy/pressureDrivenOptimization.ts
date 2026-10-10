@@ -7,7 +7,7 @@
 
 import { getPressureAwarenessEngine, PressureResponse } from '../evolution/pressureAwarenessEngine';
 import { getAutonomousOptimizationEngine } from '../evolution/autonomousOptimizationEngine';
-import { getCodeModificationEngine } from '../evolution/codeModificationEngine';
+import { getCodeModificationEngine, CodeModificationProposal } from '../evolution/codeModificationEngine';
 import { getCodeSafetyChecker } from '../evolution/codeSafetyChecker';
 import { getSelfDiagnostics } from './selfDiagnostics';
 import { getAutoOptimizationGuardrails } from './autoOptimizationGuardrails';
@@ -31,7 +31,7 @@ export interface OptimizationFlowResult {
  */
 export class PressureDrivenOptimizationFlow {
   private flowHistory: OptimizationFlowResult[] = [];
-  private pendingProposals: Array<{ proposal: Awaited<ReturnType<ReturnType<typeof getCodeModificationEngine>['generateModificationProposal']>>; createdAt: number; riskLevel: string }> = [];
+  private pendingProposals: Array<{ proposal: CodeModificationProposal; createdAt: number; riskLevel: string }> = [];
   private maxHistorySize = 100;
   private isRunning = false;
 

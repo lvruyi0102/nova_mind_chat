@@ -11,6 +11,10 @@
 
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { lookup as dnsLookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import * as http from "node:http";
+import * as https from "node:https";
 import { invokeLLM } from "../_core/llm";
 
 export interface WebPage {
@@ -53,20 +57,41 @@ export class WebCrawler {
    */
   async fetchWebPage(url: string): Promise<WebPage | null> {
     try {
-      // 验证 URL
-      if (!this.isValidUrl(url)) {
-        console.warn("[WebCrawler] Invalid URL:", url);
+      // Validate the destination and pin DNS resolution to a public IPv4 address.
+      // Redirects are disabled so a public page cannot redirect the crawler to an internal host.
+      const target = await this.resolvePinnedPublicUrl(url);
+      if (!target) {
+        console.warn("[WebCrawler] Blocked unsafe URL:", url);
         return null;
       }
 
-      // 抓取网页
-      const response = await axios.get(url, {
-        timeout: this.timeout,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-      });
+      const pinnedLookup = ((_hostname: string, options: any, callback: any) => {
+        const result = { address: target.address, family: 4 };
+        if (options && typeof options === "object" && options.all) {
+          callback(null, [result]);
+        } else {
+          callback(null, result.address, result.family);
+        }
+      }) as any;
+      const httpAgent = new http.Agent({ keepAlive: false, lookup: pinnedLookup });
+      const httpsAgent = new https.Agent({ keepAlive: false, lookup: pinnedLookup });
+      let response;
+      try {
+        response = await axios.get(target.url.toString(), {
+          timeout: this.timeout,
+          maxRedirects: 0,
+          proxy: false,
+          httpAgent,
+          httpsAgent,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
+        });
+      } finally {
+        httpAgent.destroy();
+        httpsAgent.destroy();
+      }
 
       if (response.status !== 200) {
         console.warn("[WebCrawler] Failed to fetch URL:", url, response.status);
@@ -250,15 +275,88 @@ export class WebCrawler {
   }
 
   /**
-   * 验证 URL
+   * Resolve a URL only when it points to a public HTTP(S) IPv4 destination.
+   * The chosen address is pinned into the HTTP agent to prevent a second DNS
+   * lookup from rebinding the hostname to a private address.
    */
-  private isValidUrl(url: string): boolean {
+  private async resolvePinnedPublicUrl(
+    rawUrl: string
+  ): Promise<{ url: URL; address: string } | null> {
     try {
-      new URL(url);
-      return true;
+      const url = new URL(rawUrl);
+      if (
+        (url.protocol !== "http:" && url.protocol !== "https:") ||
+        url.username ||
+        url.password
+      ) {
+        return null;
+      }
+
+      const hostname = url.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
+      if (
+        !hostname ||
+        hostname === "localhost" ||
+        hostname.endsWith(".localhost") ||
+        hostname.endsWith(".local") ||
+        hostname.endsWith(".internal")
+      ) {
+        return null;
+      }
+
+      // IPv6 destinations are intentionally not used; the request is pinned to IPv4.
+      if (isIP(hostname) === 6) return null;
+
+      let addresses: Array<{ address: string; family: number }>;
+      if (isIP(hostname) === 4) {
+        addresses = [{ address: hostname, family: 4 }];
+      } else {
+        addresses = await dnsLookup(hostname, { all: true, verbatim: true });
+      }
+
+      const ipv4Addresses = addresses.filter((entry) => entry.family === 4);
+      if (
+        ipv4Addresses.length === 0 ||
+        ipv4Addresses.some((entry) => !this.isPublicIPv4(entry.address))
+      ) {
+        return null;
+      }
+
+      return { url, address: ipv4Addresses[0].address };
     } catch {
+      return null;
+    }
+  }
+
+  /** Reject private, loopback, link-local, reserved and non-routable IPv4 ranges. */
+  private isPublicIPv4(address: string): boolean {
+    const parts = address.split(".").map(Number);
+    if (
+      parts.length !== 4 ||
+      parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+    ) {
       return false;
     }
+
+    const [a, b, c] = parts;
+    if (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 192 && b === 0 && c === 0) ||
+      (a === 192 && b === 0 && c === 2) ||
+      (a === 192 && b === 88 && c === 99) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113) ||
+      a >= 224
+    ) {
+      return false;
+    }
+    return true;
   }
 }
 

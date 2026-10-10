@@ -47,9 +47,9 @@ async function blockTask(
   message: string,
   leaseToken?: string,
   requireExpiredLease = false,
-) {
+): Promise<boolean> {
   const from = task.status as ExecutionStatus;
-  if (from === "BLOCKED" || from === "FAILED" || from === "CANCELLED" || from === "SUCCEEDED") return;
+  if (from === "BLOCKED" || from === "FAILED" || from === "CANCELLED" || from === "SUCCEEDED") return false;
   try { assertExecutionTransition(from, "BLOCKED"); } catch { /* keep the failure visible in the audit log */ }
   const whereClause = leaseToken
     ? and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status), eq(agentTasks.workerLeaseToken, leaseToken))
@@ -69,9 +69,12 @@ async function blockTask(
   }).where(whereClause);
   if (affectedRows(changed) === 1) {
     await event(db, task.id, "TASK_BLOCKED", { message });
-  } else if (leaseToken) {
+    return true;
+  }
+  if (leaseToken) {
     await event(db, task.id, "STALE_WORKER_TASK_BLOCK_FENCED", { message });
   }
+  return false;
 }
 
 async function promoteDueRetries(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, taskId: number) {
@@ -628,24 +631,23 @@ export async function reconcileStaleAgentStepsV4(
     }
 
     const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
-    // Re-check lease expiry inside the same UPDATE that quarantines the step.
-    // A separate read followed by a step update leaves a race where a worker
-    // can renew its lease after the read but before this update.
+    // Block the task with an expired-lease compare-and-set before changing
+    // the step. This closes the gap where a new worker could acquire the task
+    // after step quarantine but before task blocking, leaving BLOCKED work on
+    // a still-RUNNING task that no worker can make progress on.
+    const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
+    if (!task || !(await blockTask(db, task, message, undefined, true))) continue;
+
+    // Once the task is BLOCKED, no new worker can acquire it. The lease fence
+    // above is the authority check, so quarantine any remaining RUNNING claim
+    // even if its timestamp was refreshed near the lease deadline.
     const recoveryCheckAt = new Date();
     const changed = await db.update(agentTaskSteps).set({
       status: "BLOCKED", lastError: message, updatedAt: recoveryCheckAt,
     }).where(and(
       eq(agentTaskSteps.id, step.id),
+      eq(agentTaskSteps.taskId, step.taskId),
       eq(agentTaskSteps.status, "RUNNING"),
-      lt(agentTaskSteps.updatedAt, cutoff),
-      inArray(agentTaskSteps.taskId, db.select({ id: agentTasks.id }).from(agentTasks).where(and(
-        eq(agentTasks.id, step.taskId),
-        or(
-          isNull(agentTasks.workerLeaseToken),
-          isNull(agentTasks.workerLeaseUntil),
-          lt(agentTasks.workerLeaseUntil, recoveryCheckAt),
-        ),
-      ))),
     ));
     if (affectedRows(changed) !== 1) continue;
 
@@ -655,19 +657,15 @@ export async function reconcileStaleAgentStepsV4(
     await db.update(agentToolRuns).set({
       status: "UNKNOWN",
       errorMessage: message,
-      finishedAt: new Date(),
+      finishedAt: recoveryCheckAt,
     }).where(and(
       eq(agentToolRuns.stepId, step.id),
       eq(agentToolRuns.status, "RUNNING"),
     ));
 
-    const [task] = await db.select().from(agentTasks).where(eq(agentTasks.id, step.taskId)).limit(1);
-    if (task) {
-      await blockTask(db, task, message, undefined, true);
-      await event(db, task.id, "STALE_STEP_RECONCILED", {
-        stepId: step.id, attemptCount: step.attemptCount, cutoff: cutoff.toISOString(),
-      });
-    }
+    await event(db, task.id, "STALE_STEP_RECONCILED", {
+      stepId: step.id, attemptCount: step.attemptCount, cutoff: cutoff.toISOString(),
+    });
     recovered++;
   }
   return recovered;

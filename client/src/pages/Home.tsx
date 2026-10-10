@@ -48,21 +48,18 @@ export default function Home() {
 
   // Send message mutation
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
-    onSuccess: (data) => {
-      // Add user message
+    onSuccess: (data, variables) => {
+      // The server returns { content } and persists both messages to the database.
+      // Keep the UI contract aligned with server/routers.ts.
       setMessages((prev) => [
         ...prev,
         {
           role: "user",
-          content: data.userMessage,
+          content: variables.content,
         },
-      ]);
-      // Add assistant response
-      setMessages((prev) => [
-        ...prev,
         {
           role: "assistant",
-          content: data.assistantMessage,
+          content: data.content,
         },
       ]);
     },

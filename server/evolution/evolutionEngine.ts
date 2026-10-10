@@ -157,6 +157,16 @@ export class EvolutionEngine {
         // rewrite its own source code as a side effect. Generate a reviewable proposal
         // and leave execution to an explicit, separately audited release process.
         try {
+          // Feed recent real execution outcomes back into the next proposal. This is
+          // evidence-based adaptation: failures and rollback results become context,
+          // rather than being treated as if a proposal had succeeded.
+          const recentOutcomes = getSelfModificationJournal().listEvents(5);
+          const outcomeFeedback = recentOutcomes.length
+            ? recentOutcomes.map((event) =>
+                `- ${event.status} at ${event.timestamp}; file=${event.filePath || "unknown"}; error=${event.error || "none"}; validation=${JSON.stringify((event.metrics as any)?.validation || null)}; rollback=${JSON.stringify((event.metrics as any)?.rollback || null)}`
+              ).join("\\n")
+            : "No prior source-modification execution outcomes are available yet.";
+
           const codeModification = await this.codeModificationEngine.generateModificationProposal({
             pressureLevel: 50,
             pressureType: 'latency',
@@ -164,7 +174,12 @@ export class EvolutionEngine {
               responseTime: childMetrics.compositeScore || 0,
               accuracy: childMetrics.correctnessScore || 0,
             },
-            diagnosticResults: `Evolution successful with ${improvementRatio.toFixed(2)}% improvement`,
+            diagnosticResults: [
+              `Current workflow-genome evolution improved by ${improvementRatio.toFixed(2)}%.`,
+              "Prior source-modification outcomes (observed evidence; do not assume success):",
+              outcomeFeedback,
+              "Use any prior validation errors to avoid repeating the same failure. If rollback failed, propose no further source edits until an operator resolves the repository state.",
+            ].join("\\n"),
           });
 
           if (codeModification) {

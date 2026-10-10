@@ -1,0 +1,22 @@
+CREATE TABLE `unifiedMemories` (
+  `id` varchar(191) NOT NULL,
+  `userId` int NOT NULL,
+  `type` varchar(64) NOT NULL,
+  `content` text NOT NULL,
+  `title` varchar(512),
+  `metadataJson` text,
+  `visibility` enum('private','curated','public') NOT NULL DEFAULT 'private',
+  `commercializable` enum('public','paid','internal'),
+  `confidenceMilli` int NOT NULL DEFAULT 500,
+  `importanceMilli` int NOT NULL DEFAULT 500,
+  `relatedMemoriesJson` text,
+  `sourceConversationsJson` text,
+  `createdAt` timestamp NOT NULL DEFAULT (now()),
+  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+  `lastAccessedAt` timestamp,
+  `accessCount` int NOT NULL DEFAULT 0,
+  CONSTRAINT `unifiedMemories_id` PRIMARY KEY(`id`),
+  CONSTRAINT `unifiedMemories_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  INDEX `unifiedMemories_userId_type_idx` (`userId`,`type`),
+  INDEX `unifiedMemories_userId_importance_idx` (`userId`,`importanceMilli`)
+);

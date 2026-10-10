@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { CodeModificationProposal } from './codeModificationEngine';
 
 export interface ExecutionResult {
@@ -247,7 +248,7 @@ export class CodeModificationExecutor {
   private async createBackup(filePath: string, content: string): Promise<string> {
     const timestamp = Date.now();
     const fileName = path.basename(filePath);
-    const backupFileName = `${fileName}.${timestamp}.backup`;
+    const backupFileName = `${fileName}.${timestamp}.${randomUUID()}.backup`;
     const backupPath = path.join(this.backupDir, backupFileName);
 
     fs.writeFileSync(backupPath, content, 'utf-8');
@@ -415,8 +416,12 @@ export class CodeModificationExecutor {
         throw new Error("Invalid backup filename");
       }
       const backupPath = path.resolve(this.backupDir, backupFileName);
-      if (!this.isPathInside(path.resolve(this.backupDir), backupPath) || !fs.existsSync(backupPath) || !fs.statSync(backupPath).isFile()) {
-        throw new Error("Backup file not found or invalid");
+      const backupRoot = fs.realpathSync(this.backupDir);
+      if (!this.isPathInside(backupRoot, backupPath) ||
+          !fs.existsSync(backupPath) ||
+          !fs.statSync(backupPath).isFile() ||
+          !this.isPathInside(backupRoot, fs.realpathSync(backupPath))) {
+        throw new Error("Backup file must be a regular file inside the managed backup directory");
       }
 
       const backupContent = fs.readFileSync(backupPath, 'utf-8');

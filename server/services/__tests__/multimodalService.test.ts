@@ -122,31 +122,23 @@ describe('MultimodalService', () => {
   });
 
   describe('generateCreativeMedia', () => {
-    it('should generate creative media with valid input', async () => {
-      const userId = 1;
-      const mediaType = 'image';
-      const prompt = 'test prompt';
-
-      const { invokeLLM } = await import('../../_core/llm');
-      vi.mocked(invokeLLM).mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'https://example.com/media.jpg',
-            },
-          },
-        ],
-      } as any);
-
-      const { storagePut } = await import('../../storage');
-      vi.mocked(storagePut).mockResolvedValue({
-        url: 'https://s3.example.com/media.jpg',
-        key: 'user-1/media-123.jpg',
+    it('must not report success when no real media provider is configured', async () => {
+      await expect(
+        generateCreativeMedia(1, 'music', 'test prompt'),
+      ).rejects.toMatchObject({
+        code: 'MEDIA_PROVIDER_NOT_CONFIGURED',
       });
 
-      const result = await generateCreativeMedia(userId, mediaType as any, prompt);
-
-      expect(result).toBeDefined();
+      expect(mockDb.insert).toHaveBeenCalled();
+      const valuesCall = mockDb.insert.mock.results[0]?.value?.values;
+      expect(valuesCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'failed',
+          progress: 0,
+          generationModel: 'unconfigured',
+          errorMessage: expect.stringContaining('No real media-generation provider is configured'),
+        }),
+      );
     });
   });
 

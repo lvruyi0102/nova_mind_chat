@@ -15,11 +15,14 @@
  *     }]
  *   });
  */
+import { randomUUID } from "node:crypto";
 import { storagePut } from "server/storage";
 import { ENV } from "./env";
+import { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
 
 export type GenerateImageOptions = {
   prompt: string;
+  timeoutMs?: number;
   originalImages?: Array<{
     url?: string;
     b64Json?: string;
@@ -29,7 +32,10 @@ export type GenerateImageOptions = {
 
 export type GenerateImageResponse = {
   url?: string;
+  mimeType?: string;
 };
+
+export { assertImagePayloadMatchesMime } from "./imagePayloadValidation";
 
 export async function generateImage(
   options: GenerateImageOptions
@@ -52,6 +58,7 @@ export async function generateImage(
 
   const response = await fetch(fullUrl, {
     method: "POST",
+    signal: AbortSignal.timeout(Math.max(1, options.timeoutMs ?? 120_000)),
     headers: {
       accept: "application/json",
       "content-type": "application/json",
@@ -77,16 +84,29 @@ export async function generateImage(
       mimeType: string;
     };
   };
+  if (!result?.image || typeof result.image.b64Json !== "string" || !result.image.b64Json.trim()) {
+    throw new Error("Image provider returned an empty image payload");
+  }
+  const mimeType = result.image.mimeType;
+  if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+    throw new Error(`Image provider returned unsupported MIME type: ${String(mimeType)}`);
+  }
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
+  // Do not trust a provider's MIME label alone; verify bytes before storage.
+  assertImagePayloadMatchesMime(buffer, mimeType);
 
-  // Save to S3
+  // Save to S3 only after validating that the provider returned a supported image.
+  const extension = mimeType === "image/jpeg" ? "jpg"
+    : mimeType === "image/webp" ? "webp"
+    : "png";
   const { url } = await storagePut(
-    `generated/${Date.now()}.png`,
+    `generated/${randomUUID()}.${extension}`,
     buffer,
-    result.image.mimeType
+    mimeType
   );
   return {
     url,
+    mimeType,
   };
 }

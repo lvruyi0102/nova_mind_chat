@@ -8,6 +8,7 @@ import { getGenomeManager } from "../evolution/genomeManager";
 import { getEvolutionEvaluator } from "../evolution/evolutionEvaluator";
 import { getMutationProposer } from "../evolution/mutationProposer";
 import { createEvolutionEngine } from "../evolution/evolutionEngine";
+import { getCodeModificationExecutor } from "../evolution/codeModificationExecutor";
 
 let evolutionEngine: any = null;
 
@@ -108,6 +109,52 @@ export const evolutionRouter = router({
           improvementRatio: c.improvementRatio,
           mutationType: c.mutationProposal.mutationType,
         })),
+      };
+    }),
+
+  /**
+   * 查看 NOVA 已生成、等待执行的自我修改提案。
+   */
+  getPendingSelfModifications: adminProcedure.query(async () => {
+    const engine = await initializeEvolutionEngine();
+    return engine.getPendingCodeModifications().map((proposal: any) => ({
+      id: proposal.id,
+      filePath: proposal.filePath,
+      description: proposal.description,
+      reasoning: proposal.reasoning,
+      riskAssessment: proposal.riskAssessment,
+      createdAt: proposal.createdAt,
+      status: proposal.status,
+    }));
+  }),
+
+  /**
+   * 执行 NOVA 已生成的自我修改提案。
+   * 执行器会先备份文件，再要求代码片段精确且唯一匹配。
+   */
+  executeSelfModification: adminProcedure
+    .input(z.object({ proposalId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const engine = await initializeEvolutionEngine();
+      const proposal = engine.getPendingCodeModifications().find(
+        (item: any) => item.id === input.proposalId
+      );
+      if (!proposal) {
+        throw new Error("Self-modification proposal not found");
+      }
+
+      const executor = getCodeModificationExecutor();
+      const result = await executor.executeModification(proposal);
+      proposal.status = result.success ? "executed" : "failed";
+
+      return {
+        success: result.success,
+        proposalId: result.proposalId,
+        filePath: result.filePath,
+        timestamp: result.timestamp,
+        backupPath: result.backupPath,
+        error: result.error,
+        metrics: result.metrics,
       };
     }),
 

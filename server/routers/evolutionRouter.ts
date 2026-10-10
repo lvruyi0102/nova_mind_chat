@@ -145,7 +145,7 @@ export const evolutionRouter = router({
       }
 
       const executor = getCodeModificationExecutor();
-      const result = await executor.executeModification(proposal);
+      const result = await executor.executeAndValidateModification(proposal);
       const outcomeStatus = result.success ? "executed" : "failed";
       engine.recordSelfModificationOutcome(proposal.id, outcomeStatus, {
         filePath: result.filePath,
@@ -163,6 +163,8 @@ export const evolutionRouter = router({
         backupPath: result.backupPath,
         error: result.error,
         metrics: result.metrics,
+        validation: result.validation,
+        rollback: result.rollback,
       };
     }),
 

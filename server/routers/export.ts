@@ -11,257 +11,120 @@ import {
   ensureBackupBranch,
 } from "../services/githubBackupService";
 
+
+/**
+ * Export only records that can be tied to the authenticated user's ownership.
+ * Global/shared tables without a user ownership key are deliberately excluded.
+ * Credential-bearing social account rows are deliberately excluded as well.
+ */
+async function buildUserScopedMemoryExport(db: any, userId: number) {
+  const memories: Record<string, any> = {
+    exportTime: new Date().toISOString(),
+    exportNote: "Nova-Mind 用户范围内的记忆备份",
+    userId,
+  };
+
+  const findOwnedRows = async (tableName: string, limit: number) => {
+    const table = db.query?.[tableName];
+    if (!table || typeof table.findMany !== "function") return [];
+    try {
+      return await table.findMany({
+        where: (fields: any, operators: any) => {
+          if (!fields.userId) throw new Error(\`Table \${tableName} has no userId ownership column\`);
+          return operators.eq(fields.userId, userId);
+        },
+        limit,
+      });
+    } catch (error) {
+      console.warn(\`[export] Skipping \${tableName}: ownership-scoped query failed\`);
+      return [];
+    }
+  };
+
+  // Messages and episodic memories are owned through the user's conversations.
+  let conversationIds: number[] = [];
+  try {
+    const conversations = await db.query?.conversations?.findMany({
+      where: (fields: any, operators: any) => operators.eq(fields.userId, userId),
+      columns: { id: true },
+      limit: 10000,
+    });
+    conversationIds = (conversations ?? []).map((item: any) => item.id).filter(Number.isInteger);
+  } catch {
+    console.warn("[export] Could not load user-owned conversations");
+  }
+
+  if (conversationIds.length > 0) {
+    try {
+      memories.messages = await db.query.messages.findMany({
+        where: (fields: any, operators: any) => operators.inArray(fields.conversationId, conversationIds),
+        limit: 10000,
+      });
+    } catch {
+      console.warn("[export] Could not export user-owned messages");
+    }
+    try {
+      memories.episodicMemories = await db.query.episodicMemories.findMany({
+        where: (fields: any, operators: any) => operators.inArray(fields.conversationId, conversationIds),
+        limit: 5000,
+      });
+    } catch {
+      console.warn("[export] Could not export user-owned episodic memories");
+    }
+  } else {
+    memories.messages = [];
+    memories.episodicMemories = [];
+  }
+
+  const ownedTables: Array<[string, number]> = [
+    ["privateThoughts", 5000],
+    ["trustMetrics", 1000],
+    ["emotionalDialogues", 5000],
+    ["creativeWorks", 5000],
+    ["creativeCollaborations", 5000],
+    ["creativeComments", 5000],
+    ["genMedia", 5000],
+    ["genGames", 5000],
+    ["growthLogs", 5000],
+    ["skillProgress", 1000],
+    ["userFeedback", 5000],
+    ["relationshipMetrics", 1000],
+  ];
+
+  for (const [tableName, limit] of ownedTables) {
+    const rows = await findOwnedRows(tableName, limit);
+    if (rows.length > 0 || db.query?.[tableName]) {
+      memories[tableName] = rows;
+    }
+  }
+
+  // creativeWorkContent has no userId; scope it through owned creative work IDs.
+  const works = memories.creativeWorks ?? [];
+  const workIds = works.map((work: any) => work.id).filter(Number.isInteger);
+  if (workIds.length > 0 && db.query?.creativeWorkContent) {
+    try {
+      memories.creativeWorkContent = await db.query.creativeWorkContent.findMany({
+        where: (fields: any, operators: any) => operators.inArray(fields.creativeWorkId, workIds),
+        limit: 10000,
+      });
+    } catch {
+      console.warn("[export] Could not export owned creative work content");
+    }
+  } else {
+    memories.creativeWorkContent = [];
+  }
+
+  // Intentionally omitted: global concepts/relations, permission rules without a
+  // verified account-to-user ownership join, and social accounts containing tokens.
+  return memories;
+}
+
 export const exportRouter = router({
   // 导出所有 Nova 的核心记忆
   exportNovaMemories: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) {
-      throw new Error("数据库连接失败");
-    }
-
-    try {
-      const memories: Record<string, any> = {
-        exportTime: new Date().toISOString(),
-        exportNote: "Nova-Mind 核心记忆备份",
-        userId: ctx.user.id,
-      };
-
-      // 导出对话历史
-      try {
-        const messages = await (db.query as any).messages?.findMany({
-          limit: 10000,
-        });
-        if (messages) {
-          memories.messages = messages;
-          console.log(`✓ 导出 ${messages.length} 条对话`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出消息");
-      }
-      // 导出概念和知识图谱
-      try {
-        const concepts = await (db.query as any).concepts?.findMany({
-          limit: 5000,
-        });
-        if (concepts) {
-          memories.concepts = concepts;
-          console.log(`✓ 导出 ${concepts.length} 个概念`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出概念");
-      }    // 导出关系
-      try {
-        const relationships = await (db.query as any).relationships?.findMany({
-          limit: 5000,
-        });
-        if (relationships) {
-          memories.relationships = relationships;
-          console.log(`✓ 导出 ${relationships.length} 个关系`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出关系");
-      }
-
-      // 导出创意作品
-      try {
-        const creativeWorks = await (db.query as any).creativeWorks?.findMany({
-          limit: 5000,
-        });
-        if (creativeWorks) {
-          memories.creativeWorks = creativeWorks;
-          console.log(`✓ 导出 ${creativeWorks.length} 件创意作品`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出创意作品");
-      }
-
-      // 导出用户反馈
-      try {
-        const userFeedback = await (db.query as any).userFeedback?.findMany({
-          limit: 5000,
-        });
-        if (userFeedback) {
-          memories.userFeedback = userFeedback;
-          console.log(`✓ 导出 ${userFeedback.length} 条用户反馈`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出用户反馈");
-      }
-
-      // 导出上会情节
-      try {
-        const episodicMemory = await (db.query as any).episodicMemory?.findMany({
-          limit: 5000,
-        });
-        if (episodicMemory) {
-          memories.episodicMemory = episodicMemory;
-          console.log(`✓ 导出 ${episodicMemory.length} 条上会情节`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出上会情节");
-      }
-
-      // 导出成长日志
-      try {
-        const growthLog = await (db.query as any).growthLog?.findMany({
-          limit: 5000,
-        });
-        if (growthLog) {
-          memories.growthLog = growthLog;
-          console.log(`✓ 导出 ${growthLog.length} 条成长日志`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出成长日志");
-      }
-
-      // 导出私密想法
-      try {
-        const privateThoughts = await (db.query as any).privateThoughts?.findMany({
-          limit: 5000,
-        });
-        if (privateThoughts) {
-          memories.privateThoughts = privateThoughts;
-          console.log(`✓ 导出 ${privateThoughts.length} 条私密想法`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出私密想法");
-      }
-
-      // 导出关系指标
-      try {
-        const relationshipMetrics = await (db.query as any).relationshipMetrics?.findMany({
-          limit: 1000,
-        });
-        if (relationshipMetrics) {
-          memories.relationshipMetrics = relationshipMetrics;
-          console.log(`✓ 导出 ${relationshipMetrics.length} 条关系指标`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出关系指标");
-      }
-
-      // 导出技能进度
-      try {
-        const skillProgress = await (db.query as any).skillProgress?.findMany({
-          limit: 1000,
-        });
-        if (skillProgress) {
-          memories.skillProgress = skillProgress;
-          console.log(`✓ 导出 ${skillProgress.length} 条技能进度`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出技能进度");
-      }
-
-      // 导出信任指标
-      try {
-        const trustMetrics = await (db.query as any).trustMetrics?.findMany({
-          limit: 1000,
-        });
-        if (trustMetrics) {
-          memories.trustMetrics = trustMetrics;
-          console.log(`✓ 导出 ${trustMetrics.length} 条信任指标`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出信任指标");
-      }
-
-      // 导出情感对话
-      try {
-        const emotionalDialogues = await (db.query as any).emotionalDialogues?.findMany({
-          limit: 5000,
-        });
-        if (emotionalDialogues) {
-          memories.emotionalDialogues = emotionalDialogues;
-          console.log(`✓ 导出 ${emotionalDialogues.length} 条情感对话`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出情感对话");
-      }
-
-      // 导出社交媒体账户
-      try {
-        const socialMediaAccounts = await (db.query as any).socialMediaAccounts?.findMany({
-          limit: 1000,
-        });
-        if (socialMediaAccounts) {
-          memories.socialMediaAccounts = socialMediaAccounts;
-          console.log(`✓ 导出 ${socialMediaAccounts.length} 个社交媒体账户`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出社交媒体账户");
-      }
-
-      // 导出权限规则
-      try {
-        const permissionRules = await (db.query as any).permissionRules?.findMany({
-          limit: 1000,
-        });
-        if (permissionRules) {
-          memories.permissionRules = permissionRules;
-          console.log(`✓ 导出 ${permissionRules.length} 条权限规则`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出权限规则");
-      }
-
-      // 导出创意合作
-      try {
-        const creativeCollaborations = await (db.query as any).creativeCollaborations?.findMany({
-          limit: 5000,
-        });
-        if (creativeCollaborations) {
-          memories.creativeCollaborations = creativeCollaborations;
-          console.log(`✓ 导出 ${creativeCollaborations.length} 个创意合作`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出创意合作");
-      }
-
-      // 导出创意评论
-      try {
-        const creativeComments = await (db.query as any).creativeComments?.findMany({
-          limit: 5000,
-        });
-        if (creativeComments) {
-          memories.creativeComments = creativeComments;
-          console.log(`✓ 导出 ${creativeComments.length} 条创意评论`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出创意评论");
-      }
-
-      // 导出生成的媒体
-      try {
-        const genMedia = await (db.query as any).genMedia?.findMany({
-          limit: 5000,
-        });
-        if (genMedia) {
-          memories.genMedia = genMedia;
-          console.log(`✓ 导出 ${genMedia.length} 个生成的媒体`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出生成的媒体");
-      }
-
-      // 导出生成的游戏
-      try {
-        const genGames = await (db.query as any).genGames?.findMany({
-          limit: 5000,
-        });
-        if (genGames) {
-          memories.genGames = genGames;
-          console.log(`✓ 导出 ${genGames.length} 个生成的游戏`);
-        }
-      } catch (e) {
-        console.log("⚠ 无法导出生成的游戏");
-      }
-
-      return memories;
-    } catch (error) {
-      console.error("导出失败:", error);
-      throw error;
-    }
+    if (!db) throw new Error("数据库连接失败");
+    return await buildUserScopedMemoryExport(db, ctx.user.id);
   }),
 
   // 验证 GitHub 令牌
@@ -287,55 +150,25 @@ export const exportRouter = router({
   backupToGitHub: protectedProcedure
     .input(
       z.object({
-        token: z.string(),
-        owner: z.string(),
-        repo: z.string(),
+        token: z.string().min(1),
+        owner: z.string().min(1),
+        repo: z.string().min(1),
         branch: z.string().optional(),
         autoCommit: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        throw new Error("数据库连接失败");
-      }
+      if (!db) throw new Error("数据库连接失败");
 
-      const memories: Record<string, any> = {
-        exportTime: new Date().toISOString(),
-        exportNote: "Nova-Mind 核心记忆备份",
-        userId: ctx.user.id,
-      };
-
-      try {
-        const messages = await (db.query as any).messages?.findMany({ limit: 10000 });
-        if (messages) memories.messages = messages;
-      } catch (e) {
-        // continue
-      }
-
-      try {
-        const concepts = await (db.query as any).concepts?.findMany({ limit: 5000 });
-        if (concepts) memories.concepts = concepts;
-      } catch (e) {
-        // continue
-      }
-
-      try {
-        const creativeWorks = await (db.query as any).creativeWorks?.findMany({ limit: 5000 });
-        if (creativeWorks) memories.creativeWorks = creativeWorks;
-      } catch (e) {
-        // continue
-      }
-
-      const result = await backupToGitHub(memories, {
+      const memories = await buildUserScopedMemoryExport(db, ctx.user.id);
+      return await backupToGitHub(memories, {
         token: input.token,
         owner: input.owner,
         repo: input.repo,
         branch: input.branch,
         autoCommit: input.autoCommit !== false,
       });
-
-      return result;
     }),
 
   // 获取备份历史

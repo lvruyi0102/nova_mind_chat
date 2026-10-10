@@ -621,12 +621,24 @@ export async function reconcileStaleAgentStepsV4(
     }
 
     const message = "Worker claim became stale. Automatic replay is suppressed because provider side-effect completion is unknown.";
+    // Re-check lease expiry inside the same UPDATE that quarantines the step.
+    // A separate read followed by a step update leaves a race where a worker
+    // can renew its lease after the read but before this update.
+    const recoveryCheckAt = new Date();
     const changed = await db.update(agentTaskSteps).set({
-      status: "BLOCKED", lastError: message, updatedAt: new Date(),
+      status: "BLOCKED", lastError: message, updatedAt: recoveryCheckAt,
     }).where(and(
       eq(agentTaskSteps.id, step.id),
       eq(agentTaskSteps.status, "RUNNING"),
       lt(agentTaskSteps.updatedAt, cutoff),
+      inArray(agentTaskSteps.taskId, db.select({ id: agentTasks.id }).from(agentTasks).where(and(
+        eq(agentTasks.id, step.taskId),
+        or(
+          isNull(agentTasks.workerLeaseToken),
+          isNull(agentTasks.workerLeaseUntil),
+          lt(agentTasks.workerLeaseUntil, recoveryCheckAt),
+        ),
+      ))),
     ));
     if (affectedRows(changed) !== 1) continue;
 

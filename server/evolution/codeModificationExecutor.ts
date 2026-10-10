@@ -154,14 +154,17 @@ export class CodeModificationExecutor {
         env: { ...process.env, CI: "1" },
       });
       const output = [result.stdout, result.stderr, result.error?.message]
-        .filter(Boolean).join("\\n").slice(-12_000);
+        .filter(Boolean).join("\n").slice(-12_000);
       if (result.error || result.status !== 0) {
         const rollback = await this.rollbackModification(proposal.id, proposal.filePath, execution.backupPath);
         const reason = result.error?.message || `${check.stage} exited with code ${result.status}`;
+        const rollbackMessage = rollback.success
+          ? "automatic rollback succeeded"
+          : `AUTOMATIC ROLLBACK FAILED: ${rollback.error || "unknown rollback error"}`;
         return {
           ...execution,
           success: false,
-          error: `Self-modification rolled back because validation failed at ${check.stage}: ${reason}`,
+          error: `Validation failed at ${check.stage}: ${reason}; ${rollbackMessage}`,
           validation: { passed: false, stage: check.stage, exitCode: result.status, output },
           rollback,
         };
@@ -259,6 +262,11 @@ export class CodeModificationExecutor {
     }
   }
 
+  private isPathInside(base: string, target: string): boolean {
+    const relative = path.relative(base, target);
+    return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+  }
+
   /**
    * Resolve a target file and enforce directory containment.
    * Reject traversal, absolute paths, and symlinks that escape the allowed roots.
@@ -280,6 +288,11 @@ export class CodeModificationExecutor {
       path.resolve(root, "server/evolution"),
       path.resolve(root, "server/autonomy"),
     ];
+    const backupRoot = path.resolve(root, "server/evolution/backups");
+    const journalPath = path.resolve(root, "server/evolution/self-modification-state.json");
+    if (this.isPathInside(backupRoot, candidate) || candidate === journalPath) {
+      throw new Error(`Self-modification cannot target its own backups or journal: ${filePath}`);
+    }
     const isWithin = (base: string, target: string): boolean => {
       const relative = path.relative(base, target);
       return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
@@ -374,16 +387,20 @@ export class CodeModificationExecutor {
     };
 
     try {
-      const backupPath = path.join(this.backupDir, backupFileName);
-
-      if (!fs.existsSync(backupPath)) {
-        throw new Error(`Backup file not found: ${backupPath}`);
+      if (!backupFileName || path.basename(backupFileName) !== backupFileName) {
+        throw new Error("Invalid backup filename");
+      }
+      const backupPath = path.resolve(this.backupDir, backupFileName);
+      if (!this.isPathInside(path.resolve(this.backupDir), backupPath) || !fs.existsSync(backupPath) || !fs.statSync(backupPath).isFile()) {
+        throw new Error("Backup file not found or invalid");
       }
 
       const backupContent = fs.readFileSync(backupPath, 'utf-8');
-      const fullPath = path.join(process.cwd(), targetFilePath);
-
+      const fullPath = this.resolveAllowedFilePath(targetFilePath);
       fs.writeFileSync(fullPath, backupContent, 'utf-8');
+      if (fs.readFileSync(fullPath, 'utf-8') !== backupContent) {
+        throw new Error("Verification failed: restored content does not match backup");
+      }
 
       result.success = true;
       console.log(`[CodeModificationExecutor] Successfully rolled back to backup: ${backupFileName}`);

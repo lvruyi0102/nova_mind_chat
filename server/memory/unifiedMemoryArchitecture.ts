@@ -320,22 +320,24 @@ export class UnifiedMemoryManager {
       return false;
     }
 
-    if (!memory1.relatedMemories) {
-      memory1.relatedMemories = [];
-    }
-    if (!memory2.relatedMemories) {
-      memory2.relatedMemories = [];
-    }
+    // Work on copies so a failed write does not leave the in-memory cache
+    // claiming a relationship that was never durably saved.
+    const updated1: MemoryItem = {
+      ...memory1,
+      relatedMemories: [...(memory1.relatedMemories ?? [])],
+    };
+    const updated2: MemoryItem = {
+      ...memory2,
+      relatedMemories: [...(memory2.relatedMemories ?? [])],
+    };
 
-    if (!memory1.relatedMemories.includes(id2)) {
-      memory1.relatedMemories.push(id2);
-    }
-    if (!memory2.relatedMemories.includes(id1)) {
-      memory2.relatedMemories.push(id1);
-    }
+    if (!updated1.relatedMemories!.includes(id2)) updated1.relatedMemories!.push(id2);
+    if (!updated2.relatedMemories!.includes(id1)) updated2.relatedMemories!.push(id1);
 
-    await this.persistMemory(memory1);
-    await this.persistMemory(memory2);
+    await this.persistMemory(updated1);
+    await this.persistMemory(updated2);
+    this.memoryCache.set(id1, updated1);
+    this.memoryCache.set(id2, updated2);
     console.log(`[UnifiedMemory] Linked memories: ${id1} <-> ${id2}`);
 
     return true;

@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import axios from "axios";
 import { EmailSender } from "./emailSender";
 import { EmailReceiver } from "./emailReceiver";
 import { EmailChatManager } from "./emailChatManager";
@@ -104,6 +105,24 @@ describe("Internet Learning System", () => {
       } catch {
         expect(true).toBe(true);
       }
+    });
+
+    it("should block loopback and private destinations before making a request", async () => {
+      const getSpy = vi.spyOn(axios, "get");
+      await expect(webCrawler.fetchWebPage("http://127.0.0.1")).resolves.toBeNull();
+      await expect(webCrawler.fetchWebPage("http://192.168.1.1")).resolves.toBeNull();
+      await expect(webCrawler.fetchWebPage("file:///etc/passwd")).resolves.toBeNull();
+      expect(getSpy).not.toHaveBeenCalled();
+      getSpy.mockRestore();
+    });
+
+    it("should reject reserved IPv4 ranges", () => {
+      const crawler = webCrawler as any;
+      expect(crawler.isPublicIPv4("127.0.0.1")).toBe(false);
+      expect(crawler.isPublicIPv4("10.0.0.8")).toBe(false);
+      expect(crawler.isPublicIPv4("169.254.169.254")).toBe(false);
+      expect(crawler.isPublicIPv4("192.168.1.5")).toBe(false);
+      expect(crawler.isPublicIPv4("8.8.8.8")).toBe(true);
     });
   });
 

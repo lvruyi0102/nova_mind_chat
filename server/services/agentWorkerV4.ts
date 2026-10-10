@@ -544,6 +544,9 @@ async function processTask(taskId: number): Promise<boolean> {
         }).where(and(
           eq(agentTasks.id, taskId),
           eq(agentTasks.workerLeaseToken, leaseToken),
+          // An expired lease must not be resurrected by a late heartbeat.
+          // Once the deadline passes, only a fresh acquisition may restore authority.
+          gt(agentTasks.workerLeaseUntil, renewedAt),
           inArray(agentTasks.status, ["READY", "RUNNING"]),
         ));
         if (affectedRows(renewal) !== 1) {

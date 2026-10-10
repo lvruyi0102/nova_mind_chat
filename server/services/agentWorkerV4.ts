@@ -57,7 +57,11 @@ async function blockTask(
       ? and(
           eq(agentTasks.id, task.id),
           eq(agentTasks.status, task.status),
-          or(isNull(agentTasks.workerLeaseUntil), lt(agentTasks.workerLeaseUntil, new Date())),
+          or(
+            isNull(agentTasks.workerLeaseToken),
+            isNull(agentTasks.workerLeaseUntil),
+            lt(agentTasks.workerLeaseUntil, new Date()),
+          ),
         )
       : and(eq(agentTasks.id, task.id), eq(agentTasks.status, task.status));
   const changed = await db.update(agentTasks).set({

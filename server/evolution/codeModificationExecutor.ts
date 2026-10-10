@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawnSync } from 'node:child_process';
 import { CodeModificationProposal } from './codeModificationEngine';
 
 export interface ExecutionResult {
@@ -122,6 +123,55 @@ export class CodeModificationExecutor {
 
       return result;
     }
+  }
+
+  /**
+   * Apply a proposed change, then run the repository's fixed validation scripts.
+   * If type-checking or tests fail, restore the pre-change backup automatically.
+   * Commands are fixed (no proposal-controlled shell text) and run with shell:false.
+   */
+  async executeAndValidateModification(proposal: CodeModificationProposal): Promise<ExecutionResult & {
+    validation?: { passed: boolean; stage: string; exitCode?: number | null; output?: string };
+    rollback?: RollbackResult;
+  }> {
+    const execution = await this.executeModification(proposal);
+    if (!execution.success || !execution.backupPath) {
+      return { ...execution, validation: { passed: false, stage: "write", output: execution.error || "Modification was not applied" } };
+    }
+
+    const checks: Array<{ stage: string; command: string; args: string[] }> = [
+      { stage: "typecheck", command: "npm", args: ["run", "check"] },
+      { stage: "tests", command: "npm", args: ["test"] },
+    ];
+
+    for (const check of checks) {
+      const result = spawnSync(check.command, check.args, {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        timeout: 120_000,
+        maxBuffer: 2 * 1024 * 1024,
+        shell: false,
+        env: { ...process.env, CI: "1" },
+      });
+      const output = [result.stdout, result.stderr, result.error?.message]
+        .filter(Boolean).join("\\n").slice(-12_000);
+      if (result.error || result.status !== 0) {
+        const rollback = await this.rollbackModification(proposal.id, proposal.filePath, execution.backupPath);
+        const reason = result.error?.message || `${check.stage} exited with code ${result.status}`;
+        return {
+          ...execution,
+          success: false,
+          error: `Self-modification rolled back because validation failed at ${check.stage}: ${reason}`,
+          validation: { passed: false, stage: check.stage, exitCode: result.status, output },
+          rollback,
+        };
+      }
+    }
+
+    return {
+      ...execution,
+      validation: { passed: true, stage: "typecheck+tests", exitCode: 0, output: "Type-check and test scripts passed." },
+    };
   }
 
   /**

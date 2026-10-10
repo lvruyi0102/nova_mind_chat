@@ -65,20 +65,21 @@ export class EvolutionEngine {
     const startTime = Date.now();
 
     try {
-      // 1. 获取当前基因
+      // 1. 获取当前基因，并为父/子版本固定同一组评估用例。
+      // 比较必须使用相同测试集，否则“改进”可能只是测试难度变化造成的假象。
       const parentGenome = this.genomeManager.getCurrentGenome();
       console.log(`[EvolutionEngine] Starting cycle for genome v${parentGenome.version}`);
 
-      // 2. 评估当前基因
-      const parentMetrics = await this.evaluator.evaluateGenome(parentGenome);
-      console.log(`[EvolutionEngine] Parent metrics: ${JSON.stringify(parentMetrics, null, 2)}`);
-
-      // 3. 生成自举难题
+      // 2. 生成本轮测试集，再用完全相同的测试集评估父版本与候选版本。
       const bootstrappingTestCase = this.evaluator.generateBootstrappingTestCase(parentGenome);
       const testCases = [bootstrappingTestCase, ...this.evaluator.getHardCasesDatabase().slice(0, 3)];
 
-      // 4. 识别失败的测试用例（模拟）
-      const failedTestCases = testCases.filter((tc) => tc.difficulty === "extreme" || tc.difficulty === "hard");
+      // 这些用例目前尚未被真实执行；难度标签不代表测试失败。
+      // 在接入真实工作流执行器前，向变异提议器报告“尚无已确认失败用例”，不伪造失败证据。
+      const failedTestCases: TestCase[] = [];
+
+      const parentMetrics = await this.evaluator.evaluateGenome(parentGenome, testCases);
+      console.log(`[EvolutionEngine] Parent metrics (heuristic evaluator): ${JSON.stringify(parentMetrics, null, 2)}`);
 
       // 5. 提议变异
       const mutationProposal = await this.proposer.proposeMutation(

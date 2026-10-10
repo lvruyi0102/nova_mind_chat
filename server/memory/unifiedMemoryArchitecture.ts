@@ -98,11 +98,8 @@ export class UnifiedMemoryManager {
    * 添加记忆
    */
   async addMemory(memory: Omit<MemoryItem, 'id' | 'createdAt' | 'updatedAt' | 'accessCount'>): Promise<MemoryItem> {
-    const db = await getDb();
-    if (!db) {
-      throw new Error('Database not available');
-    }
-
+    // This method currently writes to the shared process-local cache only.
+    // Do not imply durability by requiring a database connection that is not used here.
     const now = new Date();
     const id = `mem_${this.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 

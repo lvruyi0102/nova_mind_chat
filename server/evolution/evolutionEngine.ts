@@ -164,7 +164,7 @@ export class EvolutionEngine {
           const outcomeFeedback = recentOutcomes.length
             ? recentOutcomes.map((event) =>
                 `- ${event.status} at ${event.timestamp}; file=${event.filePath || "unknown"}; error=${event.error || "none"}; validation=${JSON.stringify((event.metrics as any)?.validation || null)}; rollback=${JSON.stringify((event.metrics as any)?.rollback || null)}`
-              ).join("\\n")
+              ).join("\n")
             : "No prior source-modification execution outcomes are available yet.";
 
           const codeModification = await this.codeModificationEngine.generateModificationProposal({

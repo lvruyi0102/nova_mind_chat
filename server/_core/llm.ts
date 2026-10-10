@@ -209,14 +209,20 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+const usesGemini = Boolean(ENV.geminiApiKey);
+
+const resolveApiUrl = () => {
+  if (usesGemini) {
+    return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  }
+  return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "https://forge.manus.im/v1/chat/completions";
+};
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!ENV.geminiApiKey && !ENV.forgeApiKey) {
+    throw new Error("Configure GEMINI_API_KEY (free Gemini tier) or the existing Manus Forge API key");
   }
 };
 
@@ -280,7 +286,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: usesGemini ? ENV.geminiModel : "gemini-2.5-flash",
     messages: messages.map(normalizeMessage),
   };
 
@@ -316,7 +322,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${usesGemini ? ENV.geminiApiKey : ENV.forgeApiKey}`,
     },
     body: JSON.stringify(payload),
   });

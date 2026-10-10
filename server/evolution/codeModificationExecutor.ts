@@ -293,7 +293,7 @@ export class CodeModificationExecutor {
    * Reject traversal, absolute paths, and symlinks that escape the allowed roots.
    */
   private resolveAllowedFilePath(filePath: string): string {
-    if (!filePath || path.isAbsolute(filePath) || filePath.includes("\\0")) {
+    if (!filePath || path.isAbsolute(filePath) || filePath.includes("\0")) {
       throw new Error(`Invalid file path: ${filePath}`);
     }
 

@@ -48,6 +48,11 @@ export class CodeModificationExecutor {
     if (!fs.existsSync(this.backupDir)) {
       fs.mkdirSync(this.backupDir, { recursive: true });
     }
+    const evolutionRoot = fs.realpathSync(path.resolve(process.cwd(), "server/evolution"));
+    const realBackupDir = fs.realpathSync(this.backupDir);
+    if (!this.isPathInside(evolutionRoot, realBackupDir) || realBackupDir === evolutionRoot) {
+      throw new Error("Backup directory must resolve to a child of server/evolution");
+    }
   }
 
   /**
@@ -289,8 +294,12 @@ export class CodeModificationExecutor {
       path.resolve(root, "server/autonomy"),
     ];
     const backupRoot = path.resolve(root, "server/evolution/backups");
-    const journalPath = path.resolve(root, "server/evolution/self-modification-state.json");
-    if (this.isPathInside(backupRoot, candidate) || candidate === journalPath) {
+    const configuredJournalPath = process.env.NOVA_SELF_MODIFICATION_STATE_PATH;
+    const journalPaths = [
+      path.resolve(root, "server/evolution/self-modification-state.json"),
+      ...(configuredJournalPath ? [path.resolve(configuredJournalPath)] : []),
+    ];
+    if (this.isPathInside(backupRoot, candidate) || journalPaths.includes(candidate)) {
       throw new Error(`Self-modification cannot target its own backups or journal: ${filePath}`);
     }
     const isWithin = (base: string, target: string): boolean => {

@@ -43,6 +43,8 @@ export class AutonomousEvolutionLoop {
   private config: EvolutionCycleConfig;
   private db: any;
   private isRunning: boolean = false;
+  private intervalHandle: ReturnType<typeof setInterval> | null = null;
+  private cycleInProgress: boolean = false;
   private cycleHistory: EvolutionCycleResult[] = [];
 
   constructor(userId: string, config: Partial<EvolutionCycleConfig> = {}) {
@@ -78,9 +80,13 @@ export class AutonomousEvolutionLoop {
     // 立即执行一次
     await this.runCycle();
 
-    // 定期执行
-    setInterval(() => {
-      if (this.isRunning) {
+    // The initial cycle may take time. Do not schedule work if stop() was called
+    // while it was running.
+    if (!this.isRunning) return;
+
+    // 定期执行。跳过尚未结束的周期，避免慢任务导致重叠执行。
+    this.intervalHandle = setInterval(() => {
+      if (this.isRunning && !this.cycleInProgress) {
         this.runCycle().catch((error) => {
           console.error('[AutonomousEvolutionLoop] 循环执行失败:', error);
         });
@@ -93,6 +99,10 @@ export class AutonomousEvolutionLoop {
    */
   stop(): void {
     this.isRunning = false;
+    if (this.intervalHandle) {
+      clearInterval(this.intervalHandle);
+      this.intervalHandle = null;
+    }
     console.log('[AutonomousEvolutionLoop] 停止自主进化循环');
   }
 
@@ -100,6 +110,7 @@ export class AutonomousEvolutionLoop {
    * 执行一个进化周期
    */
   private async runCycle(): Promise<EvolutionCycleResult> {
+    this.cycleInProgress = true;
     const cycleId = `cycle_${Date.now()}`;
     const result: EvolutionCycleResult = {
       cycleId,
@@ -139,7 +150,11 @@ export class AutonomousEvolutionLoop {
       if (this.config.enableModelTraining) {
         try {
           result.trainingResult = await this.trainModel();
-          console.log('[AutonomousEvolutionLoop] 模型训练完成');
+          if (result.trainingResult) {
+            console.log('[AutonomousEvolutionLoop] 模型训练完成');
+          } else {
+            console.log('[AutonomousEvolutionLoop] 模型训练未产出结果；请检查数据量或训练实现');
+          }
         } catch (error) {
           result.errors.push(`模型训练失败: ${String(error)}`);
           console.error('[AutonomousEvolutionLoop] 模型训练失败:', error);
@@ -157,6 +172,9 @@ export class AutonomousEvolutionLoop {
         }
       }
 
+      // A cycle with one or more failed stages is partial, not successful.
+      if (result.errors.length > 0) result.status = 'partial';
+
       // 记录周期结果
       await this.recordCycleResult(result);
 
@@ -168,6 +186,8 @@ export class AutonomousEvolutionLoop {
       console.error('[AutonomousEvolutionLoop] 进化周期执行失败:', error);
       await this.recordCycleResult(result);
       return result;
+    } finally {
+      this.cycleInProgress = false;
     }
   }
 
@@ -175,115 +195,93 @@ export class AutonomousEvolutionLoop {
    * 自我目标生成
    */
   private async generateGoals(): Promise<any[]> {
-    try {
-      const engine = await getSelfGoalGenerationEngine(this.userId);
-      // 调用正确的方法
-      const goals = await engine.generatePrioritizedGoals();
-      return goals;
-    } catch (error) {
-      console.error('[AutonomousEvolutionLoop] 目标生成失败:', error);
-      return [];
-    }
+    const engine = await getSelfGoalGenerationEngine(this.userId);
+    return engine.generatePrioritizedGoals();
   }
 
   /**
    * 自我架构修改
    */
   private async modifyArchitecture(): Promise<any[]> {
-    try {
-      const engine = await getSelfArchitectureModificationEngine(this.userId);
-      const analysis = await engine.analyzeArchitecture();
-      const recommendations = await engine.generateOptimizationRecommendations(analysis);
+    const engine = await getSelfArchitectureModificationEngine(this.userId);
+    const analysis = await engine.analyzeArchitecture();
+    const recommendations = await engine.generateOptimizationRecommendations(analysis);
 
-      // 自动执行低风险修改
-      const lowRiskRecommendations = recommendations.filter((r) => r.riskLevel === 'low');
-      for (const rec of lowRiskRecommendations) {
-        await engine.executeModification(rec);
-      }
-
-      return recommendations;
-    } catch (error) {
-      console.error('[AutonomousEvolutionLoop] 架构修改失败:', error);
-      return [];
+    // 当前仅记录低风险提案；executeModification 会明确拒绝模拟执行。
+    const lowRiskRecommendations = recommendations.filter((r) => r.riskLevel === 'low');
+    for (const rec of lowRiskRecommendations) {
+      await engine.executeModification(rec);
     }
+
+    return recommendations;
   }
 
   /**
    * 自动模型训练
    */
   private async trainModel(): Promise<any> {
-    try {
-      const engine = await getAutoModelTrainingSystem(this.userId);
-      const dataset = await engine.collectTrainingData();
+    const engine = await getAutoModelTrainingSystem(this.userId);
+    const dataset = await engine.collectTrainingData();
 
-      if (dataset.size === 0) {
-        console.log('[AutonomousEvolutionLoop] 没有足够的训练数据');
-        return null;
-      }
-
-      const config = {
-        modelName: `nova_mind_v${Date.now()}`,
-        datasetId: dataset.id,
-        epochs: 10,
-        batchSize: 32,
-        learningRate: 0.001,
-        validationSplit: 0.15,
-        targetMetrics: {
-          accuracy: 0.95,
-          f1Score: 0.92,
-        },
-      };
-
-      const result = await engine.trainModel(config, dataset);
-      const evaluation = await engine.evaluateModel(result);
-
-      return {
-        ...result,
-        evaluation,
-      };
-    } catch (error) {
-      console.error('[AutonomousEvolutionLoop] 模型训练失败:', error);
+    if (dataset.size === 0) {
+      console.log('[AutonomousEvolutionLoop] 没有足够的训练数据');
       return null;
     }
+
+    const config = {
+      modelName: `nova_mind_v${Date.now()}`,
+      datasetId: dataset.id,
+      epochs: 10,
+      batchSize: 32,
+      learningRate: 0.001,
+      validationSplit: 0.15,
+      targetMetrics: {
+        accuracy: 0.95,
+        f1Score: 0.92,
+      },
+    };
+
+    const result = await engine.trainModel(config, dataset);
+    const evaluation = await engine.evaluateModel(result);
+
+    return {
+      ...result,
+      evaluation,
+    };
   }
 
   /**
    * 自动部署
    */
   private async deployModel(trainingResult: any): Promise<any> {
-    try {
-      if (!trainingResult || !trainingResult.evaluation.isImproved) {
-        console.log('[AutonomousEvolutionLoop] 模型性能未改进，跳过部署');
-        return null;
-      }
-
-      const engine = await getAutoDeploymentSystem(this.userId);
-      const pkg = await engine.prepareDeploymentPackage(trainingResult.modelId, trainingResult.modelName);
-
-      const config = {
-        targetEnvironment: 'staging' as const,
-        strategy: 'canary' as const,
-        healthCheckInterval: 30,
-        rollbackThreshold: 5,
-        maxConcurrentRequests: 1000,
-      };
-
-      const deploymentStatus = await engine.executeDeployment(pkg, config);
-      return deploymentStatus;
-    } catch (error) {
-      console.error('[AutonomousEvolutionLoop] 模型部署失败:', error);
+    if (!trainingResult || !trainingResult.evaluation.isImproved) {
+      console.log('[AutonomousEvolutionLoop] 模型性能未改进，跳过部署');
       return null;
     }
+
+    const engine = await getAutoDeploymentSystem(this.userId);
+    const pkg = await engine.prepareDeploymentPackage(trainingResult.modelId, trainingResult.modelName);
+
+    const config = {
+      targetEnvironment: 'staging' as const,
+      strategy: 'canary' as const,
+      healthCheckInterval: 30,
+      rollbackThreshold: 5,
+      maxConcurrentRequests: 1000,
+    };
+
+    return engine.executeDeployment(pkg, config);
   }
 
   /**
    * 记录周期结果
    */
   private async recordCycleResult(result: EvolutionCycleResult): Promise<void> {
+    // Keep an in-memory audit trail even when the database is unavailable.
+    this.cycleHistory.push(result);
+
     try {
       if (!this.db) return;
-
-      this.cycleHistory.push(result);
 
       await this.db.insert(autonomousState).values({
         userId: this.userId,
@@ -370,5 +368,6 @@ export async function getAutonomousEvolutionLoop(
 }
 
 export function resetAutonomousEvolutionLoop(): void {
+  globalLoop?.stop();
   globalLoop = null;
 }

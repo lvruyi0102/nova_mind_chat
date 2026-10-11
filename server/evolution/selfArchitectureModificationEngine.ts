@@ -281,34 +281,27 @@ export class SelfArchitectureModificationEngine {
     details?: any;
   }> {
     try {
-      // 在 proposal_only 阶段，只生成修改提案，不实际执行
-      if (recommendation.riskLevel === 'high') {
-        return {
-          success: false,
-          message: '高风险修改需要人工审批',
-          details: {
-            recommendation,
-            requiresApproval: true,
-          },
-        };
-      }
-
-      // 记录修改执行
-      await this.recordModificationAttempt(recommendation, 'executing');
-
-      // 模拟执行（实际应该调用代码修改引擎）
-      const executionResult = {
-        success: true,
-        message: `架构修改 "${recommendation.title}" 执行成功`,
+      // This module currently generates proposals only. No real code-editing,
+      // test-running, or rollback executor is connected here, so never report
+      // a simulated modification as successful.
+      const requiresApproval = recommendation.riskLevel !== 'low';
+      const proposalResult = {
+        success: false,
+        message: requiresApproval
+          ? '提案已保留，当前执行器未连接；该风险等级还需要人工审批。未修改代码。'
+          : '提案已保留，但真实代码修改与验证执行器尚未连接。未修改代码。',
         details: {
           recommendation,
-          executedSteps: recommendation.implementationSteps,
+          proposalOnly: true,
+          executionEngineConnected: false,
+          requiresApproval,
+          executedSteps: [],
           timestamp: new Date(),
         },
       };
 
-      await this.recordModificationAttempt(recommendation, 'completed', executionResult);
-      return executionResult;
+      await this.recordModificationAttempt(recommendation, 'proposed_only', proposalResult);
+      return proposalResult;
     } catch (error) {
       console.error('[SelfArchitectureModificationEngine] 执行架构修改失败:', error);
       await this.recordModificationAttempt(recommendation, 'failed', { error: String(error) });

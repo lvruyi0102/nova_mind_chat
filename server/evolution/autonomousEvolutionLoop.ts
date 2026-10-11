@@ -207,7 +207,7 @@ export class AutonomousEvolutionLoop {
     const analysis = await engine.analyzeArchitecture();
     const recommendations = await engine.generateOptimizationRecommendations(analysis);
 
-    // 自动执行低风险修改
+    // 当前仅记录低风险提案；executeModification 会明确拒绝模拟执行。
     const lowRiskRecommendations = recommendations.filter((r) => r.riskLevel === 'low');
     for (const rec of lowRiskRecommendations) {
       await engine.executeModification(rec);

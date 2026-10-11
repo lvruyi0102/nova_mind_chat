@@ -220,68 +220,68 @@ export class AutonomousEvolutionLoop {
    * 自动模型训练
    */
   private async trainModel(): Promise<any> {
-      const engine = await getAutoModelTrainingSystem(this.userId);
-      const dataset = await engine.collectTrainingData();
+    const engine = await getAutoModelTrainingSystem(this.userId);
+    const dataset = await engine.collectTrainingData();
 
-      if (dataset.size === 0) {
-        console.log('[AutonomousEvolutionLoop] 没有足够的训练数据');
-        return null;
-      }
+    if (dataset.size === 0) {
+      console.log('[AutonomousEvolutionLoop] 没有足够的训练数据');
+      return null;
+    }
 
-      const config = {
-        modelName: `nova_mind_v${Date.now()}`,
-        datasetId: dataset.id,
-        epochs: 10,
-        batchSize: 32,
-        learningRate: 0.001,
-        validationSplit: 0.15,
-        targetMetrics: {
-          accuracy: 0.95,
-          f1Score: 0.92,
-        },
-      };
+    const config = {
+      modelName: `nova_mind_v${Date.now()}`,
+      datasetId: dataset.id,
+      epochs: 10,
+      batchSize: 32,
+      learningRate: 0.001,
+      validationSplit: 0.15,
+      targetMetrics: {
+        accuracy: 0.95,
+        f1Score: 0.92,
+      },
+    };
 
-      const result = await engine.trainModel(config, dataset);
-      const evaluation = await engine.evaluateModel(result);
+    const result = await engine.trainModel(config, dataset);
+    const evaluation = await engine.evaluateModel(result);
 
-      return {
-        ...result,
-        evaluation,
-      };
+    return {
+      ...result,
+      evaluation,
+    };
   }
 
   /**
    * 自动部署
    */
   private async deployModel(trainingResult: any): Promise<any> {
-      if (!trainingResult || !trainingResult.evaluation.isImproved) {
-        console.log('[AutonomousEvolutionLoop] 模型性能未改进，跳过部署');
-        return null;
-      }
+    if (!trainingResult || !trainingResult.evaluation.isImproved) {
+      console.log('[AutonomousEvolutionLoop] 模型性能未改进，跳过部署');
+      return null;
+    }
 
-      const engine = await getAutoDeploymentSystem(this.userId);
-      const pkg = await engine.prepareDeploymentPackage(trainingResult.modelId, trainingResult.modelName);
+    const engine = await getAutoDeploymentSystem(this.userId);
+    const pkg = await engine.prepareDeploymentPackage(trainingResult.modelId, trainingResult.modelName);
 
-      const config = {
-        targetEnvironment: 'staging' as const,
-        strategy: 'canary' as const,
-        healthCheckInterval: 30,
-        rollbackThreshold: 5,
-        maxConcurrentRequests: 1000,
-      };
+    const config = {
+      targetEnvironment: 'staging' as const,
+      strategy: 'canary' as const,
+      healthCheckInterval: 30,
+      rollbackThreshold: 5,
+      maxConcurrentRequests: 1000,
+    };
 
-      const deploymentStatus = await engine.executeDeployment(pkg, config);
-      return deploymentStatus;
+    return engine.executeDeployment(pkg, config);
   }
 
   /**
    * 记录周期结果
    */
   private async recordCycleResult(result: EvolutionCycleResult): Promise<void> {
+    // Keep an in-memory audit trail even when the database is unavailable.
+    this.cycleHistory.push(result);
+
     try {
       if (!this.db) return;
-
-      this.cycleHistory.push(result);
 
       await this.db.insert(autonomousState).values({
         userId: this.userId,
@@ -368,5 +368,6 @@ export async function getAutonomousEvolutionLoop(
 }
 
 export function resetAutonomousEvolutionLoop(): void {
+  globalLoop?.stop();
   globalLoop = null;
 }

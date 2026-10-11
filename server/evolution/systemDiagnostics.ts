@@ -43,6 +43,11 @@ export interface HealthStatus {
   metrics: SystemMetrics;
   alerts: HealthAlert[];
   pressureLevel: number; // 0-100，表示系统压力程度
+  /** Makes it explicit when health status is based on incomplete instrumentation. */
+  dataQuality: {
+    completeness: 'partial' | 'complete';
+    unavailableMetrics: string[];
+  };
 }
 
 export interface HealthAlert {
@@ -202,11 +207,27 @@ export class SystemDiagnosticsEngine {
       status = 'warning';
     }
 
+    // These values are currently placeholders in collectMetrics(), not measurements.
+    // Surface that limitation so a quiet zero cannot be mistaken for a healthy subsystem.
+    const unavailableMetrics = [
+      'database.activeConnections',
+      'database.queryQueueLength',
+      'database.avgQueryTime',
+      'api.requestCount',
+      'api.errorCount',
+      'api.avgResponseTime',
+      'api.tokenUsageTotal',
+    ];
+
     return {
       status,
       metrics: currentMetrics,
       alerts: newAlerts,
       pressureLevel,
+      dataQuality: {
+        completeness: unavailableMetrics.length === 0 ? 'complete' : 'partial',
+        unavailableMetrics,
+      },
     };
   }
 

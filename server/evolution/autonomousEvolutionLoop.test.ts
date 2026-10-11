@@ -62,6 +62,16 @@ describe('AutonomousEvolutionLoop', () => {
       expect(loop['isRunning']).toBe(false);
     });
 
+    it('停止后应该清除定时器句柄', async () => {
+      await loop.start();
+      expect(loop['intervalHandle']).not.toBeNull();
+
+      loop.stop();
+
+      expect(loop['intervalHandle']).toBeNull();
+      expect(loop['isRunning']).toBe(false);
+    });
+
     it('不应该重复启动循环', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       await loop.start();
@@ -92,6 +102,22 @@ describe('AutonomousEvolutionLoop', () => {
       expect(cycle).toHaveProperty('goals');
       expect(cycle).toHaveProperty('architectureRecommendations');
       expect(cycle).toHaveProperty('errors');
+    });
+
+    it('应该在数据库不可用时仍保留内存中的审计记录', async () => {
+      loop['db'] = null;
+      const result = {
+        cycleId: 'cycle_123',
+        timestamp: new Date(),
+        goals: [],
+        architectureRecommendations: [],
+        status: 'partial' as const,
+        errors: ['database unavailable'],
+      };
+
+      await loop['recordCycleResult'](result);
+
+      expect(loop.getEvolutionHistory()).toContain(result);
     });
   });
 

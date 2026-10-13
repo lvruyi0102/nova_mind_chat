@@ -256,7 +256,89 @@ export async function executeAutonomousTask(taskId: number) {
         result = "任务类型未实现";
     }
 
-    // Mark as completed
+    // Exploration should be able to produce a bounded next question, not end as a one-off monologue.
+    // Keep a small queue so the loop remains persistent without generating unlimited tasks.
+    if (task.taskType === "explore_concept") {
+      const pending = await db
+        .select()
+        .from(selfQuestions)
+        .where(eq(selfQuestions.status, "pending"))
+        .limit(3);
+
+      if (pending.length < 3) {
+        try {
+          const followUp = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `你是Nova的研究延续模块。根据刚完成的探索结果，判断是否存在一个真正值得继续研究的下一步。
+不要为了显得主动而制造问题。优先寻找可检验的疑问、尚未验证的关键假设、可能推翻当前结论的证据，或能把当前发现连接到另一个领域的有价值问题。
+如果没有足够价值的后续问题，返回 shouldContinue=false。
+只返回符合JSON Schema的结果。`,
+              },
+              {
+                role: "user",
+                content: `原探索任务：${task.description}\n\n探索结果：${result.slice(0, 6000)}\n\n当前待探索问题：${pending.map((q) => q.question).join("; ") || "无"}`,
+              },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "research_follow_up",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    shouldContinue: { type: "boolean" },
+                    question: { type: "string" },
+                    category: { type: "string" },
+                    priority: { type: "integer" },
+                    rationale: { type: "string" },
+                  },
+                  required: ["shouldContinue", "question", "category", "priority", "rationale"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+
+          const followUpContent = followUp.choices[0]?.message?.content;
+          if (typeof followUpContent === "string") {
+            const candidate = JSON.parse(followUpContent) as {
+              shouldContinue: boolean;
+              question: string;
+              category: string;
+              priority: number;
+              rationale: string;
+            };
+            const question = candidate.question.trim();
+            const isDuplicate = pending.some(
+              (existing) => existing.question.trim().toLowerCase() === question.toLowerCase()
+            );
+
+            if (
+              candidate.shouldContinue &&
+              question.length >= 12 &&
+              !isDuplicate &&
+              Number.isFinite(candidate.priority) &&
+              candidate.priority >= 6
+            ) {
+              await db.insert(selfQuestions).values({
+                question,
+                category: candidate.category.slice(0, 100) || "follow_up",
+                priority: Math.min(10, Math.max(1, Math.round(candidate.priority))),
+                status: "pending",
+              });
+            }
+          }
+        } catch (followUpError) {
+          // A failed follow-up must not invalidate the completed exploration.
+          console.warn("[AutonomousEngine] Could not create research follow-up:", followUpError);
+        }
+      }
+    }
+
+    // Mark as completed only after recording the result and any bounded follow-up.
     await db
       .update(autonomousTasks)
       .set({

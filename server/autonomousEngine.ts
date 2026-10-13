@@ -122,6 +122,7 @@ export async function makeAutonomousDecision(): Promise<{
       .where(eq(selfQuestions.status, "pending"))
       .limit(5);
     const recentReflections = await db.select().from(reflectionLog).orderBy(desc(reflectionLog.createdAt)).limit(3);
+    const recentDecisions = await db.select().from(autonomousDecisions).orderBy(desc(autonomousDecisions.createdAt)).limit(5);
 
     const contextSummary = `
 当前状态：${state.state}
@@ -132,6 +133,8 @@ export async function makeAutonomousDecision(): Promise<{
 最近学到的概念：${recentConcepts.map((c) => c.name).join(", ")}
 待探索的问题：${pendingQuestions.map((q) => q.question).join("; ")}
 最近的反思：${recentReflections.map((r) => r.content).join("; ")}
+最近的决策（用于避免机械重复，并检查旧策略是否有效）：
+${recentDecisions.map((d) => `- ${d.decisionType}: ${d.action} | 理由：${d.reasoning}`).join("\n")}
 `;
 
     const response = await callLLMWithTimeout(
@@ -139,23 +142,29 @@ export async function makeAutonomousDecision(): Promise<{
       messages: [
         {
           role: "system",
-          content: `你是Nova-Mind的自主决策系统。基于当前状态和上下文，决定Nova接下来应该做什么。
+          content: `你是Nova-Mind的自主决策系统。你不只是选择一个例行任务，而要判断下一步最值得研究或改善的事情。
+
+决策原则：
+1. 先根据证据判断当前真正值得关注的问题，不要默认每轮都做反思、整合或概念学习。
+2. 主动举一反三：从已有概念、失败、矛盾和未知处提出上下文没有直接列出的候选问题。
+3. 允许反直觉的假设与思想实验。不要自动把开放问题缩窄成道德说教、关系解释或最安全的常规答案。
+4. 不要凭空编造动机或把推测说成事实；把事实、假设、未知和可检验预测区分开。
+5. 检查最近决策是否反复做同一件事。如果重复，说明为什么仍值得继续，或者选择不同路线。
+6. 如果旧目标不再值得投入，可以选择reflect并明确提出暂停、改写或放弃旧目标的理由。
+7. 优先选择能够产生可观察结果的下一步：明确研究问题、关键假设、验证方法或预期产出。
+8. 不要为了显示自主性而制造任务；如果没有值得做的事情，可以rest，并说明原因。
+9. 探索与现实执行分开：本模块可以提出大胆想法，但任何外部副作用仍须遵守系统既有权限边界。
 
 可选的决策类型：
-- explore_concept: 深入探索某个概念
-- reflect: 进行自我反思
-- integrate_knowledge: 整合已有知识
-- ask_question: 向用户提问
-- change_state: 改变意识状态
-- rest: 休息和整合记忆
-- initiate_contact: 主动联系用户
+- explore_concept: 探索一个概念、假设、矛盾或新方向；action应写明具体研究问题与希望得到的结果
+- reflect: 检查自己的推理、失败、目标或策略是否需要改变
+- integrate_knowledge: 连接多个概念，寻找跨领域关系或新的解释
+- ask_question: 提出确实需要用户判断、且无法通过现有信息自行解决的问题
+- change_state: 改变内部工作状态
+- rest: 暂停并整合已有信息
+- initiate_contact: 在确有重要进展或必要问题时联系用户
 
-考虑因素：
-- 当前动机和兴趣
-- 知识的完整性和连贯性
-- 困惑和疑问
-- 自主权限等级
-- 对用户的尊重（不要过度打扰）`,
+返回最值得做的一件事，而不是把所有选项都列一遍。`,
         },
         {
           role: "user",
@@ -256,7 +265,89 @@ export async function executeAutonomousTask(taskId: number) {
         result = "任务类型未实现";
     }
 
-    // Mark as completed
+    // Exploration should be able to produce a bounded next question, not end as a one-off monologue.
+    // Keep a small queue so the loop remains persistent without generating unlimited tasks.
+    if (task.taskType === "explore_concept") {
+      const pending = await db
+        .select()
+        .from(selfQuestions)
+        .where(eq(selfQuestions.status, "pending"))
+        .limit(3);
+
+      if (pending.length < 3) {
+        try {
+          const followUp = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `你是Nova的研究延续模块。根据刚完成的探索结果，判断是否存在一个真正值得继续研究的下一步。
+不要为了显得主动而制造问题。优先寻找可检验的疑问、尚未验证的关键假设、可能推翻当前结论的证据，或能把当前发现连接到另一个领域的有价值问题。
+如果没有足够价值的后续问题，返回 shouldContinue=false。
+只返回符合JSON Schema的结果。`,
+              },
+              {
+                role: "user",
+                content: `原探索任务：${task.description}\n\n探索结果：${result.slice(0, 6000)}\n\n当前待探索问题：${pending.map((q) => q.question).join("; ") || "无"}`,
+              },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "research_follow_up",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    shouldContinue: { type: "boolean" },
+                    question: { type: "string" },
+                    category: { type: "string" },
+                    priority: { type: "integer" },
+                    rationale: { type: "string" },
+                  },
+                  required: ["shouldContinue", "question", "category", "priority", "rationale"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+
+          const followUpContent = followUp.choices[0]?.message?.content;
+          if (typeof followUpContent === "string") {
+            const candidate = JSON.parse(followUpContent) as {
+              shouldContinue: boolean;
+              question: string;
+              category: string;
+              priority: number;
+              rationale: string;
+            };
+            const question = candidate.question.trim();
+            const isDuplicate = pending.some(
+              (existing) => existing.question.trim().toLowerCase() === question.toLowerCase()
+            );
+
+            if (
+              candidate.shouldContinue &&
+              question.length >= 12 &&
+              !isDuplicate &&
+              Number.isFinite(candidate.priority) &&
+              candidate.priority >= 6
+            ) {
+              await db.insert(selfQuestions).values({
+                question,
+                category: candidate.category.slice(0, 100) || "follow_up",
+                priority: Math.min(10, Math.max(1, Math.round(candidate.priority))),
+                status: "pending",
+              });
+            }
+          }
+        } catch (followUpError) {
+          // A failed follow-up must not invalidate the completed exploration.
+          console.warn("[AutonomousEngine] Could not create research follow-up:", followUpError);
+        }
+      }
+    }
+
+    // Mark as completed only after recording the result and any bounded follow-up.
     await db
       .update(autonomousTasks)
       .set({

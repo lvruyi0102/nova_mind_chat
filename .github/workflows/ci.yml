@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - work
+      - "feat/**"
+  workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
 
@@ -41,6 +43,17 @@ jobs:
 
       - name: Type check
         run: pnpm check
+
+      - name: V4 execution-engine regression tests
+        run: |
+          pnpm vitest run \
+            server/services/agentGovernanceV4.test.ts \
+            server/services/executionEngineV4.test.ts \
+            server/services/taskPlanValidatorV4.test.ts \
+            server/services/taskPlanningV4.test.ts \
+            server/services/toolAdapterRegistryV4.test.ts \
+            server/services/__tests__/multimodalService.test.ts \
+            server/_core/imageGeneration.test.ts
 
       - name: Build
         run: pnpm build

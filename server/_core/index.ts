@@ -13,6 +13,8 @@ import { initializeAggressiveCacheCleaner } from "../optimization/aggressiveCach
 import { initializeConcurrencyController } from "../optimization/concurrencyController";
 import { initializeAutonomousBackgroundLoop } from "../autonomy/autonomousBackgroundLoop";
 import { startBackgroundCognition } from "../backgroundCognitionOptimized";
+import { startAgentWorkerV4 } from "../services/agentWorkerV4";
+import { registerConfiguredProvidersV4 } from "../services/configuredProvidersV4";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +43,10 @@ async function startServer() {
   // Step 2: Initialize optimized database connection
   console.log("[Server] Initializing optimized database connection...");
   await initializeOptimizedDb();
+
+  // Register only providers backed by configured credentials, then start the opt-in worker.
+  registerConfiguredProvidersV4();
+  startAgentWorkerV4();
 
   // Step 3: Initialize aggressive cache cleaner
   console.log("[Server] Initializing aggressive cache cleaner...");

@@ -1,9 +1,10 @@
 {
   "version": 2,
   "framework": "vite",
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "github": {
     "autoJobCancelation": false
-  }
+  },
+  "installCommand": "pnpm install --frozen-lockfile"
 }

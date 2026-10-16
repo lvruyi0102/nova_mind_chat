@@ -4,6 +4,16 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { planTaskV4, TaskPlanningErrorV4 } from "./services/taskPlanningV4";
+import { toolAdapterRegistryV4 } from "./services/toolAdapterRegistryV4";
+import {
+  createAgentTaskV4,
+  getAgentTaskV4,
+  listAgentTasksV4,
+  requestAgentTaskCancellationV4,
+  AgentTaskStoreErrorV4,
+} from "./services/agentTaskStoreV4";
 import { getCurrentState, updateState } from "./autonomousEngine";
 import { getBackgroundCognitionStatus } from "./backgroundCognitionOptimized";
 import { startBackgroundCognition, stopBackgroundCognition } from "./backgroundCognitionOptimized";
@@ -64,7 +74,128 @@ import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
 
+function assertV4TaskStoreEnabled() {
+  if (process.env.NOVA_AGENT_V4_TASK_STORE_ENABLED !== "true") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Nova-Mind V4 task storage is disabled until its database migration has been reviewed and applied.",
+    });
+  }
+}
+
 export const appRouter = router({
+  agentV4: router({
+    listCapabilities: protectedProcedure.input(z.void()).query(() => {
+      return toolAdapterRegistryV4.listCapabilities({ enabledOnly: false }).map(({ adapterName, capability }) => ({
+        adapterName,
+        ...capability,
+      }));
+    }),
+    planTask: protectedProcedure
+      .input(z.object({
+        goal: z.string().trim().min(1).max(5000),
+        maxSteps: z.number().int().min(1).max(30).optional(),
+        maxEstimatedCost: z.number().finite().min(0).max(10000).optional(),
+        maxEstimatedDurationMs: z.number().int().min(1).max(24 * 60 * 60 * 1000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          return await planTaskV4(input);
+        } catch (error) {
+          if (error instanceof TaskPlanningErrorV4) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
+          }
+          console.error("[AgentV4] Task planning failed:", error);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Task planning failed unexpectedly" });
+        }
+      }),
+    submitTask: protectedProcedure
+      .input(z.object({
+        goal: z.string().trim().min(1).max(5000),
+        priority: z.number().int().min(1).max(10).optional(),
+        maxSteps: z.number().int().min(1).max(30).optional(),
+        maxEstimatedCost: z.number().finite().min(0).max(10000).optional(),
+        maxEstimatedDurationMs: z.number().int().min(1).max(24 * 60 * 60 * 1000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          assertV4TaskStoreEnabled();
+          const planned = await planTaskV4(input);
+          return await createAgentTaskV4({
+            userId: ctx.user.id,
+            goal: input.goal,
+            plan: planned.plan,
+            priority: input.priority,
+            budget: {
+              maxEstimatedCost: input.maxEstimatedCost,
+              maxEstimatedDurationMs: input.maxEstimatedDurationMs,
+              maxSteps: input.maxSteps,
+            },
+          });
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          if (error instanceof TaskPlanningErrorV4) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
+          }
+          if (error instanceof AgentTaskStoreErrorV4) {
+            throw new TRPCError({
+              code: error.code === "DATABASE_UNAVAILABLE" ? "INTERNAL_SERVER_ERROR" : "INTERNAL_SERVER_ERROR",
+              message: error.message,
+              cause: error,
+            });
+          }
+          console.error("[AgentV4] Task submission failed:", error);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Task submission failed unexpectedly" });
+        }
+      }),
+    listTasks: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        try {
+          assertV4TaskStoreEnabled();
+          return await listAgentTasksV4(ctx.user.id, input?.limit ?? 20);
+        } catch (error) {
+          if (error instanceof AgentTaskStoreErrorV4) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message, cause: error });
+          }
+          throw error;
+        }
+      }),
+    getTask: protectedProcedure
+      .input(z.object({ taskId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          assertV4TaskStoreEnabled();
+          return await getAgentTaskV4(ctx.user.id, input.taskId);
+        } catch (error) {
+          if (error instanceof AgentTaskStoreErrorV4) {
+            throw new TRPCError({
+              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+              message: error.message,
+              cause: error,
+            });
+          }
+          throw error;
+        }
+      }),
+    cancelTask: protectedProcedure
+      .input(z.object({ taskId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          assertV4TaskStoreEnabled();
+          return { accepted: await requestAgentTaskCancellationV4(ctx.user.id, input.taskId) };
+        } catch (error) {
+          if (error instanceof AgentTaskStoreErrorV4) {
+            throw new TRPCError({
+              code: error.code === "NOT_FOUND" ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+              message: error.message,
+              cause: error,
+            });
+          }
+          throw error;
+        }
+      }),
+  }),
   system: systemRouter,
   cognitive: cognitiveRouter,
   autonomy: autonomyRouter,

@@ -17,6 +17,7 @@ import {
 } from "../drizzle/schema";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
+import { validateAutonomousDecisionV4 } from "./services/agentGovernanceV4";
 
 /**
  * Initialize Nova's autonomous state
@@ -192,9 +193,23 @@ export async function makeAutonomousDecision(): Promise<{
 
     const content = response.choices[0].message.content;
     if (typeof content === "string") {
-      const parsed = JSON.parse(content);
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(content);
+      } catch {
+        console.warn("[AutonomousEngine] Model returned invalid JSON for decision");
+        return null;
+      }
 
-      // Log the decision
+      let parsed;
+      try {
+        parsed = validateAutonomousDecisionV4(parsedJson);
+      } catch (validationError) {
+        console.warn("[AutonomousEngine] Rejected invalid autonomous decision:", validationError);
+        return null;
+      }
+
+      // Persist only allowlisted, schema-validated decisions.
       await db.insert(autonomousDecisions).values({
         decisionType: parsed.decision,
         context: contextSummary,

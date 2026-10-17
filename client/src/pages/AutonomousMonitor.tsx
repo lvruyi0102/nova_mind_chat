@@ -7,7 +7,7 @@ import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Activity, Brain, Loader2, Power, Sparkles, Zap } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function AutonomousMonitor() {
@@ -17,6 +17,10 @@ export default function AutonomousMonitor() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
   const { data: status } = trpc.autonomous.getStatus.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchInterval: 5000,
+  });
+  const { data: agentStatus, refetch: refetchAgentStatus } = trpc.autonomousAgent.getStatus.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchInterval: 5000,
   });
@@ -30,6 +34,61 @@ export default function AutonomousMonitor() {
       toast.error("更新失败");
     },
   });
+
+  const startCognitionMutation = trpc.autonomous.startCognition.useMutation({
+    onSuccess: () => {
+      toast.success("后台认知进程已开启");
+    },
+    onError: () => {
+      toast.error("开启失败");
+    },
+  });
+
+  const stopCognitionMutation = trpc.autonomous.stopCognition.useMutation({
+    onSuccess: () => {
+      toast.success("后台认知进程已停止");
+    },
+    onError: () => {
+      toast.error("停止失败");
+    },
+  });
+
+  const runAgentCycleMutation = trpc.autonomousAgent.runCycle.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 已完成一轮自主执行");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("Agent 执行失败");
+    },
+  });
+
+  const startAgentAutoMutation = trpc.autonomousAgent.startAutoMode.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 自动模式已开启");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("自动模式开启失败");
+    },
+  });
+
+  const stopAgentAutoMutation = trpc.autonomousAgent.stopAutoMode.useMutation({
+    onSuccess: () => {
+      toast.success("Autonomous Agent 自动模式已停止");
+      refetchAgentStatus();
+    },
+    onError: () => {
+      toast.error("自动模式停止失败");
+    },
+  });
+
+  useEffect(() => {
+    if (isAuthenticated && status && !status.isRunning && !startCognitionMutation.isPending) {
+      startCognitionMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, status?.isRunning]);
 
   if (authLoading) {
     return (
@@ -160,8 +219,117 @@ export default function AutonomousMonitor() {
                     <div className={`w-3 h-3 rounded-full ${status?.isRunning ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
                     <span className="text-sm font-medium">{status?.isRunning ? "运行中" : "已停止"}</span>
                   </div>
-                  <Badge variant="outline">{status?.uptime}</Badge>
+                  <Badge variant="outline">{status?.uptime || "--"}</Badge>
+                  <Button
+                    size="sm"
+                    variant={status?.isRunning ? "destructive" : "default"}
+                    onClick={() => {
+                      if (status?.isRunning) {
+                        stopCognitionMutation.mutate();
+                      } else {
+                        startCognitionMutation.mutate();
+                      }
+                    }}
+                    disabled={startCognitionMutation.isPending || stopCognitionMutation.isPending}
+                  >
+                    {status?.isRunning ? "停止" : "开启"}
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Autonomous Agent
+                </CardTitle>
+                <CardDescription>会自己决定做什么、自己调用工具、自己优化策略</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {agentStatus?.capabilities?.map((capability: string) => (
+                    <Badge key={capability} variant="secondary">{capability}</Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant={agentStatus?.isRunning ? "default" : "outline"}>
+                    {agentStatus?.isRunning ? "自动模式运行中" : "自动模式未开启"}
+                  </Badge>
+                  <Badge variant="outline">策略: {agentStatus?.strategy || "--"}</Badge>
+                </div>
+
+                <div className="rounded border p-2 text-xs space-y-1">
+                  <p className="font-medium">长期奖励系统</p>
+                  <p>回合数: {agentStatus?.longTermReward?.episodeCount ?? 0}</p>
+                  <p>即时奖励: {agentStatus?.longTermReward?.lastReward ?? 0}</p>
+                  <p>平均奖励: {agentStatus?.longTermReward?.averageReward ?? 0}</p>
+                  <p>折扣累计回报(G): {agentStatus?.longTermReward?.discountedReturn ?? 0}</p>
+                  <p>最佳奖励: {agentStatus?.longTermReward?.bestReward ?? 0}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => runAgentCycleMutation.mutate()}
+                    disabled={runAgentCycleMutation.isPending}
+                  >
+                    执行 1 轮
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => startAgentAutoMutation.mutate({ intervalMs: 60000 })}
+                    disabled={startAgentAutoMutation.isPending}
+                  >
+                    开启自动模式
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => stopAgentAutoMutation.mutate()}
+                    disabled={stopAgentAutoMutation.isPending}
+                  >
+                    停止自动模式
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">时间驱动循环</p>
+                  <div className="flex flex-wrap gap-2">
+                    {agentStatus?.loopDefinition?.map((step: string) => (
+                      <Badge key={step} variant="outline">{step}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">内部需求系统</p>
+                  <div className="space-y-2">
+                    {agentStatus?.internalNeeds?.map((need: { key: string; label: string; level: number; rationale: string }) => (
+                      <div key={need.key} className="rounded border p-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{need.label}</span>
+                          <span>{need.level}/100</span>
+                        </div>
+                        <div className="mt-1 h-1.5 rounded bg-secondary">
+                          <div className="h-1.5 rounded bg-primary" style={{ width: `${need.level}%` }} />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">{need.rationale}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {agentStatus?.memorySnapshots?.[0] && (
+                  <div className="rounded border p-2 text-xs">
+                    <p className="font-medium mb-1">最近记忆更新</p>
+                    <p>主导需求：{agentStatus.memorySnapshots[0].dominantNeed}</p>
+                    <p>策略：{agentStatus.memorySnapshots[0].strategy}</p>
+                    <p className="text-muted-foreground mt-1">{agentStatus.memorySnapshots[0].summary}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

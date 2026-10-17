@@ -103,9 +103,27 @@ pnpm dev
 - **[架构设计](docs/architecture/)** - 系统架构和设计文档
 - **[API 文档](docs/api/)** - tRPC API 端点说明
 - **[CI/CD 指南](docs/guides/CICD_MANUS.md)** - GitHub Actions 与 Manus 自动部署
+- **[GitHub Models 快速接入](docs/guides/GITHUB_MODELS_QUICKSTART.md)** - 立即把 GitHub Models 接入项目并比较模型效果
 - **[TS Strict 计划](docs/guides/TS_STRICT_PLAN.md)** - 类型严格化分阶段推进方案
 - **[项目评估](docs/assessments/)** - 项目状态和性能评估
 - **[功能路线图](docs/roadmaps/)** - 未来功能规划
+
+
+## 🤖 快速接入 GitHub Models
+
+```bash
+# 安装 Python SDK 依赖
+pip install -r scripts/ai/requirements.txt
+
+# 使用 GitHub Models 进行一次对话
+export GITHUB_TOKEN=<your_token>
+python scripts/ai/github_models_chat.py --prompt "What is the capital of France?"
+
+# 在本地测试环境对比多个模型（延迟与 token 用量）
+python scripts/ai/compare_models.py --models openai/gpt-4.1 openai/gpt-4.1-mini
+```
+
+也可以通过 `GitHub Models Eval` 工作流在 Actions 中直接比较模型。
 
 ## 🔧 开发
 

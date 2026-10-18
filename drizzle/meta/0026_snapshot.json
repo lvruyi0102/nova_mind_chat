@@ -8276,7 +8276,7 @@
       },
       "checkConstraint": {}
     },
-    "world_entities": {
+    "worldEntities": {
       "name": "world_entities",
       "columns": {
         "entityId": {
@@ -8366,7 +8366,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "world_observations": {
+    "worldObservations": {
       "name": "world_observations",
       "columns": {
         "observationId": {
@@ -8460,8 +8460,8 @@
       "foreignKeys": {
         "world_observations_entityId_world_entities_entityId_fk": {
           "name": "world_observations_entityId_world_entities_entityId_fk",
-          "tableFrom": "world_observations",
-          "tableTo": "world_entities",
+          "tableFrom": "worldObservations",
+          "tableTo": "worldEntities",
           "columnsFrom": [
             "entityId"
           ],
@@ -8483,7 +8483,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "causal_hypotheses": {
+    "causalHypotheses": {
       "name": "causal_hypotheses",
       "columns": {
         "hypothesisId": {
@@ -8570,8 +8570,8 @@
       "foreignKeys": {
         "causal_hypotheses_causeEntityId_world_entities_entityId_fk": {
           "name": "causal_hypotheses_causeEntityId_world_entities_entityId_fk",
-          "tableFrom": "causal_hypotheses",
-          "tableTo": "world_entities",
+          "tableFrom": "causalHypotheses",
+          "tableTo": "worldEntities",
           "columnsFrom": [
             "causeEntityId"
           ],
@@ -8583,8 +8583,8 @@
         },
         "causal_hypotheses_effectEntityId_world_entities_entityId_fk": {
           "name": "causal_hypotheses_effectEntityId_world_entities_entityId_fk",
-          "tableFrom": "causal_hypotheses",
-          "tableTo": "world_entities",
+          "tableFrom": "causalHypotheses",
+          "tableTo": "worldEntities",
           "columnsFrom": [
             "effectEntityId"
           ],
@@ -8606,7 +8606,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "digital_earth_scenarios": {
+    "digitalEarthScenarios": {
       "name": "digital_earth_scenarios",
       "columns": {
         "scenarioId": {
@@ -8696,7 +8696,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "world_forecasts": {
+    "worldForecasts": {
       "name": "world_forecasts",
       "columns": {
         "forecastId": {
@@ -8776,8 +8776,8 @@
       "foreignKeys": {
         "world_forecasts_entityId_world_entities_entityId_fk": {
           "name": "world_forecasts_entityId_world_entities_entityId_fk",
-          "tableFrom": "world_forecasts",
-          "tableTo": "world_entities",
+          "tableFrom": "worldForecasts",
+          "tableTo": "worldEntities",
           "columnsFrom": [
             "entityId"
           ],
@@ -8799,7 +8799,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "forecast_evaluations": {
+    "forecastEvaluations": {
       "name": "forecast_evaluations",
       "columns": {
         "evaluationId": {
@@ -8864,8 +8864,8 @@
       "foreignKeys": {
         "forecast_evaluations_forecastId_world_forecasts_forecastId_fk": {
           "name": "forecast_evaluations_forecastId_world_forecasts_forecastId_fk",
-          "tableFrom": "forecast_evaluations",
-          "tableTo": "world_forecasts",
+          "tableFrom": "forecastEvaluations",
+          "tableTo": "worldForecasts",
           "columnsFrom": [
             "forecastId"
           ],
@@ -8877,8 +8877,8 @@
         },
         "forecast_evaluations_observationId_world_observations_observationId_fk": {
           "name": "forecast_evaluations_observationId_world_observations_observationId_fk",
-          "tableFrom": "forecast_evaluations",
-          "tableTo": "world_observations",
+          "tableFrom": "forecastEvaluations",
+          "tableTo": "worldObservations",
           "columnsFrom": [
             "observationId"
           ],
@@ -8900,7 +8900,7 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "evolution_proposals": {
+    "evolutionProposals": {
       "name": "evolution_proposals",
       "columns": {
         "proposalId": {

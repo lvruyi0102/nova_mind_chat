@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { worldEntities, worldObservations } from "../../drizzle/schema";
+import { forecastEvaluations, worldEntities, worldForecasts, worldObservations } from "../../drizzle/schema";
 import { fetchOpenMeteoHourlyTemperature } from "../digital-earth/sources/openMeteo";
+import { evaluateForecast } from "../digital-earth/validation";
 
 function requireDb(db: Awaited<ReturnType<typeof getDb>>) {
   if (!db) {
@@ -104,5 +105,71 @@ export const digitalEarthRouter = router({
     .query(async ({ input }) => {
       const db = requireDb(await getDb());
       return db.select().from(worldEntities).orderBy(desc(worldEntities.createdAt)).limit(input.limit);
+    }),
+
+  evaluateForecast: protectedProcedure
+    .input(z.object({
+      forecastId: z.string().uuid(),
+      observationId: z.string().uuid(),
+      allowedTimeDeltaMs: z.number().int().min(0).max(7 * 24 * 60 * 60 * 1000).default(60 * 60 * 1000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = requireDb(await getDb());
+      const [forecastRows] = await Promise.all([
+        db.select().from(worldForecasts).where(eq(worldForecasts.forecastId, input.forecastId)).limit(1),
+      ]);
+      const observationRows = await db.select().from(worldObservations)
+        .where(eq(worldObservations.observationId, input.observationId)).limit(1);
+      const forecast = forecastRows[0];
+      const observation = observationRows[0];
+      if (!forecast || !observation) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Forecast or observation was not found." });
+      }
+      if (forecast.entityId !== observation.entityId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Forecast and observation must belong to the same world entity." });
+      }
+
+      const result = evaluateForecast({
+        forecastId: forecast.forecastId,
+        metric: forecast.metric,
+        predictedValue: Number(forecast.predictedValue),
+        unit: forecast.unit,
+        targetAt: forecast.targetAt,
+      }, {
+        observationId: observation.observationId,
+        metric: observation.metric,
+        value: Number(observation.value),
+        unit: observation.unit,
+        observedAt: observation.observedAt,
+        qualityStatus: observation.qualityStatus,
+      }, input.allowedTimeDeltaMs);
+
+      const status = result.status === "matched"
+        ? "matched"
+        : result.status === "unit_mismatch"
+          ? "unit_mismatch"
+          : result.status === "time_mismatch"
+            ? "time_mismatch"
+            : result.status === "quality_rejected"
+              ? "quality_rejected"
+              : "manual_review";
+      const evaluationId = randomUUID();
+      await db.insert(forecastEvaluations).values({
+        evaluationId,
+        forecastId: forecast.forecastId,
+        observationId: observation.observationId,
+        absoluteError: result.status === "matched" ? String(result.absoluteError) : null,
+        relativeError: result.status === "matched" && result.relativeError !== null ? String(result.relativeError) : null,
+        evaluationStatus: status,
+        notes: result.status === "matched"
+          ? `Time delta: ${result.timeDeltaMs} ms`
+          : result.reason,
+      });
+
+      if (result.status === "matched") {
+        await db.update(worldForecasts).set({ status: "evaluated" })
+          .where(eq(worldForecasts.forecastId, forecast.forecastId));
+      }
+      return { evaluationId, ...result, persistedStatus: status };
     }),
 });

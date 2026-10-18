@@ -6,7 +6,7 @@ This folder contains the first server-side building blocks.
 - `validation.test.ts`: tests those evaluation boundaries.
 - `sources/openMeteo.ts`: fetches hourly 2 m air temperature from the public Open-Meteo API for caller-supplied coordinates.
 - `sources/openMeteo.test.ts`: tests mapping, coordinate validation, and HTTP errors.
-- `../routers/digitalEarth.ts`: authenticated tRPC endpoints for service status, weather sync, observation/entity/forecast listing, forecast creation, and persisted forecast evaluation.
+- `../routers/digitalEarth.ts`: authenticated tRPC endpoints for service status, weather sync, observation/entity/forecast listing, forecast creation, and persisted forecast evaluation; administrator-only observation quality review is required before imported readings can score forecasts.
 - `client/src/pages/DigitalEarthPage.tsx`: `/digital-earth` dashboard for syncing and inspecting weather observations.
 - `../../drizzle/0026_digital_earth.sql`: migration for entities, observations, hypotheses, scenarios, forecasts, evaluations, and evolution proposals; registered in the Drizzle journal with a matching schema snapshot.
 - `.github/workflows/digital-earth-ci.yml`: runs TypeScript checks, unit tests, and production build on pushes and pull requests.

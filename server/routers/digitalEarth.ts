@@ -126,6 +126,48 @@ export const digitalEarthRouter = router({
       return db.select().from(worldEntities).orderBy(desc(worldEntities.createdAt)).limit(input.limit);
     }),
 
+  createForecast: protectedProcedure
+    .input(z.object({
+      entityId: z.string().min(1).max(36),
+      metric: z.string().trim().min(1).max(160),
+      predictedValue: z.number().finite(),
+      unit: z.string().trim().min(1).max(48),
+      targetAt: z.coerce.date(),
+      modelVersion: z.string().trim().min(1).max(80),
+      assumptions: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = requireDb(await getDb());
+      const entity = await db.select({ entityId: worldEntities.entityId })
+        .from(worldEntities).where(eq(worldEntities.entityId, input.entityId)).limit(1);
+      if (!entity.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "World entity was not found." });
+      }
+      if (input.targetAt.getTime() <= Date.now()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Forecast target time must be in the future." });
+      }
+      const forecastId = randomUUID();
+      await db.insert(worldForecasts).values({
+        forecastId,
+        entityId: input.entityId,
+        metric: input.metric,
+        predictedValue: String(input.predictedValue),
+        unit: input.unit,
+        targetAt: input.targetAt,
+        modelVersion: input.modelVersion,
+        assumptionsJson: JSON.stringify(input.assumptions),
+        status: "open",
+      });
+      return { forecastId, status: "open" as const };
+    }),
+
+  listForecasts: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ input }) => {
+      const db = requireDb(await getDb());
+      return db.select().from(worldForecasts).orderBy(desc(worldForecasts.issuedAt)).limit(input.limit);
+    }),
+
   evaluateForecast: protectedProcedure
     .input(z.object({
       forecastId: z.string().uuid(),

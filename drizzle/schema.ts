@@ -1930,3 +1930,116 @@ export const recentThoughts = mysqlTable("recentThoughts", {
 
 export type RecentThought = typeof recentThoughts.$inferSelect;
 export type InsertRecentThought = typeof recentThoughts.$inferInsert;
+
+
+// ============================================================================
+// Digital Earth foundation (v1)
+// Important: these tables store provenance and distinguish observations from
+// hypotheses and forecasts. They do not themselves provide live data feeds.
+// ============================================================================
+export const worldEntities = mysqlTable("world_entities", {
+  entityId: varchar("entityId", { length: 36 }).primaryKey(),
+  entityType: varchar("entityType", { length: 80 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  propertiesJson: text("propertiesJson"),
+  sourceUri: varchar("sourceUri", { length: 1000 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WorldEntity = typeof worldEntities.$inferSelect;
+export type InsertWorldEntity = typeof worldEntities.$inferInsert;
+
+export const worldObservations = mysqlTable("world_observations", {
+  observationId: varchar("observationId", { length: 36 }).primaryKey(),
+  entityId: varchar("entityId", { length: 36 }).notNull().references(() => worldEntities.entityId, { onDelete: "cascade" }),
+  metric: varchar("metric", { length: 160 }).notNull(),
+  value: decimal("value", { precision: 24, scale: 8 }).notNull(),
+  unit: varchar("unit", { length: 48 }).notNull(),
+  observedAt: timestamp("observedAt").notNull(),
+  ingestedAt: timestamp("ingestedAt").defaultNow().notNull(),
+  sourceName: varchar("sourceName", { length: 255 }).notNull(),
+  sourceUri: varchar("sourceUri", { length: 1000 }),
+  qualityStatus: mysqlEnum("qualityStatus", ["unverified", "valid", "suspect", "rejected"]).notNull().default("unverified"),
+  qualityNotes: text("qualityNotes"),
+  rawPayload: text("rawPayload"),
+});
+export type WorldObservation = typeof worldObservations.$inferSelect;
+export type InsertWorldObservation = typeof worldObservations.$inferInsert;
+
+export const causalHypotheses = mysqlTable("causal_hypotheses", {
+  hypothesisId: varchar("hypothesisId", { length: 36 }).primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  causeEntityId: varchar("causeEntityId", { length: 36 }).references(() => worldEntities.entityId, { onDelete: "set null" }),
+  effectEntityId: varchar("effectEntityId", { length: 36 }).references(() => worldEntities.entityId, { onDelete: "set null" }),
+  mechanism: text("mechanism").notNull(),
+  assumptionsJson: text("assumptionsJson"),
+  evidenceJson: text("evidenceJson"),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  status: mysqlEnum("status", ["proposed", "testing", "supported", "rejected", "superseded"]).notNull().default("proposed"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+export type CausalHypothesis = typeof causalHypotheses.$inferSelect;
+export type InsertCausalHypothesis = typeof causalHypotheses.$inferInsert;
+
+export const digitalEarthScenarios = mysqlTable("digital_earth_scenarios", {
+  scenarioId: varchar("scenarioId", { length: 36 }).primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  scenarioType: mysqlEnum("scenarioType", ["baseline", "stress", "intervention", "custom"]).notNull().default("custom"),
+  inputJson: text("inputJson").notNull(),
+  outputJson: text("outputJson"),
+  modelVersion: varchar("modelVersion", { length: 80 }).notNull(),
+  runStatus: mysqlEnum("runStatus", ["queued", "running", "completed", "failed"]).notNull().default("queued"),
+  limitations: text("limitations"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+export type DigitalEarthScenario = typeof digitalEarthScenarios.$inferSelect;
+export type InsertDigitalEarthScenario = typeof digitalEarthScenarios.$inferInsert;
+
+export const worldForecasts = mysqlTable("world_forecasts", {
+  forecastId: varchar("forecastId", { length: 36 }).primaryKey(),
+  entityId: varchar("entityId", { length: 36 }).notNull().references(() => worldEntities.entityId, { onDelete: "cascade" }),
+  metric: varchar("metric", { length: 160 }).notNull(),
+  predictedValue: decimal("predictedValue", { precision: 24, scale: 8 }).notNull(),
+  unit: varchar("unit", { length: 48 }).notNull(),
+  targetAt: timestamp("targetAt").notNull(),
+  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
+  modelVersion: varchar("modelVersion", { length: 80 }).notNull(),
+  assumptionsJson: text("assumptionsJson"),
+  status: mysqlEnum("status", ["open", "evaluated", "withdrawn"]).notNull().default("open"),
+});
+export type WorldForecast = typeof worldForecasts.$inferSelect;
+export type InsertWorldForecast = typeof worldForecasts.$inferInsert;
+
+export const forecastEvaluations = mysqlTable("forecast_evaluations", {
+  evaluationId: varchar("evaluationId", { length: 36 }).primaryKey(),
+  forecastId: varchar("forecastId", { length: 36 }).notNull().references(() => worldForecasts.forecastId, { onDelete: "cascade" }),
+  observationId: varchar("observationId", { length: 36 }).notNull().references(() => worldObservations.observationId, { onDelete: "cascade" }),
+  absoluteError: decimal("absoluteError", { precision: 24, scale: 8 }),
+  relativeError: decimal("relativeError", { precision: 12, scale: 8 }),
+  evaluationStatus: mysqlEnum("evaluationStatus", ["matched", "unit_mismatch", "time_mismatch", "quality_rejected", "manual_review"]).notNull(),
+  notes: text("notes"),
+  evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
+});
+export type ForecastEvaluation = typeof forecastEvaluations.$inferSelect;
+export type InsertForecastEvaluation = typeof forecastEvaluations.$inferInsert;
+
+export const evolutionProposals = mysqlTable("evolution_proposals", {
+  proposalId: varchar("proposalId", { length: 36 }).primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  rationale: text("rationale").notNull(),
+  changeType: varchar("changeType", { length: 80 }).notNull(),
+  baselineVersion: varchar("baselineVersion", { length: 80 }).notNull(),
+  candidateVersion: varchar("candidateVersion", { length: 80 }),
+  testResultsJson: text("testResultsJson"),
+  status: mysqlEnum("status", ["proposed", "testing", "passed", "failed", "approved", "rejected", "rolled_back"]).notNull().default("proposed"),
+  approvedBy: varchar("approvedBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+export type EvolutionProposal = typeof evolutionProposals.$inferSelect;
+export type InsertEvolutionProposal = typeof evolutionProposals.$inferInsert;

@@ -44,34 +44,37 @@ export const digitalEarthRouter = router({
       const entityId = randomUUID();
       const label = input.label ?? `Weather grid ${input.latitude.toFixed(3)}, ${input.longitude.toFixed(3)}`;
 
-      await db.insert(worldEntities).values({
-        entityId,
-        entityType: "weather_grid",
-        name: label,
-        description: "Coordinate-based hourly weather series from Open-Meteo.",
-        latitude: String(input.latitude),
-        longitude: String(input.longitude),
-        propertiesJson: JSON.stringify({ provider: "Open-Meteo", metric: "air_temperature_2m" }),
-        sourceUri: "https://open-meteo.com/",
-      });
-
-      let saved = 0;
-      for (const reading of selected) {
-        await db.insert(worldObservations).values({
-          observationId: randomUUID(),
+      const saved = await db.transaction(async (tx) => {
+        await tx.insert(worldEntities).values({
           entityId,
-          metric: reading.metric,
-          value: String(reading.value),
-          unit: reading.unit,
-          observedAt: reading.observedAt,
-          sourceName: reading.sourceName,
-          sourceUri: reading.sourceUri,
-          qualityStatus: "unverified",
-          qualityNotes: "Imported from public API; not yet independently validated.",
-          rawPayload: JSON.stringify({ value: reading.value, observedAt: reading.observedAt.toISOString() }),
+          entityType: "weather_grid",
+          name: label,
+          description: "Coordinate-based hourly weather series from Open-Meteo.",
+          latitude: String(input.latitude),
+          longitude: String(input.longitude),
+          propertiesJson: JSON.stringify({ provider: "Open-Meteo", metric: "air_temperature_2m" }),
+          sourceUri: "https://open-meteo.com/",
         });
-        saved++;
-      }
+
+        let count = 0;
+        for (const reading of selected) {
+          await tx.insert(worldObservations).values({
+            observationId: randomUUID(),
+            entityId,
+            metric: reading.metric,
+            value: String(reading.value),
+            unit: reading.unit,
+            observedAt: reading.observedAt,
+            sourceName: reading.sourceName,
+            sourceUri: reading.sourceUri,
+            qualityStatus: "unverified",
+            qualityNotes: "Imported from public API; not yet independently validated.",
+            rawPayload: JSON.stringify({ value: reading.value, observedAt: reading.observedAt.toISOString() }),
+          });
+          count++;
+        }
+        return count;
+      });
 
       return {
         success: true,

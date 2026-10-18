@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -62,7 +62,21 @@ export const digitalEarthRouter = router({
         }
 
         let count = 0;
+        let skippedDuplicates = 0;
         for (const reading of selected) {
+          const existing = await tx.select({ observationId: worldObservations.observationId })
+            .from(worldObservations)
+            .where(and(
+              eq(worldObservations.entityId, entityId),
+              eq(worldObservations.metric, reading.metric),
+              eq(worldObservations.observedAt, reading.observedAt),
+              eq(worldObservations.sourceName, reading.sourceName),
+            ))
+            .limit(1);
+          if (existing.length > 0) {
+            skippedDuplicates++;
+            continue;
+          }
           await tx.insert(worldObservations).values({
             observationId: randomUUID(),
             entityId,
@@ -78,7 +92,7 @@ export const digitalEarthRouter = router({
           });
           count++;
         }
-        return count;
+        return { count, skippedDuplicates };
       });
 
       return {
@@ -86,7 +100,8 @@ export const digitalEarthRouter = router({
         entityId,
         label,
         received: readings.length,
-        persisted: saved,
+        persisted: saved.count,
+        skippedDuplicates: saved.skippedDuplicates,
         qualityStatus: "unverified" as const,
         source: "Open-Meteo",
         latestObservedAt: selected.at(-1)?.observedAt.toISOString() ?? null,

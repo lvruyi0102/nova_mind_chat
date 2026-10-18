@@ -115,8 +115,13 @@ export const digitalEarthRouter = router({
     }))
     .query(async ({ input }) => {
       const db = requireDb(await getDb());
-      const rows = await db.select().from(worldObservations).orderBy(desc(worldObservations.observedAt)).limit(input.limit);
-      return input.metric ? rows.filter(row => row.metric === input.metric) : rows;
+      const query = db.select().from(worldObservations);
+      if (input.metric) {
+        return query.where(eq(worldObservations.metric, input.metric))
+          .orderBy(desc(worldObservations.observedAt))
+          .limit(input.limit);
+      }
+      return query.orderBy(desc(worldObservations.observedAt)).limit(input.limit);
     }),
 
   listEntities: protectedProcedure
@@ -189,6 +194,9 @@ export const digitalEarthRouter = router({
       if (forecast.entityId !== observation.entityId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Forecast and observation must belong to the same world entity." });
       }
+      if (forecast.status !== "open") {
+        throw new TRPCError({ code: "CONFLICT", message: "Only open forecasts can be evaluated." });
+      }
 
       const result = evaluateForecast({
         forecastId: forecast.forecastId,
@@ -215,22 +223,24 @@ export const digitalEarthRouter = router({
               ? "quality_rejected"
               : "manual_review";
       const evaluationId = randomUUID();
-      await db.insert(forecastEvaluations).values({
-        evaluationId,
-        forecastId: forecast.forecastId,
-        observationId: observation.observationId,
-        absoluteError: result.status === "matched" ? String(result.absoluteError) : null,
-        relativeError: result.status === "matched" && result.relativeError !== null ? String(result.relativeError) : null,
-        evaluationStatus: status,
-        notes: result.status === "matched"
-          ? `Time delta: ${result.timeDeltaMs} ms`
-          : result.reason,
-      });
+      await db.transaction(async (tx) => {
+        await tx.insert(forecastEvaluations).values({
+          evaluationId,
+          forecastId: forecast.forecastId,
+          observationId: observation.observationId,
+          absoluteError: result.status === "matched" ? String(result.absoluteError) : null,
+          relativeError: result.status === "matched" && result.relativeError !== null ? String(result.relativeError) : null,
+          evaluationStatus: status,
+          notes: result.status === "matched"
+            ? `Time delta: ${result.timeDeltaMs} ms`
+            : result.reason,
+        });
 
-      if (result.status === "matched") {
-        await db.update(worldForecasts).set({ status: "evaluated" })
-          .where(eq(worldForecasts.forecastId, forecast.forecastId));
-      }
+        if (result.status === "matched") {
+          await tx.update(worldForecasts).set({ status: "evaluated" })
+            .where(eq(worldForecasts.forecastId, forecast.forecastId));
+        }
+      });
       return { evaluationId, ...result, persistedStatus: status };
     }),
 });

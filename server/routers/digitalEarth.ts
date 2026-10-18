@@ -42,20 +42,24 @@ export const digitalEarthRouter = router({
         forecastDays: input.forecastDays,
       });
       const selected = readings.slice(-input.maxReadings);
-      const entityId = randomUUID();
+      const entityId = `weather-${input.latitude.toFixed(4)}-${input.longitude.toFixed(4)}`;
       const label = input.label ?? `Weather grid ${input.latitude.toFixed(3)}, ${input.longitude.toFixed(3)}`;
 
       const saved = await db.transaction(async (tx) => {
-        await tx.insert(worldEntities).values({
-          entityId,
-          entityType: "weather_grid",
-          name: label,
-          description: "Coordinate-based hourly weather series from Open-Meteo.",
-          latitude: String(input.latitude),
-          longitude: String(input.longitude),
-          propertiesJson: JSON.stringify({ provider: "Open-Meteo", metric: "air_temperature_2m" }),
-          sourceUri: "https://open-meteo.com/",
-        });
+        const existingEntity = await tx.select({ entityId: worldEntities.entityId })
+          .from(worldEntities).where(eq(worldEntities.entityId, entityId)).limit(1);
+        if (existingEntity.length === 0) {
+          await tx.insert(worldEntities).values({
+            entityId,
+            entityType: "weather_grid",
+            name: label,
+            description: "Coordinate-based hourly weather series from Open-Meteo.",
+            latitude: String(input.latitude),
+            longitude: String(input.longitude),
+            propertiesJson: JSON.stringify({ provider: "Open-Meteo", metric: "air_temperature_2m" }),
+            sourceUri: "https://open-meteo.com/",
+          });
+        }
 
         let count = 0;
         for (const reading of selected) {

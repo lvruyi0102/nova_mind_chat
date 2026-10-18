@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { forecastEvaluations, worldEntities, worldForecasts, worldObservations } from "../../drizzle/schema";
 import { fetchOpenMeteoHourlyTemperature } from "../digital-earth/sources/openMeteo";
@@ -129,6 +129,34 @@ export const digitalEarthRouter = router({
     .query(async ({ input }) => {
       const db = requireDb(await getDb());
       return db.select().from(worldEntities).orderBy(desc(worldEntities.createdAt)).limit(input.limit);
+    }),
+
+  reviewObservation: adminProcedure
+    .input(z.object({
+      observationId: z.string().uuid(),
+      qualityStatus: z.enum(["valid", "suspect", "rejected"]),
+      qualityNotes: z.string().trim().min(3).max(2000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = requireDb(await getDb());
+      const existing = await db.select({ observationId: worldObservations.observationId })
+        .from(worldObservations)
+        .where(eq(worldObservations.observationId, input.observationId))
+        .limit(1);
+      if (!existing.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Observation was not found." });
+      }
+
+      await db.update(worldObservations).set({
+        qualityStatus: input.qualityStatus,
+        qualityNotes: input.qualityNotes,
+      }).where(eq(worldObservations.observationId, input.observationId));
+
+      return {
+        observationId: input.observationId,
+        qualityStatus: input.qualityStatus,
+        reviewed: true as const,
+      };
     }),
 
   createForecast: protectedProcedure

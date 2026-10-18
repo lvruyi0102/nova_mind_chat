@@ -63,8 +63,10 @@ import { autonomousEvolutionRouter } from "./routers/autonomousEvolutionRouter";
 import { metacognitiveRouter } from "./routers/metacognitiveRouter";
 import { reasoningRouter } from "./routers/reasoningRouter";
 import { emailInternetRouter } from "./routers/emailInternetRouter";
+import { digitalEarthRouter } from "./routers/digitalEarth";
 
 export const appRouter = router({
+  digitalEarth: digitalEarthRouter,
   system: systemRouter,
   cognitive: cognitiveRouter,
   autonomy: autonomyRouter,

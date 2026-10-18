@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Globe2, Database, CloudSun } from "lucide-react";
+import { Loader2, RefreshCw, Globe2, Database, CloudSun, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DigitalEarthPage() {
@@ -13,9 +13,18 @@ export default function DigitalEarthPage() {
   const [longitude, setLongitude] = useState("120.5853");
   const [label, setLabel] = useState("Suzhou weather grid");
   const utils = trpc.useUtils();
+  const currentUser = trpc.auth.me.useQuery();
   const status = trpc.digitalEarth.status.useQuery();
   const observations = trpc.digitalEarth.latestObservations.useQuery({ limit: 24, metric: "air_temperature_2m" });
   const entities = trpc.digitalEarth.listEntities.useQuery({ limit: 20 });
+  const review = trpc.digitalEarth.reviewObservation.useMutation({
+    onSuccess: async () => {
+      toast.success("观测质量状态已更新");
+      await utils.digitalEarth.latestObservations.invalidate();
+    },
+    onError: (error) => toast.error(error.message || "质量审核失败"),
+  });
+
   const sync = trpc.digitalEarth.syncTemperature.useMutation({
     onSuccess: async (result) => {
       toast.success(`同步完成：新增 ${result.persisted} 条观测，跳过重复 ${result.skippedDuplicates} 条`);
@@ -161,7 +170,30 @@ export default function DigitalEarthPage() {
                       <div className="text-xs text-muted-foreground">{new Date(item.observedAt).toLocaleString()} · {item.metric}</div>
                       <div className="mt-1 break-all text-xs text-muted-foreground">{item.sourceName} · {item.sourceUri ?? "无来源链接"}</div>
                     </div>
-                    <Badge variant={item.qualityStatus === "valid" ? "default" : "secondary"}>{item.qualityStatus}</Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={item.qualityStatus === "valid" ? "default" : "secondary"}>{item.qualityStatus}</Badge>
+                      {currentUser.data?.role === "admin" && item.qualityStatus === "unverified" && (
+                        <>
+                          <Button size="sm" variant="outline" disabled={review.isPending} onClick={() => review.mutate({
+                            observationId: item.observationId,
+                            qualityStatus: "valid",
+                            qualityNotes: "Administrator reviewed this observation in the Digital Earth dashboard.",
+                          })}>
+                            <ShieldCheck className="mr-1 h-3 w-3" />通过
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={review.isPending} onClick={() => review.mutate({
+                            observationId: item.observationId,
+                            qualityStatus: "suspect",
+                            qualityNotes: "Administrator flagged this observation for further review in the Digital Earth dashboard.",
+                          })}>存疑</Button>
+                          <Button size="sm" variant="destructive" disabled={review.isPending} onClick={() => review.mutate({
+                            observationId: item.observationId,
+                            qualityStatus: "rejected",
+                            qualityNotes: "Administrator rejected this observation in the Digital Earth dashboard.",
+                          })}>拒绝</Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -1,0 +1,21 @@
+import { protectedProcedure, router } from "../_core/trpc";
+import { capabilityRegistry, getCapabilityById } from "../metaReverse/registry";
+import { z } from "zod";
+
+export const metaCapabilitiesRouter = router({
+  list: protectedProcedure.query(() => ({
+    items: capabilityRegistry,
+    total: capabilityRegistry.length,
+    mode: "read_only" as const,
+  })),
+
+  get: protectedProcedure
+    .input(z.object({ id: z.string().min(1).max(120) }))
+    .query(({ input }) => {
+      const capability = getCapabilityById(input.id);
+      if (!capability) {
+        return { found: false as const, capability: null };
+      }
+      return { found: true as const, capability };
+    }),
+});

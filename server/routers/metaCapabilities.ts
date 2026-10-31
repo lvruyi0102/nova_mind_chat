@@ -1,8 +1,10 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { capabilityRegistry, getCapabilityById } from "../metaReverse/registry";
 import { z } from "zod";
+import { getVisionServiceHealth } from "../metaReverse/visionClient";
 
 export const metaCapabilitiesRouter = router({
+  visionHealth: protectedProcedure.query(() => getVisionServiceHealth()),
   list: protectedProcedure.query(() => ({
     items: capabilityRegistry,
     total: capabilityRegistry.length,

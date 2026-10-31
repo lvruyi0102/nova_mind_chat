@@ -1,4 +1,3 @@
-import type { } from "vitest";
 export type VisionServiceStatus = "connected" | "not_configured" | "unavailable";
 export interface VisionServiceHealth { status: VisionServiceStatus; provider: "sam2"; model: string | null; device: string | null; }
 export interface VisionPromptPoint { x: number; y: number; label: 0 | 1; }

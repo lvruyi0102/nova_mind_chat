@@ -20,6 +20,10 @@ class VideoLimitError(ValueError):
     pass
 
 
+class VideoCancelled(RuntimeError):
+    pass
+
+
 def decode_video_frames(video_path: str | Path, frame_dir: str | Path) -> dict[str, Any]:
     """Decode a bounded video into SAM2's numbered JPEG frame-directory format."""
     source = Path(video_path)
@@ -44,21 +48,25 @@ def decode_video_frames(video_path: str | Path, frame_dir: str | Path) -> dict[s
         output = Path(frame_dir)
         output.mkdir(parents=True, exist_ok=True)
         saved, index = 0, 0
+        source_width = source_height = 0
         while True:
             ok, frame = capture.read()
             if not ok:
                 break
+            if source_width == 0:
+                source_height, source_width = frame.shape[:2]
             if index % sample_step == 0:
                 if saved >= MAX_VIDEO_FRAMES:
                     raise VideoLimitError("Decoded video exceeds the configured frame limit.")
                 target = output / f"{saved:05d}.jpg"
-                if not cv2.imwrite(str(target), frame, [cv2.IMWRITE_JPEG_QUALITY, 92]):
-                    raise VideoLimitError("Failed to write a decoded video frame.")
+                # OpenCV decodes BGR; SAM 2 expects RGB image files.
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                Image.fromarray(rgb_frame).save(target, format="JPEG", quality=92)
                 saved += 1
             index += 1
         if saved == 0:
             raise VideoLimitError("Video contains no decodable frames.")
-        return {"frameCount": saved, "sourceFrameCount": index, "fps": fps / sample_step, "durationSeconds": duration}
+        return {"frameCount": saved, "sourceFrameCount": index, "fps": fps / sample_step, "durationSeconds": index / fps, "width": source_width, "height": source_height}
     finally:
         capture.release()
 
@@ -71,6 +79,7 @@ def track_video_with_sam2(
     points: list[dict[str, float | int]] | None,
     box: tuple[float, float, float, float] | None,
     artifact_dir: str | Path,
+    cancel_check: Any | None = None,
 ) -> list[dict[str, Any]]:
     """Run one isolated SAM2 video state and persist one PNG mask per propagated frame."""
     if not points and not box:
@@ -96,6 +105,8 @@ def track_video_with_sam2(
             normalize_coords=True,
         )
         for frame_idx, object_ids, masks in predictor.propagate_in_video(state, start_frame_idx=0):
+            if cancel_check is not None and cancel_check():
+                raise VideoCancelled("Video job was cancelled.")
             mask_array = masks[0].detach().float().cpu().numpy()
             mask_array = np.squeeze(mask_array)
             if mask_array.ndim != 2:

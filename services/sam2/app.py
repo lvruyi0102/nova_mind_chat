@@ -114,7 +114,7 @@ def download_trusted_video(url: str, destination: Path, cancel_check=None) -> No
                         if total > MAX_VIDEO_BYTES:
                             raise HTTPException(status_code=413, detail="Video exceeds the configured byte limit.")
                         output.write(chunk)
-    except HTTPException:
+    except (HTTPException, VideoCancelled):
         raise
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not retrieve video: {type(exc).__name__}") from exc
@@ -155,7 +155,7 @@ def save_job(job_id, status, error=None, result=None):
     now = time.time()
     encoded = json.dumps(result) if result is not None else None
     with db_connect() as db:
-        db.execute('INSERT INTO video_jobs VALUES(?,?,?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at, error=excluded.error, result_json=excluded.result_json', (job_id,status,now,now,error,encoded))
+        db.execute("INSERT INTO video_jobs VALUES(?,?,?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET status=CASE WHEN video_jobs.status='cancelling' AND excluded.status='running' THEN video_jobs.status ELSE excluded.status END, updated_at=excluded.updated_at, error=excluded.error, result_json=excluded.result_json", (job_id,status,now,now,error,encoded))
 
 def read_job(job_id):
     with db_connect() as db:

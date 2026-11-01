@@ -56,7 +56,7 @@ export interface VisionVideoJob {
   jobId: string;
   status: "queued" | "running" | "cancelling" | "completed" | "failed" | "rejected" | "cancelled" | "interrupted";
   error?: string;
-  result?: VisionSegmentResponse & { video: { frameCount: number; sourceFrameCount: number; fps: number; durationSeconds: number } };
+  result?: VisionSegmentResponse & { video: { frameCount: number; sourceFrameCount: number; fps: number; durationSeconds: number; width: number; height: number }; previewUrl?: string };
 }
 export async function startSam2VideoTrack(input: { mediaUrl: string; points?: VisionPromptPoint[]; box?: [number, number, number, number] }, fetcher: typeof fetch = fetch): Promise<{ jobId: string; status: "queued" }> {
   const url = baseUrl();

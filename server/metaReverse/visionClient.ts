@@ -29,3 +29,24 @@ export async function segmentWithSam2(input: VisionSegmentRequest, fetcher: type
   if (data.provider !== "sam2" || !Array.isArray(data.artifacts)) throw new Error("Vision service returned an invalid response.");
   return data;
 }
+
+export interface VisionArtifactPayload { objectId: string; contentType: "image/png"; base64: string; }
+export async function fetchSam2Artifact(objectId: string, fetcher: typeof fetch = fetch): Promise<VisionArtifactPayload> {
+  const url = baseUrl();
+  if (!url) throw new Error("Vision service is not configured.");
+  if (!/^[0-9a-f-]{36}$/i.test(objectId)) throw new Error("Invalid artifact id.");
+  const token = process.env.NOVA_VISION_SERVICE_TOKEN?.trim();
+  if (!token) throw new Error("Vision service authentication is not configured.");
+  const response = await fetcher(url + "/artifacts/" + objectId + ".png", {
+    headers: { authorization: "Bearer " + token },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error("Vision artifact retrieval failed with status " + response.status + ".");
+  const contentType = response.headers.get("content-type")?.split(";")[0]?.trim();
+  if (contentType !== "image/png") throw new Error("Vision service returned an unsupported artifact type.");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > 10 * 1024 * 1024) throw new Error("Vision artifact size is invalid.");
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { objectId, contentType: "image/png", base64: btoa(binary) };
+}

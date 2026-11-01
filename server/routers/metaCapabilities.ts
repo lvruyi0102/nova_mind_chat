@@ -1,7 +1,7 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { capabilityRegistry, getCapabilityById } from "../metaReverse/registry";
 import { z } from "zod";
-import { fetchSam2Artifact, getSam2VideoJob, getVisionServiceHealth, startSam2VideoTrack } from "../metaReverse/visionClient";
+import { cancelSam2VideoJob, fetchSam2Artifact, getSam2VideoJob, getVisionServiceHealth, startSam2VideoTrack } from "../metaReverse/visionClient";
 
 export const metaCapabilitiesRouter = router({
   visionHealth: protectedProcedure.query(() => getVisionServiceHealth()),
@@ -11,6 +11,9 @@ export const metaCapabilitiesRouter = router({
   getVisionVideoJob: protectedProcedure
     .input(z.object({ jobId: z.string().uuid() }))
     .query(({ input }) => getSam2VideoJob(input.jobId)),
+  cancelVisionVideoJob: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(({ input }) => cancelSam2VideoJob(input.jobId)),
   getVisionArtifact: protectedProcedure
     .input(z.object({ objectId: z.string().uuid() }))
     .query(({ input }) => fetchSam2Artifact(input.objectId)),

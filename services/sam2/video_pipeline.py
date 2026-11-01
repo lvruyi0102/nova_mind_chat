@@ -24,7 +24,7 @@ class VideoCancelled(RuntimeError):
     pass
 
 
-def decode_video_frames(video_path: str | Path, frame_dir: str | Path) -> dict[str, Any]:
+def decode_video_frames(video_path: str | Path, frame_dir: str | Path, cancel_check: Any | None = None) -> dict[str, Any]:
     """Decode a bounded video into SAM2's numbered JPEG frame-directory format."""
     source = Path(video_path)
     if not source.is_file():
@@ -50,9 +50,13 @@ def decode_video_frames(video_path: str | Path, frame_dir: str | Path) -> dict[s
         saved, index = 0, 0
         source_width = source_height = 0
         while True:
+            if cancel_check is not None and cancel_check():
+                raise VideoCancelled("Video job was cancelled.")
             ok, frame = capture.read()
             if not ok:
                 break
+            if index / fps > MAX_VIDEO_SECONDS:
+                raise VideoLimitError("Decoded video exceeds the configured duration limit.")
             if source_width == 0:
                 source_height, source_width = frame.shape[:2]
             if index % sample_step == 0:

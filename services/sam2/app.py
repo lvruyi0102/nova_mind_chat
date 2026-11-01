@@ -127,8 +127,8 @@ def health():
 async def segment(payload: SegmentRequest, authorization: str | None = Header(default=None)):
     require_service_auth(authorization)
     started = time.perf_counter()
-    predictor = get_predictor()
     image = await load_trusted_image(payload.mediaUrl)
+    predictor = get_predictor()
     width, height = image.size
     point_coords = np.array([[p.x, p.y] for p in payload.points], dtype=np.float32) if payload.points else None
     point_labels = np.array([p.label for p in payload.points], dtype=np.int32) if payload.points else None

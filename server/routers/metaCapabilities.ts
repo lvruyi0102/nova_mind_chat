@@ -6,7 +6,7 @@ import { cancelSam2VideoJob, fetchSam2Artifact, getSam2VideoJob, getVisionServic
 export const metaCapabilitiesRouter = router({
   visionHealth: protectedProcedure.query(() => getVisionServiceHealth()),
   startVisionVideoTrack: protectedProcedure
-    .input(z.object({ mediaUrl: z.string().url().max(2048), points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), label: z.union([z.literal(0), z.literal(1)]) })).max(16).optional(), box: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)]).optional() }).refine((v) => !!v.points?.length || !!v.box, "At least one point or box prompt is required."))
+    .input(z.object({ mediaUrl: z.string().url().max(2048), points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), label: z.union([z.literal(0), z.literal(1)]).default(1) })).max(16).optional(), box: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)]).optional() }).refine((v) => !!v.points?.length || !!v.box, "At least one point or box prompt is required."))
     .mutation(({ input }) => startSam2VideoTrack(input)),
   getVisionVideoJob: protectedProcedure
     .input(z.object({ jobId: z.string().uuid() }))

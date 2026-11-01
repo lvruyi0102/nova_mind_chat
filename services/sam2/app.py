@@ -44,6 +44,7 @@ DEVICE = os.getenv("SAM2_DEVICE", "cuda" if torch is not None and torch.cuda.is_
 
 app = FastAPI(title="Nova SAM 2 Vision Service", version="0.1.0")
 _predictor: SAM2ImagePredictor | None = None
+_video_predictor = None
 _video_jobs_lock = threading.Lock()
 _video_cancel_events: dict[str, threading.Event] = {}
 _video_worker_lock = threading.Lock()
@@ -117,13 +118,17 @@ def download_trusted_video(url: str, destination: Path) -> None:
 
 
 def get_video_predictor():
+    global _video_predictor
+    if _video_predictor is not None:
+        return _video_predictor
     if INFERENCE_IMPORT_ERROR:
         raise HTTPException(status_code=503, detail="PyTorch or SAM 2 inference package is not installed.")
     if not CHECKPOINT or not Path(CHECKPOINT).is_file():
         raise HTTPException(status_code=503, detail="SAM 2 checkpoint is not installed.")
     try:
         from sam2.build_sam import build_sam2_video_predictor
-        return build_sam2_video_predictor(MODEL_CONFIG, CHECKPOINT, device=DEVICE)
+        _video_predictor = build_sam2_video_predictor(MODEL_CONFIG, CHECKPOINT, device=DEVICE)
+        return _video_predictor
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"SAM 2 video model failed to load: {type(exc).__name__}") from exc
 

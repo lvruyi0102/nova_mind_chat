@@ -154,7 +154,8 @@ async def segment(payload: SegmentRequest, authorization: str | None = Header(de
 
 
 @app.get("/artifacts/{filename}")
-def get_artifact(filename: str):
+def get_artifact(filename: str, authorization: str | None = Header(default=None)):
+    require_service_auth(authorization)
     if not filename.endswith(".png") or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=404, detail="Artifact not found.")
     path = ARTIFACT_DIR / filename

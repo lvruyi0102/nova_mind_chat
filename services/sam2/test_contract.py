@@ -60,3 +60,16 @@ def test_video_job_lookup_rejects_unknown_job():
         headers={"Authorization": "Bearer test-secret"},
     )
     assert response.status_code == 404
+
+
+def test_video_job_cancel_requires_authentication():
+    response = client.post("/v1/video/jobs/123e4567-e89b-12d3-a456-426614174000/cancel")
+    assert response.status_code == 401
+
+
+def test_video_job_cancel_unknown_job_returns_not_found():
+    response = client.post(
+        "/v1/video/jobs/123e4567-e89b-12d3-a456-426614174000/cancel",
+        headers={"Authorization": "Bearer test-secret"},
+    )
+    assert response.status_code == 404

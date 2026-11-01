@@ -40,7 +40,7 @@ The service requires `NOVA_VISION_SERVICE_TOKEN`; only HTTPS media URLs whose ex
 
 ## Explicit scope boundary
 
-The image HTTP endpoint is implemented. A reusable bounded video decode/tracking core, an authenticated background-job HTTP API, and fake-predictor/contract tests are present. Job state is process-local, and no end-to-end model run has been completed. Durable cloud artifact storage, user/session authorization, GPU provisioning, deployment, and end-to-end production validation remain future work. A local artifact directory is not durable object storage.
+The image HTTP endpoint is implemented. A reusable bounded video decode/tracking core, an authenticated background-job HTTP API, and fake-predictor/contract tests are present. Job metadata is persisted in SQLite, cancellation is cooperative between propagated frames, and artifacts/job records are pruned by TTL. The task executor is still process-local; no end-to-end model run has been completed. Durable cloud artifact storage, user/session authorization, GPU provisioning, deployment, and end-to-end production validation remain future work. A local artifact directory is not durable object storage.
 
 ## Prompt coordinate convention
 

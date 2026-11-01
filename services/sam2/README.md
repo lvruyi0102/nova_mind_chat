@@ -41,3 +41,9 @@ The service requires `NOVA_VISION_SERVICE_TOKEN`; only HTTPS media URLs whose ex
 ## Explicit scope boundary
 
 This first executable slice handles **single images only**. Video tracking, durable cloud artifact storage, user/session authorization, GPU provisioning, deployment, and end-to-end production validation remain future work. A local artifact directory is not durable object storage.
+
+## Prompt coordinate convention
+
+The API accepts normalized coordinates in the range 0..1, with the origin at the top-left. The service converts points and XYXY boxes to source-image pixel coordinates before calling the SAM 2 predictor. Positive point labels select the object; zero labels mark background. Do not send pixel coordinates to this API.
+
+For GPU inference, the service uses BF16 autocast on CUDA and standard inference mode on CPU. Actual speed and memory requirements depend on the selected checkpoint and host.

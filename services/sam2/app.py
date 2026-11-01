@@ -10,13 +10,20 @@ from urllib.parse import urlparse
 
 import httpx
 import numpy as np
-import torch
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 from PIL import Image
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+try:
+    import torch
+    from sam2.build_sam import build_sam2
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
+    INFERENCE_IMPORT_ERROR = None
+except ImportError as exc:
+    torch = None
+    build_sam2 = None
+    SAM2ImagePredictor = None
+    INFERENCE_IMPORT_ERROR = type(exc).__name__
 
 APP_DIR = Path(__file__).resolve().parent
 ARTIFACT_DIR = Path(os.getenv("SAM2_ARTIFACT_DIR", APP_DIR / "artifacts"))
@@ -27,7 +34,7 @@ SERVICE_TOKEN = os.getenv("NOVA_VISION_SERVICE_TOKEN", "")
 MODEL_NAME = os.getenv("SAM2_MODEL_NAME", "sam2.1_hiera_small")
 MODEL_CONFIG = os.getenv("SAM2_MODEL_CONFIG", "configs/sam2.1/sam2.1_hiera_s.yaml")
 CHECKPOINT = os.getenv("SAM2_CHECKPOINT", "")
-DEVICE = os.getenv("SAM2_DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = os.getenv("SAM2_DEVICE", "cuda" if torch is not None and torch.cuda.is_available() else "cpu")
 
 app = FastAPI(title="Nova SAM 2 Vision Service", version="0.1.0")
 _predictor: SAM2ImagePredictor | None = None
@@ -69,6 +76,8 @@ def get_predictor():
     global _predictor
     if _predictor is not None:
         return _predictor
+    if INFERENCE_IMPORT_ERROR:
+        raise HTTPException(status_code=503, detail="PyTorch or SAM 2 inference package is not installed.")
     if not CHECKPOINT or not Path(CHECKPOINT).is_file():
         raise HTTPException(status_code=503, detail="SAM 2 checkpoint is not installed.")
     try:
@@ -110,7 +119,7 @@ async def load_trusted_image(url: str) -> Image.Image:
 
 @app.get("/health")
 def health():
-    ready = bool(CHECKPOINT and Path(CHECKPOINT).is_file())
+    ready = bool(INFERENCE_IMPORT_ERROR is None and CHECKPOINT and Path(CHECKPOINT).is_file())
     return {"status": "ok" if ready else "not_ready", "provider": "sam2", "model": MODEL_NAME if ready else None, "device": DEVICE if ready else None}
 
 

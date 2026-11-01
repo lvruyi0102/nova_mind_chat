@@ -32,3 +32,8 @@ def test_video_is_explicitly_not_supported_yet():
         "points": [{"x": 0.5, "y": 0.5, "label": 1}],
     })
     assert response.status_code == 422
+
+
+def test_artifacts_require_authentication():
+    response = client.get("/artifacts/not-a-real-mask.png")
+    assert response.status_code == 401

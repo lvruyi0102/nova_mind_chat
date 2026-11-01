@@ -134,3 +134,39 @@ def track_video_with_sam2(
             except Exception:
                 # Preserve the original inference exception; worker recycling is the final safety net.
                 pass
+
+
+def render_tracking_preview(frame_dir: str | Path, tracked: list[dict[str, Any]], output_path: str | Path, fps: float) -> Path:
+    """Render sampled source frames with their tracked binary masks into an MP4 preview."""
+    frames = Path(frame_dir)
+    destination = Path(output_path)
+    if fps <= 0 or not tracked:
+        raise VideoLimitError("A positive frame rate and tracked masks are required.")
+    first = cv2.imread(str(frames / "00000.jpg"))
+    if first is None:
+        raise VideoLimitError("The first decoded frame is unavailable.")
+    height, width = first.shape[:2]
+    writer = cv2.VideoWriter(str(destination), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+    if not writer.isOpened():
+        raise VideoLimitError("MP4 preview encoder is unavailable.")
+    masks_by_frame = {int(item["frameIndex"]): Path(item["maskPath"]) for item in tracked}
+    try:
+        for frame_index in range(len(list(frames.glob("*.jpg")))):
+            frame = cv2.imread(str(frames / f"{frame_index:05d}.jpg"))
+            if frame is None:
+                raise VideoLimitError("A decoded frame is missing during preview rendering.")
+            mask_path = masks_by_frame.get(frame_index)
+            if mask_path and mask_path.is_file():
+                mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+                if mask is None or mask.shape != (height, width):
+                    raise VideoLimitError("A tracked mask has invalid dimensions.")
+                selected = mask > 0
+                overlay = frame.copy()
+                overlay[selected] = (0, 220, 80)
+                frame = cv2.addWeighted(frame, 0.62, overlay, 0.38, 0)
+            writer.write(frame)
+    finally:
+        writer.release()
+    if not destination.is_file() or destination.stat().st_size == 0:
+        raise VideoLimitError("MP4 preview rendering produced no output.")
+    return destination

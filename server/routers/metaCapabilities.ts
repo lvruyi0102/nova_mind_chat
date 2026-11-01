@@ -1,10 +1,13 @@
 import { protectedProcedure, router } from "../_core/trpc";
 import { capabilityRegistry, getCapabilityById } from "../metaReverse/registry";
 import { z } from "zod";
-import { getVisionServiceHealth } from "../metaReverse/visionClient";
+import { fetchSam2Artifact, getVisionServiceHealth } from "../metaReverse/visionClient";
 
 export const metaCapabilitiesRouter = router({
   visionHealth: protectedProcedure.query(() => getVisionServiceHealth()),
+  getVisionArtifact: protectedProcedure
+    .input(z.object({ objectId: z.string().uuid() }))
+    .query(({ input }) => fetchSam2Artifact(input.objectId)),
   list: protectedProcedure.query(() => ({
     items: capabilityRegistry,
     total: capabilityRegistry.length,

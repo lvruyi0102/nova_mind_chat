@@ -73,3 +73,16 @@ def test_video_job_cancel_unknown_job_returns_not_found():
         headers={"Authorization": "Bearer test-secret"},
     )
     assert response.status_code == 404
+
+
+def test_mp4_artifacts_require_authentication():
+    response = client.get("/artifacts/123e4567-e89b-12d3-a456-426614174000.mp4")
+    assert response.status_code == 401
+
+
+def test_artifact_route_rejects_non_media_extensions():
+    response = client.get(
+        "/artifacts/123e4567-e89b-12d3-a456-426614174000.txt",
+        headers={"Authorization": "Bearer test-secret"},
+    )
+    assert response.status_code == 404

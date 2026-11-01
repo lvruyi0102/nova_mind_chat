@@ -90,12 +90,13 @@ class VideoTrackRequest(BaseModel):
         return self
 
 
-def download_trusted_video(url: str, destination: Path) -> None:
+def download_trusted_video(url: str, destination: Path, cancel_check=None) -> None:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.hostname.lower() not in ALLOWED_HOSTS:
         raise HTTPException(status_code=400, detail="Media URL host is not allowlisted.")
     if parsed.username or parsed.password or parsed.port not in (None, 443):
         raise HTTPException(status_code=400, detail="Media URL is not permitted.")
+    from video_pipeline import VideoCancelled
     total = 0
     try:
         with httpx.Client(timeout=30, follow_redirects=False) as client:
@@ -107,6 +108,8 @@ def download_trusted_video(url: str, destination: Path) -> None:
                     raise HTTPException(status_code=413, detail="Video exceeds the configured byte limit.")
                 with destination.open("wb") as output:
                     for chunk in response.iter_bytes():
+                        if cancel_check is not None and cancel_check():
+                            raise VideoCancelled("Video job was cancelled.")
                         total += len(chunk)
                         if total > MAX_VIDEO_BYTES:
                             raise HTTPException(status_code=413, detail="Video exceeds the configured byte limit.")
@@ -181,18 +184,19 @@ init_job_store()
 
 def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
     from video_pipeline import VideoCancelled, VideoLimitError, decode_video_frames, render_tracking_preview, track_video_with_sam2
-    save_job(job_id, 'running')
     if not _video_worker_lock.acquire(blocking=False):
         save_job(job_id, 'rejected', 'Video worker is busy; retry later.')
         _video_cancel_events.pop(job_id, None)
         return
     cancel_event = _video_cancel_events.get(job_id, threading.Event())
     try:
+        if cancel_event.is_set(): raise VideoCancelled("Video job was cancelled.")
+        save_job(job_id, 'running')
         with tempfile.TemporaryDirectory(prefix='nova-sam2-video-') as temp:
             root = Path(temp); source = root / 'source-video'; frames = root / 'frames'
             if cancel_event.is_set(): raise VideoCancelled('Video job was cancelled.')
-            download_trusted_video(payload.mediaUrl, source)
-            metadata = decode_video_frames(source, frames)
+            download_trusted_video(payload.mediaUrl, source, cancel_check=cancel_event.is_set)
+            metadata = decode_video_frames(source, frames, cancel_check=cancel_event.is_set)
             with Image.open(frames / '00000.jpg') as first_frame: width, height = first_frame.size
             predictor = get_video_predictor()
             points = [point.model_dump() for point in payload.points] if payload.points else None

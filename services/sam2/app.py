@@ -3,6 +3,10 @@ from __future__ import annotations
 import io
 import os
 import secrets
+import shutil
+import tempfile
+import threading
+import httpx
 import time
 import uuid
 from contextlib import nullcontext
@@ -11,7 +15,7 @@ from urllib.parse import urlparse
 
 import httpx
 import numpy as np
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 from PIL import Image
@@ -39,6 +43,10 @@ DEVICE = os.getenv("SAM2_DEVICE", "cuda" if torch is not None and torch.cuda.is_
 
 app = FastAPI(title="Nova SAM 2 Vision Service", version="0.1.0")
 _predictor: SAM2ImagePredictor | None = None
+_video_jobs: dict[str, dict] = {}
+_video_jobs_lock = threading.Lock()
+_video_worker_lock = threading.Lock()
+MAX_VIDEO_BYTES = int(os.getenv('SAM2_MAX_VIDEO_BYTES', str(20 * 1024 * 1024)))
 
 
 class Point(BaseModel):
@@ -63,6 +71,108 @@ class SegmentRequest(BaseModel):
         if self.box and not (0 <= self.box[0] < self.box[2] <= 1 and 0 <= self.box[1] < self.box[3] <= 1):
             raise ValueError("Box must be normalized XYXY coordinates within [0,1].")
         return self
+
+
+
+class VideoTrackRequest(BaseModel):
+    mediaUrl: str = Field(min_length=1, max_length=2048)
+    points: list[Point] | None = Field(default=None, max_length=16)
+    box: tuple[float, float, float, float] | None = None
+
+    @model_validator(mode="after")
+    def validate_prompt(self):
+        if not self.points and not self.box:
+            raise ValueError("Provide at least one point or a box.")
+        if self.box and not (0 <= self.box[0] < self.box[2] <= 1 and 0 <= self.box[1] < self.box[3] <= 1):
+            raise ValueError("Box must be normalized XYXY coordinates within [0,1].")
+        return self
+
+
+def download_trusted_video(url: str, destination: Path) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.hostname.lower() not in ALLOWED_HOSTS:
+        raise HTTPException(status_code=400, detail="Media URL host is not allowlisted.")
+    if parsed.username or parsed.password or parsed.port not in (None, 443):
+        raise HTTPException(status_code=400, detail="Media URL is not permitted.")
+    total = 0
+    try:
+        with httpx.Client(timeout=30, follow_redirects=False) as client:
+            with client.stream("GET", url) as response:
+                if response.status_code != 200:
+                    raise HTTPException(status_code=400, detail="Could not retrieve video from trusted storage.")
+                length = int(response.headers.get("content-length", "0") or "0")
+                if length > MAX_VIDEO_BYTES:
+                    raise HTTPException(status_code=413, detail="Video exceeds the configured byte limit.")
+                with destination.open("wb") as output:
+                    for chunk in response.iter_bytes():
+                        total += len(chunk)
+                        if total > MAX_VIDEO_BYTES:
+                            raise HTTPException(status_code=413, detail="Video exceeds the configured byte limit.")
+                        output.write(chunk)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not retrieve video: {type(exc).__name__}") from exc
+
+
+def get_video_predictor():
+    if INFERENCE_IMPORT_ERROR:
+        raise HTTPException(status_code=503, detail="PyTorch or SAM 2 inference package is not installed.")
+    if not CHECKPOINT or not Path(CHECKPOINT).is_file():
+        raise HTTPException(status_code=503, detail="SAM 2 checkpoint is not installed.")
+    try:
+        from sam2.build_sam import build_sam2_video_predictor
+        return build_sam2_video_predictor(MODEL_CONFIG, CHECKPOINT, device=DEVICE)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"SAM 2 video model failed to load: {type(exc).__name__}") from exc
+
+
+def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
+    from video_pipeline import VideoLimitError, decode_video_frames, track_video_with_sam2
+
+    with _video_jobs_lock:
+        _video_jobs[job_id]["status"] = "running"
+    if not _video_worker_lock.acquire(blocking=False):
+        with _video_jobs_lock:
+            _video_jobs[job_id].update(status="rejected", error="Video worker is busy; retry later.")
+        return
+    try:
+        with tempfile.TemporaryDirectory(prefix="nova-sam2-video-") as temp:
+            root = Path(temp)
+            source = root / "source-video"
+            frames = root / "frames"
+            download_trusted_video(payload.mediaUrl, source)
+            metadata = decode_video_frames(source, frames)
+            with Image.open(frames / "00000.jpg") as first_frame:
+                width, height = first_frame.size
+            predictor = get_video_predictor()
+            points = [point.model_dump() for point in payload.points] if payload.points else None
+            tracked = track_video_with_sam2(predictor, frames, width, height, points, payload.box, ARTIFACT_DIR)
+            artifacts = []
+            for item in tracked:
+                artifact_id = item["objectId"]
+                destination = ARTIFACT_DIR / f"{artifact_id}.png"
+                shutil.copyfile(item["maskPath"], destination)
+                artifacts.append({
+                    "objectId": artifact_id,
+                    "frameIndex": item["frameIndex"],
+                    "width": item["width"],
+                    "height": item["height"],
+                    "maskUrl": f"/artifacts/{artifact_id}.png",
+                })
+            with _video_jobs_lock:
+                _video_jobs[job_id].update(status="completed", result={
+                    "provider": "sam2", "model": MODEL_NAME, "mediaType": "video",
+                    "video": metadata, "artifacts": artifacts,
+                })
+    except (HTTPException, VideoLimitError) as exc:
+        with _video_jobs_lock:
+            _video_jobs[job_id].update(status="failed", error=getattr(exc, "detail", str(exc)))
+    except Exception as exc:
+        with _video_jobs_lock:
+            _video_jobs[job_id].update(status="failed", error=f"Video tracking failed: {type(exc).__name__}")
+    finally:
+        _video_worker_lock.release()
 
 
 def require_service_auth(authorization: str | None):
@@ -162,3 +272,27 @@ def get_artifact(filename: str, authorization: str | None = Header(default=None)
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Artifact not found.")
     return FileResponse(path, media_type="image/png")
+
+
+@app.post("/v1/video/track", status_code=202)
+def start_video_track(payload: VideoTrackRequest, background_tasks: BackgroundTasks, authorization: str | None = Header(default=None)):
+    require_service_auth(authorization)
+    job_id = str(uuid.uuid4())
+    with _video_jobs_lock:
+        _video_jobs[job_id] = {"jobId": job_id, "status": "queued"}
+    background_tasks.add_task(run_video_job, job_id, payload)
+    return {"jobId": job_id, "status": "queued"}
+
+
+@app.get("/v1/video/jobs/{job_id}")
+def get_video_job(job_id: str, authorization: str | None = Header(default=None)):
+    require_service_auth(authorization)
+    try:
+        uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Video job not found.")
+    with _video_jobs_lock:
+        job = _video_jobs.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Video job not found.")
+        return dict(job)

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import secrets
 import shutil
+import sqlite3
 import tempfile
 import threading
-import httpx
 import time
 import uuid
 from contextlib import nullcontext
@@ -43,8 +44,8 @@ DEVICE = os.getenv("SAM2_DEVICE", "cuda" if torch is not None and torch.cuda.is_
 
 app = FastAPI(title="Nova SAM 2 Vision Service", version="0.1.0")
 _predictor: SAM2ImagePredictor | None = None
-_video_jobs: dict[str, dict] = {}
 _video_jobs_lock = threading.Lock()
+_video_cancel_events: dict[str, threading.Event] = {}
 _video_worker_lock = threading.Lock()
 MAX_VIDEO_BYTES = int(os.getenv('SAM2_MAX_VIDEO_BYTES', str(20 * 1024 * 1024)))
 
@@ -127,53 +128,80 @@ def get_video_predictor():
         raise HTTPException(status_code=503, detail=f"SAM 2 video model failed to load: {type(exc).__name__}") from exc
 
 
-def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
-    from video_pipeline import VideoLimitError, decode_video_frames, track_video_with_sam2
+JOB_DB = Path(os.getenv('SAM2_JOB_DB', ARTIFACT_DIR / 'video-jobs.sqlite3'))
+ARTIFACT_TTL_SECONDS = int(os.getenv('SAM2_ARTIFACT_TTL_SECONDS', '3600'))
+JOB_TTL_SECONDS = int(os.getenv('SAM2_JOB_TTL_SECONDS', '86400'))
 
-    with _video_jobs_lock:
-        _video_jobs[job_id]["status"] = "running"
+def db_connect():
+    JOB_DB.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(JOB_DB, timeout=10)
+    db.row_factory = sqlite3.Row
+    return db
+
+def init_job_store():
+    with db_connect() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS video_jobs (job_id TEXT PRIMARY KEY, status TEXT NOT NULL, created_at REAL NOT NULL, updated_at REAL NOT NULL, error TEXT, result_json TEXT)')
+        db.execute("UPDATE video_jobs SET status='interrupted', error='Service restarted before this in-memory task completed.' WHERE status IN ('queued','running','cancelling')")
+
+def save_job(job_id, status, error=None, result=None):
+    now = time.time()
+    encoded = json.dumps(result) if result is not None else None
+    with db_connect() as db:
+        db.execute('INSERT INTO video_jobs VALUES(?,?,?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at, error=excluded.error, result_json=excluded.result_json', (job_id,status,now,now,error,encoded))
+
+def read_job(job_id):
+    with db_connect() as db:
+        row = db.execute('SELECT * FROM video_jobs WHERE job_id=?', (job_id,)).fetchone()
+    if row is None: return None
+    job = {'jobId': row['job_id'], 'status': row['status']}
+    if row['error']: job['error'] = row['error']
+    if row['result_json']: job['result'] = json.loads(row['result_json'])
+    return job
+
+def cleanup_expired_data():
+    now = time.time()
+    with db_connect() as db:
+        db.execute('DELETE FROM video_jobs WHERE updated_at < ?', (now-JOB_TTL_SECONDS,))
+    for path in ARTIFACT_DIR.glob('*.png'):
+        try:
+            if path.is_file() and path.stat().st_mtime < now-ARTIFACT_TTL_SECONDS: path.unlink()
+        except OSError: pass
+    for path in ARTIFACT_DIR.iterdir():
+        if path.is_dir():
+            try:
+                if path.stat().st_mtime < now-ARTIFACT_TTL_SECONDS: shutil.rmtree(path, ignore_errors=True)
+            except OSError: pass
+
+init_job_store()
+
+def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
+    from video_pipeline import VideoCancelled, VideoLimitError, decode_video_frames, track_video_with_sam2
+    save_job(job_id, 'running')
     if not _video_worker_lock.acquire(blocking=False):
-        with _video_jobs_lock:
-            _video_jobs[job_id].update(status="rejected", error="Video worker is busy; retry later.")
+        save_job(job_id, 'rejected', 'Video worker is busy; retry later.')
         return
+    cancel_event = _video_cancel_events.get(job_id, threading.Event())
     try:
-        with tempfile.TemporaryDirectory(prefix="nova-sam2-video-") as temp:
-            root = Path(temp)
-            source = root / "source-video"
-            frames = root / "frames"
+        with tempfile.TemporaryDirectory(prefix='nova-sam2-video-') as temp:
+            root = Path(temp); source = root / 'source-video'; frames = root / 'frames'
+            if cancel_event.is_set(): raise VideoCancelled('Video job was cancelled.')
             download_trusted_video(payload.mediaUrl, source)
             metadata = decode_video_frames(source, frames)
-            with Image.open(frames / "00000.jpg") as first_frame:
-                width, height = first_frame.size
+            with Image.open(frames / '00000.jpg') as first_frame: width, height = first_frame.size
             predictor = get_video_predictor()
             points = [point.model_dump() for point in payload.points] if payload.points else None
-            tracked = track_video_with_sam2(predictor, frames, width, height, points, payload.box, ARTIFACT_DIR)
+            tracked = track_video_with_sam2(predictor, frames, width, height, points, payload.box, ARTIFACT_DIR, cancel_check=cancel_event.is_set)
             artifacts = []
             for item in tracked:
-                artifact_id = item["objectId"]
-                destination = ARTIFACT_DIR / f"{artifact_id}.png"
-                shutil.copyfile(item["maskPath"], destination)
-                artifacts.append({
-                    "objectId": artifact_id,
-                    "frameIndex": item["frameIndex"],
-                    "width": item["width"],
-                    "height": item["height"],
-                    "maskUrl": f"/artifacts/{artifact_id}.png",
-                })
-            with _video_jobs_lock:
-                _video_jobs[job_id].update(status="completed", result={
-                    "provider": "sam2", "model": MODEL_NAME, "mediaType": "video",
-                    "video": metadata, "artifacts": artifacts,
-                })
-    except (HTTPException, VideoLimitError) as exc:
-        with _video_jobs_lock:
-            _video_jobs[job_id].update(status="failed", error=getattr(exc, "detail", str(exc)))
-    except Exception as exc:
-        with _video_jobs_lock:
-            _video_jobs[job_id].update(status="failed", error=f"Video tracking failed: {type(exc).__name__}")
+                if cancel_event.is_set(): raise VideoCancelled('Video job was cancelled.')
+                artifact_id = item['objectId']; shutil.copyfile(item['maskPath'], ARTIFACT_DIR / (artifact_id + '.png'))
+                artifacts.append({'objectId':artifact_id,'frameIndex':item['frameIndex'],'width':item['width'],'height':item['height'],'maskUrl':'/artifacts/'+artifact_id+'.png'})
+            save_job(job_id, 'completed', result={'provider':'sam2','model':MODEL_NAME,'mediaType':'video','video':metadata,'artifacts':artifacts})
+    except VideoCancelled as exc: save_job(job_id, 'cancelled', str(exc))
+    except (HTTPException, VideoLimitError) as exc: save_job(job_id, 'failed', getattr(exc, 'detail', str(exc)))
+    except Exception as exc: save_job(job_id, 'failed', 'Video tracking failed: '+type(exc).__name__)
     finally:
-        _video_worker_lock.release()
-
+        _video_worker_lock.release(); _video_cancel_events.pop(job_id, None); cleanup_expired_data()
 
 def require_service_auth(authorization: str | None):
     if not SERVICE_TOKEN:
@@ -278,8 +306,9 @@ def get_artifact(filename: str, authorization: str | None = Header(default=None)
 def start_video_track(payload: VideoTrackRequest, background_tasks: BackgroundTasks, authorization: str | None = Header(default=None)):
     require_service_auth(authorization)
     job_id = str(uuid.uuid4())
-    with _video_jobs_lock:
-        _video_jobs[job_id] = {"jobId": job_id, "status": "queued"}
+    cleanup_expired_data()
+    save_job(job_id, 'queued')
+    _video_cancel_events[job_id] = threading.Event()
     background_tasks.add_task(run_video_job, job_id, payload)
     return {"jobId": job_id, "status": "queued"}
 
@@ -291,8 +320,21 @@ def get_video_job(job_id: str, authorization: str | None = Header(default=None))
         uuid.UUID(job_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Video job not found.")
-    with _video_jobs_lock:
-        job = _video_jobs.get(job_id)
-        if not job:
-            raise HTTPException(status_code=404, detail="Video job not found.")
-        return dict(job)
+    job = read_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Video job not found.")
+    return job
+
+
+@app.post('/v1/video/jobs/{job_id}/cancel')
+def cancel_video_job(job_id: str, authorization: str | None = Header(default=None)):
+    require_service_auth(authorization)
+    try: uuid.UUID(job_id)
+    except ValueError: raise HTTPException(status_code=404, detail='Video job not found.')
+    job = read_job(job_id)
+    if not job: raise HTTPException(status_code=404, detail='Video job not found.')
+    if job['status'] in {'completed','failed','rejected','cancelled','interrupted'}: return job
+    event = _video_cancel_events.get(job_id)
+    if event: event.set()
+    save_job(job_id, 'cancelling')
+    return {'jobId':job_id,'status':'cancelling'}

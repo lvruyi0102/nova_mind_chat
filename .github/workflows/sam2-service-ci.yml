@@ -1,0 +1,35 @@
+name: SAM2 Service Contract CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/sam2/**"
+      - ".github/workflows/sam2-service-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/sam2/**"
+      - ".github/workflows/sam2-service-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/sam2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/sam2/requirements-test.txt
+      - name: Install contract-test dependencies
+        run: pip install -r requirements-test.txt
+      - name: Run service contract tests
+        run: pytest -q

@@ -25,7 +25,7 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 - `GET /artifacts/{id}.png`: serves the generated binary mask and requires the service token.
 - `POST /v1/video/track`: authenticated background task submission; returns a job ID.
 - `GET /v1/video/jobs/{job_id}`: authenticated SQLite-backed job status and result lookup.
-- `POST /v1/video/jobs/{job_id}/cancel`: requests cooperative cancellation.
+- `POST /v1/video/jobs/{job_id}/cancel`: requests cooperative cancellation.\n\nCompleted video jobs include a rendered MP4 preview at `result.previewUrl`, alongside per-frame PNG masks. The preview route is authenticated and returns `video/mp4`.
 
 Job metadata survives service restarts. Active tasks do not: they are marked `interrupted` at startup. The executor remains process-local; run a single service worker until a distributed queue is implemented.
 

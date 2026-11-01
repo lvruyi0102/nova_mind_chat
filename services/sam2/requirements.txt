@@ -1,0 +1,8 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+httpx>=0.27,<1
+pillow>=10,<12
+numpy>=1.26,<3
+pydantic>=2.8,<3
+# Install torch/torchvision for the target CPU/CUDA platform separately.
+# Install Meta SAM 2 from its official repository after selecting a compatible torch build.

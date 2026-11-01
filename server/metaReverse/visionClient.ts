@@ -54,7 +54,7 @@ export async function fetchSam2Artifact(objectId: string, fetcher: typeof fetch 
 
 export interface VisionVideoJob {
   jobId: string;
-  status: "queued" | "running" | "completed" | "failed" | "rejected";
+  status: "queued" | "running" | "cancelling" | "completed" | "failed" | "rejected" | "cancelled" | "interrupted";
   error?: string;
   result?: VisionSegmentResponse & { video: { frameCount: number; sourceFrameCount: number; fps: number; durationSeconds: number } };
 }
@@ -85,4 +85,18 @@ export async function getSam2VideoJob(jobId: string, fetcher: typeof fetch = fet
   });
   if (!response.ok) throw new Error("Video job lookup failed with status " + response.status + ".");
   return await response.json() as VisionVideoJob;
+}
+
+export async function cancelSam2VideoJob(jobId: string, fetcher: typeof fetch = fetch): Promise<{ jobId: string; status: string }> {
+  const url = baseUrl();
+  const token = process.env.NOVA_VISION_SERVICE_TOKEN?.trim();
+  if (!url || !token) throw new Error("Vision service URL and authentication must be configured.");
+  if (!/^[0-9a-f-]{36}$/i.test(jobId)) throw new Error("Invalid video job id.");
+  const response = await fetcher(url + "/v1/video/jobs/" + jobId + "/cancel", {
+    method: "POST",
+    headers: { authorization: "Bearer " + token },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error("Video job cancellation failed with status " + response.status + ".");
+  return await response.json() as { jobId: string; status: string };
 }

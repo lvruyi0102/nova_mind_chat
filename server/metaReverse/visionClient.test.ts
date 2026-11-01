@@ -21,3 +21,17 @@ describe("SAM 2 vision service client", () => {
   expect(result).toEqual(payload);
  });
 });
+
+it("retrieves mask artifacts through the authenticated server client", async () => {
+ vi.stubEnv("NOVA_VISION_SERVICE_URL", "http://localhost:8100");
+ vi.stubEnv("NOVA_VISION_SERVICE_TOKEN", "test-token");
+ const fetcher = vi.fn().mockResolvedValue({
+  ok: true,
+  headers: { get: () => "image/png" },
+  arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+ });
+ const { fetchSam2Artifact } = await import("./visionClient");
+ const result = await fetchSam2Artifact("123e4567-e89b-12d3-a456-426614174000", fetcher as typeof fetch);
+ expect(result).toEqual({ objectId: "123e4567-e89b-12d3-a456-426614174000", contentType: "image/png", base64: "AQID" });
+ expect(fetcher).toHaveBeenCalledWith("http://localhost:8100/artifacts/123e4567-e89b-12d3-a456-426614174000.png", expect.objectContaining({ headers: { authorization: "Bearer test-token" } }));
+});

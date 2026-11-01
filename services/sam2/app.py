@@ -119,7 +119,11 @@ async def load_trusted_image(url: str) -> Image.Image:
 
 @app.get("/health")
 def health():
-    ready = bool(INFERENCE_IMPORT_ERROR is None and CHECKPOINT and Path(CHECKPOINT).is_file())
+    try:
+        get_predictor()
+        ready = True
+    except HTTPException:
+        ready = False
     return {"status": "ok" if ready else "not_ready", "provider": "sam2", "model": MODEL_NAME if ready else None, "device": DEVICE if ready else None}
 
 

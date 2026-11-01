@@ -22,7 +22,12 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 
 - `GET /health`: reports `not_ready` until the checkpoint exists; reports `ok` only when the checkpoint file is present.
 - `POST /v1/segment`: authenticated JSON request compatible with Nova's Node client. Supports image segmentation with normalized point prompts and/or normalized XYXY box.
-- `GET /artifacts/{id}.png`: serves the generated binary mask and requires the service token.\n- `POST /v1/video/track`: authenticated background task submission; returns a job ID.\n- `GET /v1/video/jobs/{job_id}`: authenticated in-memory job status and result lookup.\n\nVideo tracking is now exposed as a first API slice. Job state is process-local and is lost on restart; multi-worker durable queues and per-user authorization are not implemented.
+- `GET /artifacts/{id}.png`: serves the generated binary mask and requires the service token.
+- `POST /v1/video/track`: authenticated background task submission; returns a job ID.
+- `GET /v1/video/jobs/{job_id}`: authenticated SQLite-backed job status and result lookup.
+- `POST /v1/video/jobs/{job_id}/cancel`: requests cooperative cancellation.
+
+Job metadata survives service restarts. Active tasks do not: they are marked `interrupted` at startup. The executor remains process-local; run a single service worker until a distributed queue is implemented.
 
 Example request body:
 

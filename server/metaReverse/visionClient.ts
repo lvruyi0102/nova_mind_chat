@@ -21,7 +21,9 @@ export async function segmentWithSam2(input: VisionSegmentRequest, fetcher: type
   if (!url) throw new Error("Vision service is not configured. Set NOVA_VISION_SERVICE_URL.");
   if (!input.mediaUrl.trim()) throw new Error("mediaUrl is required.");
   if (!input.points?.length && !input.box) throw new Error("At least one point prompt or a bounding box is required.");
-  const response = await fetcher(url + "/v1/segment", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input), signal: AbortSignal.timeout(120000) });
+  const token = process.env.NOVA_VISION_SERVICE_TOKEN?.trim();
+  if (!token) throw new Error("Vision service authentication is not configured. Set NOVA_VISION_SERVICE_TOKEN.");
+  const response = await fetcher(url + "/v1/segment", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: JSON.stringify(input), signal: AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error("Vision service request failed with status " + response.status + ".");
   const data = await response.json() as VisionSegmentResponse;
   if (data.provider !== "sam2" || !Array.isArray(data.artifacts)) throw new Error("Vision service returned an invalid response.");

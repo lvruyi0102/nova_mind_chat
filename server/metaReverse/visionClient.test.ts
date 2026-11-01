@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getVisionServiceHealth, segmentWithSam2 } from "./visionClient";
+import { getVisionServiceHealth, segmentWithSam2, startSam2VideoTrack, getSam2VideoJob } from "./visionClient";
 describe("SAM 2 vision service client", () => {
  afterEach(() => vi.unstubAllEnvs());
  it("reports not configured when no service URL is set", async () => {
@@ -33,6 +33,16 @@ describe("SAM 2 vision service client", () => {
  const result = await fetchSam2Artifact("123e4567-e89b-12d3-a456-426614174000", fetcher as typeof fetch);
  expect(result).toEqual({ objectId: "123e4567-e89b-12d3-a456-426614174000", contentType: "image/png", base64: "AQID" });
  expect(fetcher).toHaveBeenCalledWith("http://localhost:8100/artifacts/123e4567-e89b-12d3-a456-426614174000.png", expect.objectContaining({ headers: { authorization: "Bearer test-token" } }));
+ it("submits an authenticated video job and polls its status", async () => {
+  vi.stubEnv("NOVA_VISION_SERVICE_URL", "http://localhost:8100");
+  vi.stubEnv("NOVA_VISION_SERVICE_TOKEN", "test-token");
+  const jobId = "123e4567-e89b-12d3-a456-426614174000";
+  const fetcher = vi.fn()
+   .mockResolvedValueOnce({ status: 202, json: async () => ({ jobId, status: "queued" }) })
+   .mockResolvedValueOnce({ ok: true, json: async () => ({ jobId, status: "completed" }) });
+  await expect(startSam2VideoTrack({ mediaUrl: "https://storage.example.com/clip.mp4", points: [{ x: 0.4, y: 0.6, label: 1 }] }, fetcher as typeof fetch)).resolves.toEqual({ jobId, status: "queued" });
+  await expect(getSam2VideoJob(jobId, fetcher as typeof fetch)).resolves.toMatchObject({ jobId, status: "completed" });
+ });
 });
 
 });

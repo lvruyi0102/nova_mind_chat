@@ -6,3 +6,4 @@ numpy>=1.26,<3
 pydantic>=2.8,<3
 # Install torch/torchvision for the target CPU/CUDA platform separately.
 # Install Meta SAM 2 from its official repository after selecting a compatible torch build.
+opencv-python-headless>=4.10,<5

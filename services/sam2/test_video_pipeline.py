@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from video_pipeline import VideoLimitError, decode_video_frames, track_video_with_sam2
+from video_pipeline import VideoCancelled, VideoLimitError, decode_video_frames, track_video_with_sam2
 
 
 class FakeTensor:
@@ -69,3 +69,18 @@ def test_video_tracking_rejects_missing_prompt(tmp_path):
 def test_decode_rejects_missing_video(tmp_path):
     with pytest.raises(VideoLimitError, match="does not exist"):
         decode_video_frames(tmp_path / "missing.mp4", tmp_path / "frames")
+
+
+def test_video_tracking_supports_cooperative_cancellation(tmp_path):
+    class CancellingPredictor(FakePredictor):
+        def propagate_in_video(self, state, **kwargs):
+            yield 0, [1], FakeTensor(np.ones((1, 1, 4, 5), dtype=np.float32))
+
+    predictor = CancellingPredictor()
+    with pytest.raises(VideoCancelled, match="cancelled"):
+        track_video_with_sam2(
+            predictor, tmp_path / "frames", 100, 80,
+            [{"x": 0.5, "y": 0.5, "label": 1}], None,
+            tmp_path / "artifacts", cancel_check=lambda: True,
+        )
+    assert predictor.reset_called

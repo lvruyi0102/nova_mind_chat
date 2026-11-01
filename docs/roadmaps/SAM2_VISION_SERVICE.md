@@ -33,3 +33,31 @@ Meta SAM 2 upstream documents Python 3.10+, PyTorch 2.5.1+, and TorchVision 0.20
 - Store masks and derived metadata in object storage; avoid logging media contents or signed URLs.
 - Add queueing and concurrency limits before enabling video jobs.
 - When unconfigured, report `not_configured`, never fake success.
+
+## Video tracking design (next implementation slice)
+
+The upstream video predictor is stateful: initialize one inference state per decoded video, add the initial prompt with `add_new_points_or_box`, then consume `propagate_in_video` frame results. A video request must not be implemented by passing a video URL to the image predictor.
+
+### Proposed bounded API
+
+- `POST /v1/video/track`: authenticated, accepts one Nova-owned HTTPS video URL and one initial prompt (normalized point(s) and/or XYXY box).
+- The service downloads only from the configured exact-host allowlist, rejects redirects, and enforces both a compressed-byte ceiling and decoded frame/duration ceilings.
+- Decode into a per-job temporary frame directory. Do not pass arbitrary video containers or URLs directly into SAM 2's frame loader.
+- Initialize a fresh predictor state for the job; never share an inference state between requests or users.
+- Add the prompt to the selected initial frame, then propagate at most the configured frame budget. Persist each binary mask as a PNG artifact and return only artifact IDs, frame indexes, dimensions, and confidence metadata.
+- In a `finally` cleanup path, call the predictor's state reset when available, release temporary frame files, and clear references to the inference state. GPU cache clearing is a deployment policy, not a substitute for state cleanup.
+- Serialize access to a single loaded video predictor until a queue/concurrency policy is in place. Reject excess work rather than allowing unbounded GPU memory growth.
+- Provide explicit cancellation and expiry before exposing long-running jobs to the UI.
+
+### Initial resource ceilings (configurable)
+
+Start conservatively with max 20 MiB input, 10 seconds decoded duration, 250 decoded frames, 1 active video job per worker, and a 15-minute artifact/session TTL. These are guardrails for the first test deployment, not performance guarantees. Benchmark on the actual host before increasing them.
+
+### Acceptance gates
+
+1. Unit tests validate URL allowlisting, size/duration/frame ceilings, prompt coordinate conversion, and per-job state isolation using a fake predictor.
+2. Contract tests verify unauthenticated calls fail, oversized/overlong videos are rejected, and unsupported codecs return a controlled client error.
+3. A real checkpoint + real short video smoke test verifies stable frame ordering, correct mask dimensions, and cleanup after success and failure.
+4. No UI capability is marked connected until the real smoke test passes and artifacts are stored in Nova-owned durable storage.
+
+The upstream predictor's documented workflow uses `init_state`, `add_new_points_or_box`, and `propagate_in_video`; pin the SAM 2 package revision before implementing against its exact API. See the official upstream predictor implementation: https://github.com/facebookresearch/sam2/blob/main/sam2/sam2_video_predictor.py.

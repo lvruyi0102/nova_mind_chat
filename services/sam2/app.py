@@ -5,6 +5,7 @@ import os
 import secrets
 import time
 import uuid
+from contextlib import nullcontext
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -134,12 +135,13 @@ async def segment(payload: SegmentRequest, authorization: str | None = Header(de
     image = await load_trusted_image(payload.mediaUrl)
     predictor = get_predictor()
     width, height = image.size
-    point_coords = np.array([[p.x, p.y] for p in payload.points], dtype=np.float32) if payload.points else None
+    point_coords = np.array([[p.x * width, p.y * height] for p in payload.points], dtype=np.float32) if payload.points else None
     point_labels = np.array([p.label for p in payload.points], dtype=np.int32) if payload.points else None
-    box = np.array(payload.box, dtype=np.float32) if payload.box else None
+    box = np.array([payload.box[0] * width, payload.box[1] * height, payload.box[2] * width, payload.box[3] * height], dtype=np.float32) if payload.box else None
     try:
         predictor.set_image(np.asarray(image))
-        with torch.inference_mode():
+        amp_context = torch.autocast(device_type="cuda", dtype=torch.bfloat16) if DEVICE.startswith("cuda") else nullcontext()
+        with torch.inference_mode(), amp_context:
             masks, scores, _ = predictor.predict(point_coords=point_coords, point_labels=point_labels, box=box, multimask_output=True, normalize_coords=True)
         best = int(np.argmax(scores))
         mask = (masks[best].astype(np.uint8) * 255)

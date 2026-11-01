@@ -179,6 +179,7 @@ def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
     save_job(job_id, 'running')
     if not _video_worker_lock.acquire(blocking=False):
         save_job(job_id, 'rejected', 'Video worker is busy; retry later.')
+        _video_cancel_events.pop(job_id, None)
         return
     cancel_event = _video_cancel_events.get(job_id, threading.Event())
     try:

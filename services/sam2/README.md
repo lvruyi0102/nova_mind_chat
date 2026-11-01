@@ -1,4 +1,4 @@
-# Nova SAM 2 service (image-first)
+# Nova SAM 2 service (image + video core)
 
 This is an isolated Python inference service. It deliberately does **not** download model weights automatically, and it reports `not_ready` until a real checkpoint is present.
 
@@ -22,7 +22,7 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 
 - `GET /health`: reports `not_ready` until the checkpoint exists; reports `ok` only when the checkpoint file is present.
 - `POST /v1/segment`: authenticated JSON request compatible with Nova's Node client. Supports image segmentation with normalized point prompts and/or normalized XYXY box.
-- `GET /artifacts/{id}.png`: serves the generated binary mask. Put this service behind private networking or an authenticated artifact gateway before production use.
+- `GET /artifacts/{id}.png`: serves the generated binary mask. Put this service behind private networking or an authenticated artifact gateway before production use.\n\nThe bounded video decoder and isolated SAM 2 tracking core are implemented in `video_pipeline.py`; they are not yet exposed as a public HTTP endpoint.
 
 Example request body:
 
@@ -40,7 +40,7 @@ The service requires `NOVA_VISION_SERVICE_TOKEN`; only HTTPS media URLs whose ex
 
 ## Explicit scope boundary
 
-This first executable slice handles **single images only**. Video tracking, durable cloud artifact storage, user/session authorization, GPU provisioning, deployment, and end-to-end production validation remain future work. A local artifact directory is not durable object storage.
+The image HTTP endpoint is implemented. A reusable bounded video decode/tracking core and fake-predictor tests are now present, but video tracking is **not yet exposed as an HTTP endpoint**. Durable cloud artifact storage, user/session authorization, GPU provisioning, deployment, and end-to-end production validation remain future work. A local artifact directory is not durable object storage.
 
 ## Prompt coordinate convention
 

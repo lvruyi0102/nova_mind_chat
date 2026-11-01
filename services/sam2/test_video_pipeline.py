@@ -10,6 +10,9 @@ class FakeTensor:
     def __init__(self, value):
         self.value = np.asarray(value)
 
+    def __getitem__(self, index):
+        return FakeTensor(self.value[index])
+
     def detach(self):
         return self
 

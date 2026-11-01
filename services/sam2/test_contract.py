@@ -11,6 +11,7 @@ def test_health_never_claims_ready_without_checkpoint():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["provider"] == "sam2"
+    assert response.json()["status"] in {"ok", "not_ready"}
     if not os.getenv("SAM2_CHECKPOINT"):
         assert response.json()["status"] == "not_ready"
 

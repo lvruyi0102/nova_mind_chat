@@ -180,7 +180,7 @@ def cleanup_expired_data():
 init_job_store()
 
 def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
-    from video_pipeline import VideoCancelled, VideoLimitError, decode_video_frames, track_video_with_sam2
+    from video_pipeline import VideoCancelled, VideoLimitError, decode_video_frames, render_tracking_preview, track_video_with_sam2
     save_job(job_id, 'running')
     if not _video_worker_lock.acquire(blocking=False):
         save_job(job_id, 'rejected', 'Video worker is busy; retry later.')
@@ -197,12 +197,15 @@ def run_video_job(job_id: str, payload: VideoTrackRequest) -> None:
             predictor = get_video_predictor()
             points = [point.model_dump() for point in payload.points] if payload.points else None
             tracked = track_video_with_sam2(predictor, frames, width, height, points, payload.box, ARTIFACT_DIR, cancel_check=cancel_event.is_set)
+            preview_id = str(uuid.uuid4())
+            preview_path = ARTIFACT_DIR / (preview_id + '.mp4')
+            render_tracking_preview(frames, tracked, preview_path, metadata['fps'])
             artifacts = []
             for item in tracked:
                 if cancel_event.is_set(): raise VideoCancelled('Video job was cancelled.')
                 artifact_id = item['objectId']; shutil.copyfile(item['maskPath'], ARTIFACT_DIR / (artifact_id + '.png'))
                 artifacts.append({'objectId':artifact_id,'frameIndex':item['frameIndex'],'width':item['width'],'height':item['height'],'maskUrl':'/artifacts/'+artifact_id+'.png'})
-            save_job(job_id, 'completed', result={'provider':'sam2','model':MODEL_NAME,'mediaType':'video','video':metadata,'artifacts':artifacts})
+            save_job(job_id, 'completed', result={'provider':'sam2','model':MODEL_NAME,'mediaType':'video','video':metadata,'artifacts':artifacts,'previewUrl':'/artifacts/'+preview_id+'.mp4'})
     except VideoCancelled as exc: save_job(job_id, 'cancelled', str(exc))
     except (HTTPException, VideoLimitError) as exc: save_job(job_id, 'failed', getattr(exc, 'detail', str(exc)))
     except Exception as exc: save_job(job_id, 'failed', 'Video tracking failed: '+type(exc).__name__)
@@ -300,12 +303,13 @@ async def segment(payload: SegmentRequest, authorization: str | None = Header(de
 @app.get("/artifacts/{filename}")
 def get_artifact(filename: str, authorization: str | None = Header(default=None)):
     require_service_auth(authorization)
-    if not filename.endswith(".png") or "/" in filename or "\\" in filename:
+    if "/" in filename or "\\" in filename or not (filename.endswith(".png") or filename.endswith(".mp4")):
         raise HTTPException(status_code=404, detail="Artifact not found.")
     path = ARTIFACT_DIR / filename
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Artifact not found.")
-    return FileResponse(path, media_type="image/png")
+    media_type = "image/png" if filename.endswith(".png") else "video/mp4"
+    return FileResponse(path, media_type=media_type)
 
 
 @app.post("/v1/video/track", status_code=202)

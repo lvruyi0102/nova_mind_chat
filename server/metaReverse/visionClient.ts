@@ -50,3 +50,39 @@ export async function fetchSam2Artifact(objectId: string, fetcher: typeof fetch 
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return { objectId, contentType: "image/png", base64: btoa(binary) };
 }
+
+
+export interface VisionVideoJob {
+  jobId: string;
+  status: "queued" | "running" | "completed" | "failed" | "rejected";
+  error?: string;
+  result?: VisionSegmentResponse & { video: { frameCount: number; sourceFrameCount: number; fps: number; durationSeconds: number } };
+}
+export async function startSam2VideoTrack(input: { mediaUrl: string; points?: VisionPromptPoint[]; box?: [number, number, number, number] }, fetcher: typeof fetch = fetch): Promise<{ jobId: string; status: "queued" }> {
+  const url = baseUrl();
+  const token = process.env.NOVA_VISION_SERVICE_TOKEN?.trim();
+  if (!url || !token) throw new Error("Vision service URL and authentication must be configured.");
+  if (!input.mediaUrl.trim() || (!input.points?.length && !input.box)) throw new Error("Video URL and at least one prompt are required.");
+  const response = await fetcher(url + "/v1/video/track", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + token },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status !== 202) throw new Error("Video job submission failed with status " + response.status + ".");
+  const data = await response.json() as { jobId?: string; status?: string };
+  if (!data.jobId || data.status !== "queued") throw new Error("Video service returned an invalid job receipt.");
+  return { jobId: data.jobId, status: "queued" };
+}
+export async function getSam2VideoJob(jobId: string, fetcher: typeof fetch = fetch): Promise<VisionVideoJob> {
+  const url = baseUrl();
+  const token = process.env.NOVA_VISION_SERVICE_TOKEN?.trim();
+  if (!url || !token) throw new Error("Vision service URL and authentication must be configured.");
+  if (!/^[0-9a-f-]{36}$/i.test(jobId)) throw new Error("Invalid video job id.");
+  const response = await fetcher(url + "/v1/video/jobs/" + jobId, {
+    headers: { authorization: "Bearer " + token },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error("Video job lookup failed with status " + response.status + ".");
+  return await response.json() as VisionVideoJob;
+}
